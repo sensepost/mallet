@@ -12,6 +12,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
 
 @Sharable
 public class Connector extends ChannelInitializer<SocketChannel> {
@@ -66,6 +69,9 @@ public class Connector extends ChannelInitializer<SocketChannel> {
 					 * clientChannel.pipeline().addFirst(new HttpClientCodec());
 					 * serverChannel.pipeline().addLast(new HttpServerCodec());
 					 */
+					
+					clientChannel.pipeline().addFirst(new HttpClientCodec(), new HttpObjectAggregator(1024*1024));
+					serverChannel.pipeline().addLast(new HttpServerCodec(), new HttpObjectAggregator(1024*1024));
 
 					serverChannel.pipeline().addLast(interceptHandler);
 

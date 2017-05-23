@@ -26,9 +26,9 @@ import com.sensepost.mallet.events.ChannelEvent;
 import com.sensepost.mallet.events.ChannelInactiveEvent;
 import com.sensepost.mallet.events.ChannelReadEvent;
 import com.sensepost.mallet.events.ChannelUserEvent;
-import com.sensepost.mallet.swing.editors.ByteBufEditor;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
+import com.sensepost.mallet.swing.editors.ReflectionEditor;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
@@ -76,8 +76,8 @@ public class ConnectionDataPanel extends JPanel {
 		add(pendingPanel, gbc_pendingPanel);
 		pendingPanel.setLayout(new BorderLayout(0, 0));
 
-		 ObjectEditor editor = new ByteBufEditor();
-		//		ObjectEditor editor = new ReflectionEditor();
+		// ObjectEditor editor = new ByteBufEditor();
+		ObjectEditor editor = new ReflectionEditor();
 		editor.setEditorController(editorController);
 		pendingPanel.add(editor.getComponent(), BorderLayout.CENTER);
 
