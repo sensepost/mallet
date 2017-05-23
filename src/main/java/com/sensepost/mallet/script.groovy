@@ -8,6 +8,8 @@ import io.netty.buffer.*;
 if (object instanceof HttpRequest) {
 	object.headers().set("Host", "image.freepik.com");
 	object.headers().set("if-modified-since", "-1");
+	object.headers().getAndRemoveAndConvert("if-range");
+	object.headers().getAndRemoveAndConvert("range");
 } else if (object instanceof FullHttpResponse) {
 	if ("image/jpeg".equals(object.headers().getAndConvert(HttpHeaderNames.CONTENT_TYPE))) {
 		object = object.copy();

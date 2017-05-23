@@ -15,6 +15,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 
 @Sharable
 public class Connector extends ChannelInitializer<SocketChannel> {
@@ -22,6 +24,8 @@ public class Connector extends ChannelInitializer<SocketChannel> {
 	private InterceptHandler interceptHandler;
 	private Bootstrap b;
 	private NioEventLoopGroup workerGroup = new NioEventLoopGroup();
+	
+	private ScriptHandler scriptHandler = new ScriptHandler();
 
 	public Connector(InterceptHandler interceptHandler) {
 		this.interceptHandler = interceptHandler;
@@ -70,7 +74,7 @@ public class Connector extends ChannelInitializer<SocketChannel> {
 					 * serverChannel.pipeline().addLast(new HttpServerCodec());
 					 */
 					
-					clientChannel.pipeline().addFirst(new HttpClientCodec(), new HttpObjectAggregator(1024*1024));
+					clientChannel.pipeline().addFirst(new HttpClientCodec(), new HttpObjectAggregator(1024*1024), scriptHandler);
 					serverChannel.pipeline().addLast(new HttpServerCodec(), new HttpObjectAggregator(1024*1024));
 
 					serverChannel.pipeline().addLast(interceptHandler);

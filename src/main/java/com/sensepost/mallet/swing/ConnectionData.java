@@ -1,5 +1,7 @@
 package com.sensepost.mallet.swing;
 
+import java.util.BitSet;
+
 import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
 
@@ -11,52 +13,70 @@ import io.netty.buffer.Unpooled;
 
 public class ConnectionData {
 
-	private DefaultListModel<ChannelEvent> completedEvents = new DefaultListModel<>();
-	private DefaultListModel<ChannelEvent> pendingEvents = new DefaultListModel<>();
+	private DefaultListModel<ChannelEvent> events = new DefaultListModel<>();
+	private BitSet pending = new BitSet();
 	
 	public ConnectionData() {
 	}
 	
 	public void addChannelEvent(ChannelEvent e) throws Exception {
-		if ((e instanceof ChannelActiveEvent) && pendingEvents.getSize() == 0) {
-			((ChannelActiveEvent)e).execute();
-			completedEvents.addElement(e);
-		} else {
-			pendingEvents.addElement(e);
+		events.addElement(e);
+		int n = events.size() - 1;
+		pending.set(n);
+		if ((e instanceof ChannelActiveEvent) && pending.nextSetBit(0) == n) {
+			e.execute();
+			pending.clear(events.size());
 		}
 	}
 	
-	public void executeNextEvent() {
-		if (pendingEvents.getSize() > 0) {
-			ChannelEvent e = pendingEvents.remove(0);
+	public void executeNextEvents(int p) throws Exception {
+		while (pending.nextSetBit(0) <= p && pending.nextSetBit(0) >= 0)
+			doNextEvent(true);
+	}
+	
+	public void dropNextEvents(int p) throws Exception {
+		while (pending.nextSetBit(0) <= p && pending.nextSetBit(0) >= 0)
+			doNextEvent(false);
+	}
+	
+	public void executeNextEvent() throws Exception {
+		doNextEvent(true);
+	}
+	
+	public void dropNextEvent() throws Exception {
+		doNextEvent(false);
+	}
+
+	private void doNextEvent(boolean execute) throws Exception {
+		int n = pending.nextSetBit(0);
+		if (n >= 0) {
+			ChannelEvent e = events.elementAt(n);
 			try {
-				e.execute();
+				if (execute)
+					e.execute();
+				pending.clear(n);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
-			completedEvents.addElement(e);
 		}
+
 	}
 	
-	public void dropNextEvent() {
-		if (pendingEvents.getSize() > 0) {
-			ChannelEvent e = pendingEvents.remove(0);
-			if (e instanceof ChannelReadEvent)
-				((ChannelReadEvent)e).setMessage(Unpooled.EMPTY_BUFFER);
-			try {
-				e.execute();
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-			completedEvents.addElement(e);
-		}
+	public int getNextPendingEvent() {
+		return pending.nextSetBit(0);
 	}
 	
-	public ListModel<ChannelEvent> getCompletedEvents() {
-		return completedEvents;
+	public void executeAllEvents() throws Exception {
+		while (pending.nextSetBit(0) >= 0)
+			doNextEvent(true);
 	}
 	
-	public ListModel<ChannelEvent> getPendingEvents() {
-		return pendingEvents;
+	public void dropAllEvents()  throws Exception {
+		while (pending.nextSetBit(0) >= 0)
+			doNextEvent(false);
+	}
+	
+	public ListModel<ChannelEvent> getEvents() {
+		return events;
 	}
 }
