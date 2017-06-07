@@ -18,6 +18,7 @@ import javax.swing.event.ListSelectionListener;
 
 import com.sensepost.mallet.events.ChannelActiveEvent;
 import com.sensepost.mallet.events.ChannelEvent;
+import com.sensepost.mallet.events.ChannelEvent.Direction;
 import com.sensepost.mallet.events.ChannelInactiveEvent;
 import com.sensepost.mallet.events.ChannelReadEvent;
 import com.sensepost.mallet.events.ChannelUserEvent;
@@ -148,7 +149,7 @@ public class ConnectionDataPanel extends JPanel {
 				boolean cellHasFocus) {
 			if (value instanceof ChannelEvent) {
 				ChannelEvent evt = (ChannelEvent) value;
-				value = evt.getSourceAddress() + " -> " + evt.getDestinationAddress();
+				value = evt.getDirection() == Direction.Client_Server ? " -> " : " <- ";
 				if (evt instanceof ChannelActiveEvent) {
 					value += " Open";
 				} else if (evt instanceof ChannelReadEvent) {

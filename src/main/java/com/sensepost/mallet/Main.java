@@ -1,7 +1,10 @@
 package com.sensepost.mallet;
 
 import java.net.InetSocketAddress;
+import java.security.KeyStore;
 
+import com.sensepost.mallet.graph.Graph;
+import com.sensepost.mallet.graph.GraphChannelInitializer;
 import com.sensepost.mallet.swing.InterceptFrame;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -11,10 +14,14 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.util.DomainNameMapping;
 
 public class Main {
 
-	private static final int PORT = Integer.parseInt(System.getProperty("port", "8887"));
+	private static final int PORT = Integer.parseInt(System.getProperty("port", "1080"));
 	private static final String INTERFACE = System.getProperty("interface", "0.0.0.0");
 	private static final String dst = System.getProperty("target", "localhost:8888");
 
@@ -37,13 +44,13 @@ public class Main {
 		InetSocketAddress listenAddr = new InetSocketAddress(INTERFACE, PORT);
 		EventLoopGroup bossGroup = new NioEventLoopGroup(1);
 		EventLoopGroup workerGroup = new NioEventLoopGroup();
-		InterceptHandler interceptHandler = new InterceptHandler(ui);
-		Connector conn = new Connector(interceptHandler);
+		Graph graph = new Graph(ui);
 		try {
 			ServerBootstrap b = new ServerBootstrap();
-			Channel c = b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class).childHandler(conn)
-					.childOption(ChannelOption.AUTO_READ, false).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true)
-					.bind(listenAddr).sync().channel();
+			Channel c = b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
+					.handler(new LoggingHandler(LogLevel.INFO)).attr(ChannelAttributes.GRAPH, graph)
+					.childHandler(new GraphChannelInitializer()).childOption(ChannelOption.AUTO_READ, true)
+					.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true).bind(listenAddr).sync().channel();
 			c.attr(ChannelAttributes.TARGET).set(target);
 			System.out.println("Listening on " + listenAddr + "\nPress Enter to shutdown");
 			if (ui != null)

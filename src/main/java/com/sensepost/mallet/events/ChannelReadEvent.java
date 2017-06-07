@@ -1,13 +1,11 @@
 package com.sensepost.mallet.events;
 
-import java.net.SocketAddress;
-
 public abstract class ChannelReadEvent extends ChannelEvent {
 
 	private Object msg;
 	
-	public ChannelReadEvent(SocketAddress src, SocketAddress dst, Object msg) {
-		super(src, dst);
+	public ChannelReadEvent(int connection, Direction direction, Object msg) {
+		super(connection, direction);
 		this.msg = msg;
 	}
 	

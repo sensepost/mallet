@@ -1,30 +1,34 @@
 package com.sensepost.mallet.events;
 
-import java.net.SocketAddress;
-
 public abstract class ChannelEvent {
 
-	private SocketAddress src, dst;
 	private long eventTime;
+	private int connection_number;
+	private Direction direction;
 	
-	public ChannelEvent(SocketAddress src, SocketAddress dst) {
-		this.src = src;
-		this.dst = dst;
+	public enum Direction {
+		Client_Server,
+		Server_Client
+	}
+
+	public ChannelEvent(int connection, Direction direction) {
+		this.connection_number = connection;
+		this.direction = direction;
 		this.eventTime = System.currentTimeMillis();
 	}
-		
-	public SocketAddress getSourceAddress() {
-		return src;
+
+	public int getConnectionIdentifier() {
+		return connection_number;
 	}
-	
-	public SocketAddress getDestinationAddress() {
-		return dst;
-	}
-	
+
 	public long getEventTime() {
 		return eventTime;
 	}
+
+	public Direction getDirection() {
+		return direction;
+	}
 	
 	public abstract void execute() throws Exception;
-	
+
 }

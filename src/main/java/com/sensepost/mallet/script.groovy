@@ -5,12 +5,11 @@ import javax.imageio.ImageIO;
 import io.netty.handler.codec.http.*;
 import io.netty.buffer.*;
 
-if (object instanceof HttpRequest) {
-	object.headers().set("Host", "image.freepik.com");
+if (FullHttpRequest.class.isAssignableFrom(object.getClass())) {
 	object.headers().set("if-modified-since", "-1");
 	object.headers().getAndRemoveAndConvert("if-range");
 	object.headers().getAndRemoveAndConvert("range");
-} else if (object instanceof FullHttpResponse) {
+} else if (FullHttpResponse.class.isAssignableFrom(object.getClass())) {
 	if ("image/jpeg".equals(object.headers().getAndConvert(HttpHeaderNames.CONTENT_TYPE))) {
 		object = object.copy();
 		bb = object.content();

@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.SocketAddress;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,14 +28,18 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.sensepost.mallet.InterceptController;
+import com.sensepost.mallet.events.ChannelActiveEvent;
 import com.sensepost.mallet.events.ChannelEvent;
 import com.sensepost.mallet.events.ChannelReadEvent;
 
-public class InterceptFrame extends JFrame implements InterceptController {
-	private JList<AddrPair> list;
-	private DefaultListModel<AddrPair> listModel = new DefaultListModel<>();
+import io.netty.buffer.ByteBufHolder;
 
-	private Map<AddrPair, ConnectionData> channelEventMap = new LinkedHashMap<>();
+public class InterceptFrame extends JFrame implements InterceptController {
+	private JList<Integer> list;
+	private DefaultListModel<Integer> listModel = new DefaultListModel<>();
+
+	private Map<Integer, AddrPair> connAddrMap = new HashMap<>();
+	private Map<Integer, ConnectionData> channelEventMap = new LinkedHashMap<>();
 
 	private ConnectionDataPanel cdp;
 	private JCheckBoxMenuItem interceptMenuItem;
@@ -97,9 +102,9 @@ public class InterceptFrame extends JFrame implements InterceptController {
 
 	private void sendAllPendingEvents() {
 		synchronized (channelEventMap) {
-			for (AddrPair cp : channelEventMap.keySet()) {
+			for (Integer conn : channelEventMap.keySet()) {
 				try {
-					channelEventMap.get(cp).executeAllEvents();
+					channelEventMap.get(conn).executeAllEvents();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -109,6 +114,13 @@ public class InterceptFrame extends JFrame implements InterceptController {
 
 	@Override
 	public void addChannelEvent(final ChannelEvent evt) throws Exception {
+		if (evt instanceof ChannelReadEvent) {
+			Object o = ((ChannelReadEvent)evt).getMessage();
+			if (o instanceof ByteBufHolder) {
+				o = ((ByteBufHolder) o).duplicate();
+				((ChannelReadEvent)evt).setMessage(o);
+			}
+		}
 		SwingUtilities.invokeAndWait(new Runnable() {
 			public void run() {
 				try {
@@ -121,10 +133,20 @@ public class InterceptFrame extends JFrame implements InterceptController {
 	}
 
 	protected void addChannelEventEDT(ChannelEvent evt) throws Exception {
-		SocketAddress src = evt.getSourceAddress();
-		SocketAddress dst = evt.getDestinationAddress();
+		Integer cp = evt.getConnectionIdentifier();
+
+		if (evt instanceof ChannelActiveEvent) {
+			ChannelActiveEvent cae = (ChannelActiveEvent) evt;
+			SocketAddress src = cae.getSourceAddress();
+			SocketAddress dst = cae.getDestinationAddress();
+			AddrPair ap = new AddrPair(src, dst);
+			synchronized (connAddrMap) {
+				if (connAddrMap.get(cp) == null)
+					connAddrMap.put(cp, ap);
+			}	
+		}
+		
 		synchronized (channelEventMap) {
-			AddrPair cp = new AddrPair(src, dst);
 			ConnectionData eventList;
 			if (!channelEventMap.containsKey(cp)) {
 				eventList = new ConnectionData();
@@ -153,7 +175,7 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		return new JLabel(text);
 	}
 
-	protected JList<AddrPair> getConnectionList() {
+	protected JList<Integer> getConnectionList() {
 		return list;
 	}
 
@@ -177,14 +199,15 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		}
 	}
 
-	private static class ChannelPairCellRenderer implements ListCellRenderer<AddrPair> {
+	private class ChannelPairCellRenderer implements ListCellRenderer<Integer> {
 		protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
 
 		@Override
-		public Component getListCellRendererComponent(JList<? extends AddrPair> list, AddrPair value, int index,
+		public Component getListCellRendererComponent(JList<? extends Integer> list, Integer value, int index,
 				boolean isSelected, boolean cellHasFocus) {
 
-			String text = value.src + " -> " + value.dst;
+			AddrPair ap = connAddrMap.get(value);
+			String text = value + " : " + ap.src + " -> " + ap.dst;
 			JLabel renderer = (JLabel) defaultRenderer.getListCellRendererComponent(list, text, index, isSelected,
 					cellHasFocus);
 
