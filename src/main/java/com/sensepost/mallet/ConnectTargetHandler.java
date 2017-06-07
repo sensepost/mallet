@@ -2,8 +2,8 @@ package com.sensepost.mallet;
 
 import java.net.InetSocketAddress;
 
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 /**
  * Handler to receive a Socks ConnectRequest, and save the requested address as
@@ -19,7 +19,7 @@ import io.netty.channel.ChannelHandlerContext;
  * @author rogan
  *
  */
-public class ConnectTargetHandler extends ChannelHandlerAdapter {
+public class ConnectTargetHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {

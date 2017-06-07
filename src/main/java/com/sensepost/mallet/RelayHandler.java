@@ -10,8 +10,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -23,18 +23,18 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 @Sharable
-public class RelayHandler extends ChannelHandlerAdapter {
+public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private static final InternalLogger logger = InternalLoggerFactory.getInstance(RelayHandler.class);
 
 	private boolean added = false;
-	
+
 	private Bootstrap b = new Bootstrap();
 	private EventLoopGroup eventLoop = new NioEventLoopGroup();
 
 	public RelayHandler() {
 		b.group(eventLoop).channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-		.option(ChannelOption.SO_KEEPALIVE, true);
+				.option(ChannelOption.SO_KEEPALIVE, true);
 	}
 
 	@Override
@@ -63,12 +63,16 @@ public class RelayHandler extends ChannelHandlerAdapter {
 			}
 		};
 
-		b.handler(initializer).connect(target).sync();
+		try {
+			b.handler(initializer).connect(target).sync();
+		} catch (Exception e) {
+			ctx.close();
+		}
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		Channel other = ctx.attr(ChannelAttributes.CHANNEL).get();
+		Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		if (other != null && other.isOpen()) {
 			other.close();
 		}
@@ -76,8 +80,17 @@ public class RelayHandler extends ChannelHandlerAdapter {
 	}
 
 	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		if (other != null && other.isOpen()) {
+			other.close();
+		}
+		cause.printStackTrace();
+	}
+
+	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		ChannelFuture cf = ctx.attr(ChannelAttributes.CHANNEL).get().writeAndFlush(msg);
+		ChannelFuture cf = ctx.channel().attr(ChannelAttributes.CHANNEL).get().writeAndFlush(msg);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
@@ -91,7 +104,7 @@ public class RelayHandler extends ChannelHandlerAdapter {
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt instanceof ChannelInputShutdownEvent) {
-			((SocketChannel)ctx.channel().attr(ChannelAttributes.CHANNEL).get()).shutdownOutput();
+			((SocketChannel) ctx.channel().attr(ChannelAttributes.CHANNEL).get()).shutdownOutput();
 		} else
 			super.userEventTriggered(ctx, evt);
 	}

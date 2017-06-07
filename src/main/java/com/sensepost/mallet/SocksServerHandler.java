@@ -21,14 +21,13 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 @ChannelHandler.Sharable
 public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksMessage> {
 
-    private static final InternalLogger logger =
-            InternalLoggerFactory.getInstance(SocksServerHandler.class);
+	private static final InternalLogger logger = InternalLoggerFactory.getInstance(SocksServerHandler.class);
 
 	public SocksServerHandler() {
 	}
 
 	@Override
-	public void messageReceived(ChannelHandlerContext ctx, SocksMessage socksRequest) throws Exception {
+	public void channelRead0(ChannelHandlerContext ctx, SocksMessage socksRequest) throws Exception {
 		switch (socksRequest.version()) {
 		case SOCKS4a:
 			Socks4CommandRequest socks4CmdRequest = (Socks4CommandRequest) socksRequest;
@@ -43,10 +42,11 @@ public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksM
 		case SOCKS5:
 			if (socksRequest instanceof Socks5InitialRequest) {
 				/*
-				 * auth support example 
+				 * auth support example
 				 * 
-				 * ctx.pipeline().addFirst(new Socks5PasswordAuthRequestDecoder()); 
-				 * ctx.write(new DefaultSocks5AuthMethodResponse(Socks5AuthMethod.PASSWORD));
+				 * ctx.pipeline().addFirst(new
+				 * Socks5PasswordAuthRequestDecoder()); ctx.write(new
+				 * DefaultSocks5AuthMethodResponse(Socks5AuthMethod.PASSWORD));
 				 */
 				ctx.pipeline().addBefore(ctx.name(), "socks5commandrequestdecoder", new Socks5CommandRequestDecoder());
 				ctx.write(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));

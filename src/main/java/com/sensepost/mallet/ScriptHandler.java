@@ -1,7 +1,5 @@
 package com.sensepost.mallet;
 
-import io.netty.channel.ChannelHandler.Sharable;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,14 +9,13 @@ import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
-import com.sensepost.mallet.swing.InterceptFrame;
-
-import io.netty.channel.ChannelHandlerAdapter;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
 @Sharable
-public class ScriptHandler extends ChannelHandlerAdapter {
+public class ScriptHandler extends ChannelDuplexHandler {
 
 	private ScriptEngineManager sem = new ScriptEngineManager();
 
@@ -29,7 +26,7 @@ public class ScriptHandler extends ChannelHandlerAdapter {
 	
 	static {
 		try {
-			InputStream is = InterceptFrame.class.getResourceAsStream("script.groovy");
+			InputStream is = ScriptHandler.class.getResourceAsStream("script.groovy");
 			BufferedReader r = new BufferedReader(new InputStreamReader(is));
 			StringBuilder b = new StringBuilder();
 			String line;

@@ -16,19 +16,20 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
+import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 @Sharable
-public class InterceptHandler extends ChannelHandlerAdapter {
+public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	private InterceptController controller;
 
@@ -71,6 +72,7 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 					promise.setSuccess();
 				} else {
 					promise.setFailure(future.cause());
+					ctx.close();
 				}
 			}
 		});
@@ -161,7 +163,7 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 
 	@Override
 	public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx, createChannelInactiveEvent(ctx));
+		controller.addChannelEvent(createChannelInactiveEvent(ctx));
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
@@ -181,7 +183,7 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 	}
 
 	protected void doChannelInactive(ChannelHandlerContext ctx) throws Exception {
-		Channel channel = ctx.attr(ChannelAttributes.CHANNEL).get();
+		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		if (channel.isOpen()) {
 			channel.close();
 		}
@@ -210,7 +212,7 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 	}
 
 	private void doChannelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		Channel channel = ctx.attr(ChannelAttributes.CHANNEL).get();
+		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		ChannelFuture cf = channel.writeAndFlush(msg);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
@@ -226,7 +228,10 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 
 	@Override
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
+		if (evt instanceof ChannelInputShutdownReadComplete) {
+			// ignore
+		} else 
+			ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
 	}
 
 	protected ChannelEvent createChannelUserEvent(final ChannelHandlerContext ctx, Object evt) {
@@ -246,10 +251,12 @@ public class InterceptHandler extends ChannelHandlerAdapter {
 	}
 
 	public void doUserEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-		if (evt instanceof ChannelInputShutdownEvent) {
-			Channel channel = ctx.attr(ChannelAttributes.CHANNEL).get();
+		if (evt == ChannelInputShutdownEvent.INSTANCE) {
+			Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (channel instanceof SocketChannel) {
-				((SocketChannel) channel).shutdownOutput();
+				SocketChannel sch = (SocketChannel) channel;
+				if (!sch.isOutputShutdown())
+					((SocketChannel) channel).shutdownOutput();
 			} else {
 				channel.pipeline().fireUserEventTriggered(evt);
 			}

@@ -7,11 +7,12 @@ import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class TargetSpecificChannelHandler extends ChannelHandlerAdapter implements IndeterminateChannelHandler {
+public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter implements IndeterminateChannelHandler {
 
 	private static final String DEFAULT = "DEFAULT";
 
@@ -55,7 +56,14 @@ public class TargetSpecificChannelHandler extends ChannelHandlerAdapter implemen
 			ChannelHandler[] handlers = gl.getNextHandlers(this, option);
 			String name = ctx.name();
 			for (int i = handlers.length - 1; i >= 0; i--) {
-				ctx.pipeline().addAfter(name, null, handlers[i]);
+				try {
+					ctx.pipeline().addAfter(name, null, handlers[i]);
+				} catch (Exception e) {
+					Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+					ctx.close();
+					if (ch != null && ch.isOpen())
+						ch.close();
+				}
 			}
 			ctx.pipeline().remove(name);
 		}

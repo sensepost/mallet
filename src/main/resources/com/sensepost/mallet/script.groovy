@@ -7,13 +7,13 @@ import io.netty.buffer.*;
 
 if (FullHttpRequest.class.isAssignableFrom(object.getClass())) {
 	object.headers().set("if-modified-since", "-1");
-	object.headers().getAndRemoveAndConvert("if-range");
-	object.headers().getAndRemoveAndConvert("range");
+	object.headers().get("if-range");
+	object.headers().get("range");
 } else if (FullHttpResponse.class.isAssignableFrom(object.getClass())) {
-	if ("image/jpeg".equals(object.headers().getAndConvert(HttpHeaderNames.CONTENT_TYPE))) {
+	if ("image/jpeg".equals(object.headers().get(HttpHeaderNames.CONTENT_TYPE))) {
 		object = object.copy();
 		bb = object.content();
-		if (bb.readableBytes() > 0) {
+		if (bb != null && bb.readableBytes() > 0) {
 			bytes = new byte[bb.readableBytes()];
 			bb.readBytes(bytes);
 			bais = new ByteArrayInputStream(bytes);
@@ -31,7 +31,7 @@ if (FullHttpRequest.class.isAssignableFrom(object.getClass())) {
 			baos = new ByteArrayOutputStream();
 			ImageIO.write(flipped, "jpg", baos);
 			newcontent = Unpooled.wrappedBuffer(baos.toByteArray());
-			object = object.copy(false, newcontent);
+			object.replace(newcontent);
 		}
 	}
 }

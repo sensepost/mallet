@@ -50,7 +50,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 			Socks4CommandStatus.REJECTED_OR_FAILED);
 
 	@Override
-	public void messageReceived(final ChannelHandlerContext ctx, final SocksMessage message) throws Exception {
+	public void channelRead0(final ChannelHandlerContext ctx, final SocksMessage message) throws Exception {
 		final AbstractSocksMessage success, failure;
 
 		String host = null;
@@ -126,11 +126,13 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 		public void operationComplete(final Future<Channel> future) throws Exception {
 			// we have been told by upstream that the connection is open
 			if (future.isSuccess()) {
-				// send the socks client a message to confirm that the connect was successful
+				// send the socks client a message to confirm that the connect
+				// was successful
 				ctx.writeAndFlush(success).addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) {
-						// once the success message is written, remove the encoder
+						// once the success message is written, remove the
+						// encoder
 						if (future.isSuccess()) {
 							ctx.pipeline().remove(socksEncoder);
 						} else {
