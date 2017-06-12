@@ -19,6 +19,7 @@ import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.ListCellRenderer;
@@ -28,9 +29,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.sensepost.mallet.InterceptController;
+import com.sensepost.mallet.graph.Graph;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufHolder;
 import io.netty.util.ReferenceCountUtil;
 
 public class InterceptFrame extends JFrame implements InterceptController {
@@ -42,6 +42,8 @@ public class InterceptFrame extends JFrame implements InterceptController {
 
 	private ConnectionDataPanel cdp;
 	private JCheckBoxMenuItem interceptMenuItem;
+	
+	private Graph graph;
 
 	public InterceptFrame() {
 		setTitle("Mallet");
@@ -83,6 +85,12 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		JMenuItem mntmExit = new JMenuItem("Exit");
 		mntmExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				if (graph != null)
+					try {
+						graph.shutdownServers();
+					} catch (Exception ex) {
+						JOptionPane.showMessageDialog(InterceptFrame.this, ex.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					}
 				System.exit(0);
 			}
 		});
@@ -99,6 +107,22 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		menuBar.add(interceptMenuItem);
 	}
 
+	public void setGraph(final Graph graph) {
+		if (graph == null) 
+			throw new NullPointerException("graph");
+		this.graph = graph;
+		graph.setInterceptController(this);
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					graph.startServers();
+				} catch (Exception e) {
+					JOptionPane.showMessageDialog(InterceptFrame.this, e.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		});
+	}
+	
 	private void sendAllPendingEvents() {
 		synchronized (channelEventMap) {
 			for (Integer conn : channelEventMap.keySet()) {
