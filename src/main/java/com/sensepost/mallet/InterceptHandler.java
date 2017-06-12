@@ -2,12 +2,13 @@ package com.sensepost.mallet;
 
 import java.net.SocketAddress;
 
-import com.sensepost.mallet.events.ChannelActiveEvent;
-import com.sensepost.mallet.events.ChannelEvent;
-import com.sensepost.mallet.events.ChannelEvent.Direction;
-import com.sensepost.mallet.events.ChannelInactiveEvent;
-import com.sensepost.mallet.events.ChannelReadEvent;
-import com.sensepost.mallet.events.ChannelUserEvent;
+import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelEvent;
+import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
+import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelReadEvent;
+import com.sensepost.mallet.InterceptController.ChannelUserEvent;
+import com.sensepost.mallet.InterceptController.Direction;
 import com.sensepost.mallet.graph.GraphLookup;
 
 import io.netty.bootstrap.Bootstrap;
@@ -21,8 +22,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPromise;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.SocketChannel;
@@ -33,45 +32,55 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	private InterceptController controller;
 
-	private Bootstrap b = new Bootstrap();
-	private EventLoopGroup eventLoop = new NioEventLoopGroup();
-	private ChannelPromise promise = null;
+	private Bootstrap bootstrap;
+	private ChannelPromise upstreamPromise = null;
+	private boolean connectInProgress = false;
 
 	public InterceptHandler(InterceptController controller) {
 		if (controller == null)
 			throw new NullPointerException("controller");
 		this.controller = controller;
-
-		b.group(eventLoop).channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+		bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
 				.option(ChannelOption.SO_KEEPALIVE, true);
 	}
 
-	private void setupOutboundChannel(final ChannelHandlerContext ctx, final ChannelPromise promise) throws Exception {
-		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-		final SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+	synchronized private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
+		if (connectInProgress)
+			return;
 
+		final SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+		if (target == null)
+			return;
+
+		connectInProgress = true;
+
+		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		final ChannelHandler[] handlers = gl.getClientChannelInitializer(this);
+
 		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
-				ch.attr(ChannelAttributes.TARGET).set(target);
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
 
-				ch.pipeline().addLast(handlers);
+				try {
+					ch.pipeline().addLast(handlers);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		};
 
-		ChannelFuture cf = b.handler(initializer).connect(target);
+		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target);
 		cf.addListener(new ChannelFutureListener() {
 
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (future.isSuccess()) {
-					promise.setSuccess();
+					upstreamPromise.setSuccess();
 				} else {
-					promise.setFailure(future.cause());
+					upstreamPromise.setFailure(future.cause());
 					ctx.close();
 				}
 			}
@@ -80,17 +89,10 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void handlerAdded(final ChannelHandlerContext ctx) throws Exception {
-		if (promise == null) {
-			promise = ctx.newPromise();
-			setupOutboundChannel(ctx, promise);
-			promise.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (!future.isSuccess())
-						throw new Exception(future.cause());
-				}
-			});
+		if (upstreamPromise == null) {
+			upstreamPromise = ctx.newPromise();
 		}
+
 		if (ctx.channel().isActive())
 			ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
 	}
@@ -105,26 +107,53 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		if (!ignoreException(cause))
-			super.exceptionCaught(ctx, cause);
+			ensureUpstreamConnectedAndFire(ctx,createChannelExceptionEvent(ctx, cause));
+		else {
+			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+			if (other != null && other.isOpen()) {
+				other.close();
+			}
+			ctx.channel().close();
+		}
+	}
+
+	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, Throwable cause) {
+		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		Direction direction = Direction.Client_Server;
+		if (connection == null) {
+			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+			direction = Direction.Server_Client;
+		}
+		return new ChannelExceptionEvent(connection, direction, cause) {
+			@Override
+			public void execute() throws Exception {
+				super.execute();
+				doExceptionCaught(ctx, getCause());
+			}
+		};
+	}
+
+	public void doExceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		ctx.close();
+		channel.close();
 	}
 
 	protected void ensureUpstreamConnectedAndFire(ChannelHandlerContext ctx, final ChannelEvent evt) throws Exception {
-		if (promise == null) {
-			promise = ctx.newPromise();
-			setupOutboundChannel(ctx, promise);
-		}
-		if (!promise.isDone()) {
-			promise.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						controller.addChannelEvent(evt);
-					}
+		// Assumes that the downstream channel is a ServerChannel, and has a
+		// parent!
+		if (ctx.channel().parent() != null)
+			setupOutboundChannel(ctx);
+
+		upstreamPromise.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if (future.isSuccess()) {
+					controller.addChannelEvent(evt);
 				}
-			});
-		} else {
-			controller.addChannelEvent(evt);
-		}
+			}
+		});
 	}
 
 	@Override
@@ -152,6 +181,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		return new ChannelActiveEvent(connection, direction, src, dst) {
 			@Override
 			public void execute() throws Exception {
+				super.execute();
 				doChannelActive(ctx);
 			}
 		};
@@ -163,7 +193,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		controller.addChannelEvent(createChannelInactiveEvent(ctx));
+		ensureUpstreamConnectedAndFire(ctx,createChannelInactiveEvent(ctx));
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
@@ -177,6 +207,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		return new ChannelInactiveEvent(connection, direction) {
 			@Override
 			public void execute() throws Exception {
+				super.execute();
 				doChannelInactive(ctx);
 			}
 		};
@@ -206,6 +237,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		return new ChannelReadEvent(connection, direction, msg) {
 			@Override
 			public void execute() throws Exception {
+				super.execute();
 				doChannelRead(ctx, getMessage());
 			}
 		};
@@ -213,6 +245,13 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	private void doChannelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
 		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		if (channel == null) {
+			System.out.println("Channel: " + ctx.channel().attr(ChannelAttributes.CHANNEL).get());
+			System.out.println("Target: " + ctx.channel().attr(ChannelAttributes.TARGET).get());
+			System.out.println("Graph: " + ctx.channel().attr(ChannelAttributes.GRAPH).get());
+			System.out.println("Connection: " + ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get());
+			throw new NullPointerException("Channel is null!");
+		}
 		ChannelFuture cf = channel.writeAndFlush(msg);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
@@ -230,7 +269,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
 		if (evt instanceof ChannelInputShutdownReadComplete) {
 			// ignore
-		} else 
+		} else
 			ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
 	}
 
@@ -245,6 +284,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		return new ChannelUserEvent(connection, direction, evt) {
 			@Override
 			public void execute() throws Exception {
+				super.execute();
 				doUserEventTriggered(ctx, getUserEvent());
 			}
 		};

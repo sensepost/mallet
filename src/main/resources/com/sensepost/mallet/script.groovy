@@ -10,7 +10,8 @@ if (FullHttpRequest.class.isAssignableFrom(object.getClass())) {
 	object.headers().get("if-range");
 	object.headers().get("range");
 } else if (FullHttpResponse.class.isAssignableFrom(object.getClass())) {
-	if ("image/jpeg".equals(object.headers().get(HttpHeaderNames.CONTENT_TYPE))) {
+	ct = object.headers().get(HttpHeaderNames.CONTENT_TYPE);
+	if ("image/jpeg".equals(ct)) {
 		object = object.copy();
 		bb = object.content();
 		if (bb != null && bb.readableBytes() > 0) {
@@ -32,6 +33,7 @@ if (FullHttpRequest.class.isAssignableFrom(object.getClass())) {
 			ImageIO.write(flipped, "jpg", baos);
 			newcontent = Unpooled.wrappedBuffer(baos.toByteArray());
 			object.replace(newcontent);
+			object.headers().setHeader("Content-Length", newContent.readableBytes());
 		}
 	}
 }

@@ -28,11 +28,10 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.sensepost.mallet.InterceptController;
-import com.sensepost.mallet.events.ChannelActiveEvent;
-import com.sensepost.mallet.events.ChannelEvent;
-import com.sensepost.mallet.events.ChannelReadEvent;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
+import io.netty.util.ReferenceCountUtil;
 
 public class InterceptFrame extends JFrame implements InterceptController {
 	private JList<Integer> list;
@@ -116,10 +115,7 @@ public class InterceptFrame extends JFrame implements InterceptController {
 	public void addChannelEvent(final ChannelEvent evt) throws Exception {
 		if (evt instanceof ChannelReadEvent) {
 			Object o = ((ChannelReadEvent)evt).getMessage();
-			if (o instanceof ByteBufHolder) {
-				o = ((ByteBufHolder) o).duplicate();
-				((ChannelReadEvent)evt).setMessage(o);
-			}
+			ReferenceCountUtil.retain(o);
 		}
 		SwingUtilities.invokeAndWait(new Runnable() {
 			public void run() {
@@ -183,6 +179,10 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		private SocketAddress src, dst;
 
 		public AddrPair(SocketAddress src, SocketAddress dst) {
+			if (src == null)
+				throw new NullPointerException("src");
+			if (dst == null)
+				throw new NullPointerException("dst");
 			this.src = src;
 			this.dst = dst;
 		}

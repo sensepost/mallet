@@ -5,11 +5,8 @@ import java.util.BitSet;
 import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
 
-import com.sensepost.mallet.events.ChannelActiveEvent;
-import com.sensepost.mallet.events.ChannelEvent;
-import com.sensepost.mallet.events.ChannelReadEvent;
-
-import io.netty.buffer.Unpooled;
+import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelEvent;
 
 public class ConnectionData {
 
@@ -52,9 +49,10 @@ public class ConnectionData {
 		if (n >= 0) {
 			ChannelEvent e = events.elementAt(n);
 			try {
+				pending.clear(n);
 				if (execute)
 					e.execute();
-				pending.clear(n);
+				events.set(n, events.get(n)); // trigger an update event
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}

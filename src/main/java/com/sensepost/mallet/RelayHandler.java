@@ -15,7 +15,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -27,13 +26,12 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private static final InternalLogger logger = InternalLoggerFactory.getInstance(RelayHandler.class);
 
-	private boolean added = false;
+	private volatile boolean added = false;
 
-	private Bootstrap b = new Bootstrap();
-	private EventLoopGroup eventLoop = new NioEventLoopGroup();
+	private Bootstrap bootstrap;
 
 	public RelayHandler() {
-		b.group(eventLoop).channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+		bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
 				.option(ChannelOption.SO_KEEPALIVE, true);
 	}
 
@@ -50,8 +48,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		final SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 
 		logger.info("Connecting " + ctx.channel().remoteAddress() + " -> " + target);
-		final ChannelHandler[] handlers = gl.getClientChannelInitializer(this);
 		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
+
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
 				ch.attr(ChannelAttributes.TARGET).set(target);
@@ -59,12 +57,13 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
 
+				ChannelHandler[] handlers = gl.getClientChannelInitializer(RelayHandler.this);
 				ch.pipeline().addLast(handlers);
 			}
 		};
 
 		try {
-			b.handler(initializer).connect(target).sync();
+			bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target).sync();
 		} catch (Exception e) {
 			ctx.close();
 		}
@@ -85,12 +84,17 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		if (other != null && other.isOpen()) {
 			other.close();
 		}
+		ctx.channel().close();
 		cause.printStackTrace();
 	}
 
 	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		ChannelFuture cf = ctx.channel().attr(ChannelAttributes.CHANNEL).get().writeAndFlush(msg);
+		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		if (channel == null) {
+			throw new NullPointerException("Channel is null!");
+		}
+		ChannelFuture cf = channel.writeAndFlush(msg);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {

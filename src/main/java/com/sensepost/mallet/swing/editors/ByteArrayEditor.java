@@ -34,8 +34,10 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 
 		@Override
 		public void propertyChange(PropertyChangeEvent evt) {
+			if (evt.getSource() != controller)
+				return;
 			if (EditorController.OBJECT.equals(evt.getPropertyName())) {
-				Object o = evt.getNewValue();
+				Object o = controller.getObject();
 				tableUpdating = true;
 				if (o instanceof byte[]) {
 					htm.setData((byte[]) o);
@@ -43,6 +45,8 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 					htm.setData(null);
 				}
 				tableUpdating = false;
+			} else if (EditorController.READ_ONLY.equals(evt.getPropertyName())) {
+				htm.setEditable(!controller.isReadOnly());
 			}
 		}
 
@@ -182,6 +186,10 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 			return copy;
 		}
 
+		public void setEditable(boolean editable) {
+			this.editable = editable;
+		}
+		
 		public String getColumnName(int columnIndex) {
 			if (columnIndex == 0) {
 				return "Position";

@@ -21,6 +21,7 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 	public TargetSpecificChannelHandler() {
 		targets.add(new InetSocketAddress("*", 80));
 		targets.add(new InetSocketAddress("*", 443));
+		targets.add(new InetSocketAddress("*", 8000));
 	}
 
 	@Override

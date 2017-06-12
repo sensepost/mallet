@@ -22,7 +22,6 @@ import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import javax.swing.AbstractAction;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -101,7 +100,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 		JScrollPane resultScrollPane = new JScrollPane();
 		scriptSplitPane.setRightComponent(resultScrollPane);
 
-		JTextArea scriptResultTextArea = new JTextArea();
+		scriptResultTextArea = new JTextArea();
 		resultScrollPane.setViewportView(scriptResultTextArea);
 		execAction = new ExecAction(scriptTextArea, scriptResultTextArea, engineBox);
 
@@ -132,16 +131,23 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 		public void propertyChange(PropertyChangeEvent evt) {
 			if (EditorController.OBJECT.equals(evt.getPropertyName())) {
 				otm.setObject(evt.getNewValue());
+				scriptResultTextArea.setText("");
 			}
 		}
 
 	};
 
 	private EditorController controller = null;
+	private JTextArea scriptResultTextArea;
 
 	@Override
 	public JComponent getComponent() {
 		return this;
+	}
+
+	@Override
+	public String getName() {
+		return "Reflection";
 	}
 
 	@Override
@@ -633,7 +639,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 			super("Undo");
 			putValue(SHORT_DESCRIPTION, "Undoes the previous execution");
 			setToolTipText("Undoes the previous operation");
-			setEnabled(false);
+			setEnabled(true);
 		}
 
 		public void setRevert(TreePath path, Object oldValue) {
@@ -677,7 +683,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 			this.dst = dst;
 			this.engineBox = engineBox;
 			setToolTipText("Execute the script");
-			setEnabled(false);
+			setEnabled(true);
 		}
 
 		public void setPath(TreePath path) {
@@ -700,7 +706,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 				dst.setText(String.valueOf(result));
 				object = bindings.get("object");
 				otm.valueForPathChanged(path, object);
-			} catch (ScriptException e) {
+			} catch (Exception e) {
 				JOptionPane.showMessageDialog(src, e.getLocalizedMessage(), "Script error", JOptionPane.ERROR_MESSAGE);
 			}
 		}
