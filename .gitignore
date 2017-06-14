@@ -1,0 +1,5 @@
+.*
+/target/
+ca.p12
+ca.pem
+keystore.jks
