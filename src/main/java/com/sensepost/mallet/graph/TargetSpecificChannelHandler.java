@@ -38,36 +38,37 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 	private String targetToString(InetSocketAddress sa) {
 		return sa.getHostString() + ":" + sa.getPort();
 	}
-	
+
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-		
+
 		SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
-		
-		if (gl != null) {
-			String option = DEFAULT;
-			for (InetSocketAddress sa : targets) {
-				String hs = sa.getHostString();
-				if ((hs.equals("*") || hs.equals(((InetSocketAddress)target).getHostString())) && (sa.getPort() == ((InetSocketAddress)target).getPort())) {
-					option = targetToString(sa);
-					break;
-				}
+
+		if (gl == null)
+			throw new NullPointerException("gl");
+		String option = DEFAULT;
+		for (InetSocketAddress sa : targets) {
+			String hs = sa.getHostString();
+			if ((hs.equals("*") || hs.equals(((InetSocketAddress) target).getHostString()))
+					&& (sa.getPort() == ((InetSocketAddress) target).getPort())) {
+				option = targetToString(sa);
+				break;
 			}
-			ChannelHandler[] handlers = gl.getNextHandlers(this, option);
-			String name = ctx.name();
-			for (int i = handlers.length - 1; i >= 0; i--) {
-				try {
-					ctx.pipeline().addAfter(name, null, handlers[i]);
-				} catch (Exception e) {
-					Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-					ctx.close();
-					if (ch != null && ch.isOpen())
-						ch.close();
-				}
-			}
-			ctx.pipeline().remove(name);
 		}
+		ChannelHandler[] handlers = gl.getNextHandlers(this, option);
+		String name = ctx.name();
+		for (int i = handlers.length - 1; i >= 0; i--) {
+			try {
+				ctx.pipeline().addAfter(name, null, handlers[i]);
+			} catch (Exception e) {
+				Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+				ctx.close();
+				if (ch != null && ch.isOpen())
+					ch.close();
+			}
+		}
+		ctx.pipeline().remove(name);
 		super.channelRead(ctx, msg);
 	}
 

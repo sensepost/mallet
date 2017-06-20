@@ -235,7 +235,7 @@ public class Graph implements GraphLookup {
 				if (option.equals(v))
 					return getChannelHandlers(graph.getModel().getTerminal(edge, false));
 			}
-			return getChannelHandlers(vertex);
+			throw new NullPointerException("No match found for " + handler.getClass() + ", option " + option);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
 			e.printStackTrace();
 			return null;
