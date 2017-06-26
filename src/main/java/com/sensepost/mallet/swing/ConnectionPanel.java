@@ -35,9 +35,10 @@ public class ConnectionPanel extends JPanel {
 	private boolean intercept = false;
 	
 	public ConnectionPanel() {
+		setLayout(new BorderLayout(0, 0));
 		JSplitPane splitPane = new JSplitPane();
 		splitPane.setResizeWeight(0.5);
-		add(splitPane, BorderLayout.CENTER);
+		add(splitPane);
 
 		JScrollPane scrollPane = new JScrollPane();
 		splitPane.setLeftComponent(scrollPane);
