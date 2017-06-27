@@ -1,5 +1,7 @@
 package com.sensepost.mallet;
 
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowStateListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -111,8 +113,18 @@ public class Main {
 		final SslContext clientContext = SslContextBuilder.forClient()
 				.trustManager(InsecureTrustManagerFactory.INSTANCE).build();
 
-		AutoGeneratingContextSelector serverCertMapping = getServerSslContextSelector();
+		final AutoGeneratingContextSelector serverCertMapping = getServerSslContextSelector();
 
+		ui.addWindowStateListener(new WindowStateListener() {
+			@Override
+			public void windowStateChanged(WindowEvent arg0) {
+				try {
+					serverCertMapping.save(new File("keystore.jks"), "password".toCharArray());
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
 		Graph graph = new Graph(serverCertMapping, clientContext);
 		ui.setGraph(graph);
 		ui.setVisible(true);
