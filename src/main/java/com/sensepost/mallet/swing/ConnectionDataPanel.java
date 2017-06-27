@@ -120,6 +120,7 @@ public class ConnectionDataPanel extends JPanel {
 		splitPane.setTopComponent(scrollPane);
 
 		table = new JTable(tableModel);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(table);
 		table.setModel(tableModel);
@@ -137,14 +138,18 @@ public class ConnectionDataPanel extends JPanel {
 					evt = null;
 				else
 					evt = connectionData.getEvents().getElementAt(selectedRow);
-				if (evt == null || !(evt instanceof ChannelReadEvent)) {
-					editing = null;
-					editorController.setObject(null);
-					editorController.setReadOnly(true);
-				} else {
+				if (evt instanceof ChannelReadEvent) {
 					editing = (ChannelReadEvent) evt;
 					editorController.setObject(editing.getMessage());
 					editorController.setReadOnly(evt.isExecuted());
+				} else if (evt instanceof ChannelExceptionEvent) {
+					editing = null;
+					editorController.setObject(((ChannelExceptionEvent)evt).getCause());
+					editorController.setReadOnly(true);
+				} else {
+					editing = null;
+					editorController.setObject(null);
+					editorController.setReadOnly(true);
 				}
 			}
 		});
