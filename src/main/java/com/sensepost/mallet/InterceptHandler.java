@@ -81,6 +81,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 					upstreamPromise.setSuccess();
 				} else {
 					upstreamPromise.setFailure(future.cause());
+					exceptionCaught(ctx, future.cause());
 					ctx.close();
 				}
 			}
@@ -107,7 +108,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		if (!ignoreException(cause))
-			ensureUpstreamConnectedAndFire(ctx,createChannelExceptionEvent(ctx, cause));
+			ensureUpstreamConnectedAndFire(ctx, createChannelExceptionEvent(ctx, cause));
 		else {
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (other != null && other.isOpen()) {
@@ -193,7 +194,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx,createChannelInactiveEvent(ctx));
+		ensureUpstreamConnectedAndFire(ctx, createChannelInactiveEvent(ctx));
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
@@ -259,6 +260,9 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 				if (future.isSuccess()) {
 					ctx.channel().read();
 				} else {
+					try {
+						exceptionCaught(ctx, future.cause());
+					} catch (Exception e) {}
 					future.channel().close();
 				}
 			}
