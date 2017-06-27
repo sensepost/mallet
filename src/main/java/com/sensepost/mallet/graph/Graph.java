@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -249,11 +251,11 @@ public class Graph implements GraphLookup {
 			Object[] outgoing = graph.getOutgoingEdges(vertex);
 			if (outgoing == null || outgoing.length != 1)
 				throw new IllegalStateException("Exactly one outgoing edge allowed!");
-			ChannelHandler[] handlers = getChannelHandlers(outgoing[0]);
-			ChannelHandler[] ret = new ChannelHandler[handlers.length + 1];
-			ret[handlers.length] = handler;
-			System.arraycopy(handlers, 0, ret, 0, handlers.length);
-			return ret;
+			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(Arrays.asList(getChannelHandlers(outgoing[0])));
+			handlers.add(new LoggingHandler(LogLevel.INFO));
+			handlers.add(0, handler);
+			Collections.reverse(handlers);
+			return handlers.toArray(new ChannelHandler[handlers.size()]);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
 			e.printStackTrace();
 			return null;
