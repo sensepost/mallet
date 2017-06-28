@@ -251,10 +251,12 @@ public class Graph implements GraphLookup {
 			Object[] outgoing = graph.getOutgoingEdges(vertex);
 			if (outgoing == null || outgoing.length != 1)
 				throw new IllegalStateException("Exactly one outgoing edge allowed!");
-			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(Arrays.asList(getChannelHandlers(outgoing[0])));
-			handlers.add(new LoggingHandler(LogLevel.INFO));
+			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(
+					Arrays.asList(getChannelHandlers(outgoing[0])));
 			handlers.add(0, handler);
-			Collections.reverse(handlers);
+			Collections.reverse(handlers); // FIXME: Decide where to do the
+											// reversing, in the graph, or in
+											// the caller
 			return handlers.toArray(new ChannelHandler[handlers.size()]);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
 			e.printStackTrace();
