@@ -15,6 +15,7 @@ import com.sensepost.mallet.swing.editors.ByteBufEditor;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
 import com.sensepost.mallet.swing.editors.ReflectionEditor;
+import com.sensepost.mallet.swing.editors.ToStringEditor;
 
 public class AutoEditor extends JPanel implements ObjectEditor {
 	
@@ -38,6 +39,7 @@ public class AutoEditor extends JPanel implements ObjectEditor {
 	private void addEditors() {
 		addEditor(new ByteArrayEditor());
 		addEditor(new ByteBufEditor());
+		addEditor(new ToStringEditor());
 		addEditor(new ReflectionEditor());
 	}
 	
