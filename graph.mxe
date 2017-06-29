@@ -4,24 +4,24 @@
     <mxCell id="0"/>
     <mxCell id="1" parent="0"/>
     <mxCell id="2" parent="1" style="ellipse" value="io.netty.channel.socket.nio.NioServerSocketChannel&#10;127.0.0.1:1089" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="300.0" x="209.0000000000001" y="2.758714529184261"/>
+      <mxGeometry as="geometry" height="30.0" width="300.0" x="197.0" y="2.758714529184261"/>
     </mxCell>
     <mxCell id="8" parent="1" style="triangle" value="com.sensepost.mallet.graph.TargetSpecificChannelHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="310.0" x="188.00000000000006" y="366.1150839878961"/>
+      <mxGeometry as="geometry" height="20.0" width="310.0" x="186.0" y="225.8494595747727"/>
     </mxCell>
     <mxCell id="10" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpServerCodec" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="210.0" y="436.24789619445784"/>
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="210.0" y="295.9822717813344"/>
     </mxCell>
     <mxCell id="11" parent="1" style="rounded=1" value="io.netty.handler.ssl.SniHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="180.0" y="436.24789619445784"/>
+      <mxGeometry as="geometry" height="20.0" width="180.0" y="295.9822717813344"/>
     </mxCell>
     <mxCell edge="1" id="12" parent="1" source="8" style="arrow;noEdgeStyle=1;orthogonal=1" target="11" value="*:443">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="44.0" y="1030.0"/>
         <mxPoint as="targetPoint" x="164.0" y="910.0"/>
         <Array as="points">
-          <mxPoint x="243.00000000000003" y="398.1814900911769"/>
-          <mxPoint x="90.0" y="424.1814900911769"/>
+          <mxPoint x="231.05128205128207" y="257.9158656780535"/>
+          <mxPoint x="90.0" y="283.9158656780535"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -30,114 +30,114 @@
         <mxPoint as="sourcePoint" x="34.0" y="780.0"/>
         <mxPoint as="targetPoint" x="154.0" y="660.0"/>
         <Array as="points">
-          <mxPoint x="343.0" y="400.1814900911769"/>
-          <mxPoint x="340.0" y="424.1814900911769"/>
+          <mxPoint x="341.0" y="259.9158656780535"/>
+          <mxPoint x="340.0" y="283.9158656780535"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="22" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpObjectAggregator&#10;1024000" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="290.0" x="273.0000000000001" y="509.0730168269229"/>
+      <mxGeometry as="geometry" height="30.0" width="290.0" x="273.0000000000001" y="368.80739241379945"/>
     </mxCell>
     <mxCell edge="1" id="23" parent="1" source="10" style="arrow;noEdgeStyle=1;orthogonal=1" target="22" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="194.0" y="840.0"/>
         <mxPoint as="targetPoint" x="424.0" y="850.0"/>
         <Array as="points">
-          <mxPoint x="340.0" y="468.3143022977386"/>
-          <mxPoint x="418.00000000000006" y="494.31430229773866"/>
+          <mxPoint x="340.0" y="328.0486778846152"/>
+          <mxPoint x="418.00000000000006" y="354.0486778846152"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="24" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpServerCodec" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="-19.0" y="514.073016826923"/>
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="-17.0" y="373.80739241379945"/>
     </mxCell>
     <mxCell edge="1" id="25" parent="1" source="24" style="arrow;noEdgeStyle=1;orthogonal=1" target="26" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="-32.0" y="914.0"/>
         <mxPoint as="targetPoint" x="198.0" y="924.0"/>
         <Array as="points">
-          <mxPoint x="111.0" y="553.8317313561071"/>
-          <mxPoint x="132.0" y="579.8317313561071"/>
+          <mxPoint x="113.0" y="413.56610694298354"/>
+          <mxPoint x="137.0" y="439.56610694298354"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="26" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpObjectAggregator&#10;1024000" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="290.0" x="-13.00000000000003" y="594.5904458852914"/>
+      <mxGeometry as="geometry" height="30.0" width="290.0" x="-7.999999999999973" y="454.3248214721678"/>
     </mxCell>
     <mxCell edge="1" id="27" parent="1" source="11" style="arrow;noEdgeStyle=1;orthogonal=1" target="24" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="-116.0" y="690.0"/>
         <mxPoint as="targetPoint" x="-96.0" y="760.0"/>
         <Array as="points">
-          <mxPoint x="90.0" y="468.3143022977386"/>
-          <mxPoint x="111.0" y="494.31430229773866"/>
+          <mxPoint x="90.0" y="328.0486778846152"/>
+          <mxPoint x="113.0" y="354.0486778846152"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="28" parent="1" style="ellipse;shape=doubleEllipse" value="com.sensepost.mallet.InterceptHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="230.0" x="322.0" y="599.5904458852914"/>
+      <mxGeometry as="geometry" height="20.0" width="230.0" x="327.0" y="459.3248214721678"/>
     </mxCell>
     <mxCell edge="1" id="31" parent="1" source="22" style="arrow;noEdgeStyle=1;orthogonal=1" target="28" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="234.0" y="760.0"/>
         <mxPoint as="targetPoint" x="264.0" y="870.0"/>
         <Array as="points">
-          <mxPoint x="418.00000000000006" y="553.8317313561071"/>
-          <mxPoint x="437.0" y="579.8317313561071"/>
+          <mxPoint x="418.00000000000006" y="413.56610694298354"/>
+          <mxPoint x="442.0" y="439.56610694298354"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="32" parent="1" style="ellipse;shape=doubleEllipse" value="com.sensepost.mallet.InterceptHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="230.0" x="37.0" y="685.1078749436598"/>
+      <mxGeometry as="geometry" height="20.0" width="230.0" x="39.99999999999996" y="544.8422505305363"/>
     </mxCell>
     <mxCell edge="1" id="33" parent="1" source="26" style="arrow;noEdgeStyle=1;orthogonal=1" target="32" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="-76.0" y="850.0"/>
         <mxPoint as="targetPoint" x="-76.0" y="930.0"/>
         <Array as="points">
-          <mxPoint x="132.0" y="639.3491604144755"/>
-          <mxPoint x="152.0" y="665.3491604144755"/>
+          <mxPoint x="137.0" y="499.0835360013519"/>
+          <mxPoint x="155.0" y="525.083536001352"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="34" parent="1" style="rounded=1" value="io.netty.handler.ssl.SslHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="180.0" x="94.99999999999996" y="918.5832368410552"/>
+      <mxGeometry as="geometry" height="20.0" width="180.0" x="106.0" y="778.3176124279316"/>
     </mxCell>
     <mxCell id="36" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpObjectAggregator&#10;1024000" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="290.0" x="21.000000000000025" y="765.6253040020281"/>
+      <mxGeometry as="geometry" height="30.0" width="290.0" x="28.999999999999968" y="625.3596795889046"/>
     </mxCell>
     <mxCell id="37" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpClientCodec" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="49.99999999999994" y="848.4504246344933"/>
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="55.0" y="708.1848002213698"/>
     </mxCell>
     <mxCell id="38" parent="1" style="ellipse" value="Connect" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="50.0" x="165.00000000000003" y="988.716049047617"/>
+      <mxGeometry as="geometry" height="20.0" width="50.0" x="171.00000000000003" y="848.4504246344935"/>
     </mxCell>
     <mxCell edge="1" id="40" parent="1" source="36" style="arrow;noEdgeStyle=1;orthogonal=1" target="37" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="144.0" y="1200.0"/>
         <mxPoint as="targetPoint" x="344.0" y="1210.0"/>
         <Array as="points">
-          <mxPoint x="166.0" y="810.3840185312123"/>
-          <mxPoint x="180.0" y="836.3840185312123"/>
+          <mxPoint x="174.0" y="670.1183941180888"/>
+          <mxPoint x="185.0" y="696.1183941180888"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="42" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpObjectAggregator&#10;1024000" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="290.0" x="312.0000000000001" y="680.1078749436598"/>
+      <mxGeometry as="geometry" height="30.0" width="290.0" x="315.0000000000001" y="539.8422505305363"/>
     </mxCell>
     <mxCell id="43" parent="1" style="rounded=1" value="io.netty.handler.codec.http.HttpClientCodec" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="341.0" y="770.6253040020281"/>
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="349.0" y="630.3596795889046"/>
     </mxCell>
     <mxCell id="44" parent="1" style="ellipse" value="Connect" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="50.0" x="450.0000000000001" y="848.4504246344933"/>
+      <mxGeometry as="geometry" height="20.0" width="50.0" x="459.0000000000001" y="708.1848002213698"/>
     </mxCell>
     <mxCell edge="1" id="45" parent="1" source="42" style="arrow;noEdgeStyle=1;orthogonal=1" target="43" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="214.0" y="1070.0"/>
         <mxPoint as="targetPoint" x="414.0" y="1080.0"/>
         <Array as="points">
-          <mxPoint x="457.00000000000006" y="724.8665894728439"/>
-          <mxPoint x="471.0" y="750.8665894728438"/>
+          <mxPoint x="460.00000000000006" y="584.6009650597204"/>
+          <mxPoint x="479.0" y="610.6009650597202"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -146,8 +146,8 @@
         <mxPoint as="sourcePoint" x="434.0" y="1070.0"/>
         <mxPoint as="targetPoint" x="604.0" y="1070.0"/>
         <Array as="points">
-          <mxPoint x="471.0" y="810.3840185312123"/>
-          <mxPoint x="475.0" y="836.3840185312123"/>
+          <mxPoint x="479.0" y="670.1183941180888"/>
+          <mxPoint x="484.0" y="696.1183941180888"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -156,8 +156,8 @@
         <mxPoint as="sourcePoint" x="254.0" y="920.0"/>
         <mxPoint as="targetPoint" x="224.0" y="1040.0"/>
         <Array as="points">
-          <mxPoint x="437.0" y="639.3491604144755"/>
-          <mxPoint x="457.00000000000006" y="665.3491604144755"/>
+          <mxPoint x="442.0" y="499.0835360013519"/>
+          <mxPoint x="460.00000000000006" y="525.083536001352"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -166,8 +166,8 @@
         <mxPoint as="sourcePoint" x="633.0" y="192.0"/>
         <mxPoint as="targetPoint" x="953.0" y="202.0"/>
         <Array as="points">
-          <mxPoint x="359.0" y="47.51742905836835"/>
-          <mxPoint x="359.0" y="73.51742905836835"/>
+          <mxPoint x="347.0" y="47.51742905836835"/>
+          <mxPoint x="347.0" y="73.51742905836835"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -176,24 +176,24 @@
         <mxPoint as="sourcePoint" x="993.0" y="482.0"/>
         <mxPoint as="targetPoint" x="713.0" y="382.0"/>
         <Array as="points">
-          <mxPoint x="349.0" y="328.0486778846152"/>
-          <mxPoint x="343.0" y="354.0486778846152"/>
+          <mxPoint x="345.0" y="187.78305347149177"/>
+          <mxPoint x="341.0" y="213.78305347149177"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="54" parent="1" style="ellipse" value="Connect" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="50.0" x="617.0000000000001" y="514.073016826923"/>
+      <mxGeometry as="geometry" height="20.0" width="50.0" x="617.0000000000001" y="373.80739241379945"/>
     </mxCell>
     <mxCell id="55" parent="1" style="ellipse;shape=doubleEllipse" value="com.sensepost.mallet.InterceptHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="230.0" x="500.0" y="436.24789619445784"/>
+      <mxGeometry as="geometry" height="20.0" width="230.0" x="500.0" y="295.9822717813344"/>
     </mxCell>
     <mxCell edge="1" id="56" parent="1" source="8" style="arrow;noEdgeStyle=1;orthogonal=1" target="55" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="533.0" y="605.0"/>
         <mxPoint as="targetPoint" x="673.0" y="585.0"/>
         <Array as="points">
-          <mxPoint x="442.99999999999994" y="398.1814900911769"/>
-          <mxPoint x="615.0" y="424.1814900911769"/>
+          <mxPoint x="450.94871794871796" y="257.9158656780535"/>
+          <mxPoint x="615.0" y="283.9158656780535"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -202,8 +202,8 @@
         <mxPoint as="sourcePoint" x="713.0" y="585.0"/>
         <mxPoint as="targetPoint" x="823.0" y="535.0"/>
         <Array as="points">
-          <mxPoint x="615.0" y="468.3143022977386"/>
-          <mxPoint x="642.0" y="494.31430229773866"/>
+          <mxPoint x="615.0" y="328.0486778846152"/>
+          <mxPoint x="642.0" y="354.0486778846152"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -212,8 +212,8 @@
         <mxPoint as="sourcePoint" x="254.0" y="1148.0"/>
         <mxPoint as="targetPoint" x="574.0" y="1168.0"/>
         <Array as="points">
-          <mxPoint x="180.0" y="880.5168307377742"/>
-          <mxPoint x="185.0" y="906.5168307377742"/>
+          <mxPoint x="185.0" y="740.2512063246506"/>
+          <mxPoint x="196.0" y="766.2512063246506"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -222,8 +222,8 @@
         <mxPoint as="sourcePoint" x="594.0" y="1168.0"/>
         <mxPoint as="targetPoint" x="264.0" y="1218.0"/>
         <Array as="points">
-          <mxPoint x="185.0" y="950.649642944336"/>
-          <mxPoint x="190.0" y="976.649642944336"/>
+          <mxPoint x="196.0" y="810.3840185312125"/>
+          <mxPoint x="196.0" y="836.3840185312125"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -232,131 +232,66 @@
         <mxPoint as="sourcePoint" x="224.0" y="908.0"/>
         <mxPoint as="targetPoint" x="254.0" y="1058.0"/>
         <Array as="points">
-          <mxPoint x="152.0" y="724.8665894728439"/>
-          <mxPoint x="166.0" y="750.8665894728438"/>
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell edge="1" id="9" parent="1" source="6" style="arrow;noEdgeStyle=1;orthogonal=1" target="14" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="1810.0" y="619.4825710883507"/>
-        <mxPoint as="targetPoint" x="1930.0" y="499.4825710883507"/>
-        <Array as="points">
-          <mxPoint x="359.0" y="117.65024126493006"/>
-          <mxPoint x="357.0" y="143.65024126493006"/>
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell edge="1" id="18" parent="1" source="14" style="arrow;noEdgeStyle=1;orthogonal=1" target="15" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="1500.0" y="519.4825710883507"/>
-        <mxPoint as="targetPoint" x="1680.0" y="199.4825710883507"/>
-        <Array as="points">
-          <mxPoint x="357.0" y="187.78305347149177"/>
-          <mxPoint x="354.0" y="213.78305347149177"/>
+          <mxPoint x="155.0" y="584.6009650597204"/>
+          <mxPoint x="174.0" y="610.6009650597202"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="17" parent="1" style="rounded=1" value="com.sensepost.mallet.ConnectTargetHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="219.0" y="295.9822717813344"/>
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="214.99999999999997" y="155.716647368211"/>
     </mxCell>
-    <mxCell id="14" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksServerHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="250.0" x="231.99999999999994" y="155.716647368211"/>
-    </mxCell>
-    <mxCell id="6" parent="1" style="rounded=1" value="io.netty.handler.codec.socksx.SocksPortUnificationServerHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="380.0" x="168.99999999999994" y="85.58383516164929"/>
-    </mxCell>
-    <mxCell id="15" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksServerConnectHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="290.0" x="209.00000000000003" y="225.8494595747727"/>
-    </mxCell>
-    <mxCell edge="1" id="61" parent="1" source="15" style="arrow;noEdgeStyle=1;orthogonal=1" target="17" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="519.0" y="317.0"/>
-        <mxPoint as="targetPoint" x="509.0" y="467.0"/>
-        <Array as="points">
-          <mxPoint x="354.0" y="257.9158656780535"/>
-          <mxPoint x="349.0" y="283.9158656780535"/>
-        </Array>
-      </mxGeometry>
+    <mxCell id="6" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksInitializer" vertex="1">
+      <mxGeometry as="geometry" height="20.0" width="380.0" x="156.99999999999994" y="85.58383516164929"/>
     </mxCell>
     <mxCell id="70" parent="1" style="ellipse" value="io.netty.channel.socket.nio.NioServerSocketChannel&#10;127.0.0.1:1090" vertex="1">
-      <mxGeometry as="geometry" height="30.0" width="140.0" x="909.0000000000001" y="2.758714529184261"/>
+      <mxGeometry as="geometry" height="30.0" width="140.0" x="870.0" y="2.758714529184261"/>
     </mxCell>
-    <mxCell edge="1" id="71" parent="1" source="70" style="arrow;noEdgeStyle=1;orthogonal=1" target="76" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="305.0" y="172.0"/>
-        <mxPoint as="targetPoint" x="625.0" y="182.0"/>
-        <Array as="points">
-          <mxPoint x="979.0" y="47.51742905836835"/>
-          <mxPoint x="979.0" y="73.51742905836835"/>
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell edge="1" id="72" parent="1" source="76" style="arrow;noEdgeStyle=1;orthogonal=1" target="75" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="1482.0" y="599.4825710883507"/>
-        <mxPoint as="targetPoint" x="1602.0" y="479.4825710883507"/>
-        <Array as="points">
-          <mxPoint x="979.0" y="117.65024126493006"/>
-          <mxPoint x="979.0" y="143.65024126493006"/>
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell edge="1" id="73" parent="1" source="75" style="arrow;noEdgeStyle=1;orthogonal=1" target="77" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="1172.0" y="499.4825710883507"/>
-        <mxPoint as="targetPoint" x="1352.0" y="179.4825710883507"/>
-        <Array as="points">
-          <mxPoint x="979.0" y="187.78305347149177"/>
-          <mxPoint x="979.0" y="213.78305347149177"/>
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="74" parent="1" style="rounded=1" value="com.sensepost.mallet.ConnectTargetHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="260.0" x="849.0000000000001" y="295.9822717813344"/>
-    </mxCell>
-    <mxCell id="75" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksServerHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="250.0" x="854.0000000000001" y="155.716647368211"/>
-    </mxCell>
-    <mxCell id="76" parent="1" style="rounded=1" value="io.netty.handler.codec.socksx.SocksPortUnificationServerHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="380.0" x="789.0000000000001" y="85.58383516164929"/>
-    </mxCell>
-    <mxCell id="77" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksServerConnectHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="290.0" x="834.0" y="225.8494595747727"/>
-    </mxCell>
-    <mxCell edge="1" id="78" parent="1" source="77" style="arrow;noEdgeStyle=1;orthogonal=1" target="74" value="">
-      <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
-        <mxPoint as="sourcePoint" x="191.0" y="297.0"/>
-        <mxPoint as="targetPoint" x="181.0" y="447.0"/>
-        <Array as="points">
-          <mxPoint x="979.0" y="257.9158656780535"/>
-          <mxPoint x="979.0" y="283.9158656780535"/>
-        </Array>
-      </mxGeometry>
+    <mxCell id="74" parent="1" style="rounded=1" value="com.sensepost.mallet.SocksInitializer" vertex="1">
+      <mxGeometry as="geometry" height="20.0" width="260.0" x="810.0" y="85.58383516164929"/>
     </mxCell>
     <mxCell id="79" parent="1" style="ellipse" value="Connect" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="50.0" x="954.0000000000001" y="436.24789619445784"/>
+      <mxGeometry as="geometry" height="20.0" width="50.0" x="915.0000000000001" y="225.8494595747727"/>
     </mxCell>
     <mxCell edge="1" id="80" parent="1" source="81" style="arrow;noEdgeStyle=1;orthogonal=1" target="79" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="44.0" y="492.0"/>
         <mxPoint as="targetPoint" x="154.0" y="442.0"/>
         <Array as="points">
-          <mxPoint x="979.0" y="398.1814900911769"/>
-          <mxPoint x="979.0" y="424.1814900911769"/>
+          <mxPoint x="940.0" y="187.78305347149177"/>
+          <mxPoint x="940.0" y="213.78305347149177"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <mxCell id="81" parent="1" style="ellipse;shape=doubleEllipse" value="com.sensepost.mallet.InterceptHandler" vertex="1">
-      <mxGeometry as="geometry" height="20.0" width="230.0" x="864.0000000000001" y="366.1150839878961"/>
+      <mxGeometry as="geometry" height="20.0" width="230.0" x="825.0" y="155.716647368211"/>
     </mxCell>
     <mxCell edge="1" id="82" parent="1" source="74" style="arrow;noEdgeStyle=1;orthogonal=1" target="81" value="">
       <mxGeometry as="geometry" height="120.0" relative="1" width="120.0">
         <mxPoint as="sourcePoint" x="100.0" y="340.0"/>
         <mxPoint as="targetPoint" x="20.0" y="410.0"/>
         <Array as="points">
-          <mxPoint x="979.0" y="328.0486778846152"/>
-          <mxPoint x="979.0" y="354.0486778846152"/>
+          <mxPoint x="940.0" y="117.65024126493006"/>
+          <mxPoint x="940.0" y="143.65024126493006"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell edge="1" id="83" parent="1" source="6" style="noEdgeStyle=1;orthogonal=1" target="17" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="360.0" y="100.0"/>
+        <mxPoint as="targetPoint" x="350.0" y="300.0"/>
+        <Array as="points">
+          <mxPoint x="347.0" y="117.65024126493006"/>
+          <mxPoint x="345.0" y="143.65024126493006"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell edge="1" id="84" parent="1" source="70" style="noEdgeStyle=1;orthogonal=1" target="74" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="980.0" y="20.0"/>
+        <mxPoint as="targetPoint" x="980.0" y="300.0"/>
+        <Array as="points">
+          <mxPoint x="940.0" y="47.51742905836835"/>
+          <mxPoint x="940.0" y="73.51742905836835"/>
         </Array>
       </mxGeometry>
     </mxCell>
