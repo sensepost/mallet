@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.WeakHashMap;
 
 import org.w3c.dom.Document;
@@ -67,7 +68,7 @@ public class Graph implements GraphLookup {
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
 
-	private ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
+	private ChannelGroup channels = null;
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	public Graph(Mapping<? super String, ? extends SslContext> serverCertMapping, SslContext clientContext) {
@@ -100,9 +101,9 @@ public class Graph implements GraphLookup {
 		mxGraphProperties.setDirected(aGraph.getProperties(), true);
 
 		Object[] sourceVertices = mxGraphStructure.getSourceVertices(aGraph);
-		System.out.print("Source vertices of the graph are: [");
 		mxIGraphModel model = aGraph.getGraph().getModel();
 
+		channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
 		for (int i = 0; i < sourceVertices.length; i++) {
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
 					.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
@@ -230,6 +231,7 @@ public class Graph implements GraphLookup {
 
 	@Override
 	public void startServers() throws Exception {
+		shutdownServers();
 		startServersFromGraph();
 	}
 
@@ -282,15 +284,19 @@ public class Graph implements GraphLookup {
 
 	@Override
 	public void shutdownServers() throws Exception {
-		try {
-			channels.close();
-		} finally {
-			for (EventLoopGroup e : bossGroups.values()) {
-				e.shutdownGracefully();
+		if (channels != null)
+			try {
+				channels.close();
+			} finally {
+				shutdownEventLoop(bossGroups);
+				shutdownEventLoop(workerGroups);
 			}
-			for (EventLoopGroup e : workerGroups.values()) {
-				e.shutdownGracefully();
-			}
+	}
+
+	private void shutdownEventLoop(Map<Class<? extends Channel>, EventLoopGroup> cache) {
+		for (Entry<Class<? extends Channel>, EventLoopGroup> e : cache.entrySet()) {
+			e.getValue().shutdownGracefully();
+			cache.remove(e.getKey());
 		}
 	}
 
