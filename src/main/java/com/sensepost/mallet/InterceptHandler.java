@@ -96,7 +96,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			upstreamPromise = ctx.newPromise();
 		}
 
-		if (ctx.channel().isActive())
+		if (ctx.channel().isActive() && ctx.channel().attr(ChannelAttributes.TARGET).get() != null)
 			ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
 	}
 
