@@ -48,7 +48,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		if (connectInProgress)
 			return;
 
-		final SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 		if (target == null)
 			return;
 
@@ -63,6 +63,8 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
+				if (!target.getConnectPromise().isDone())
+					target.getConnectPromise().setSuccess(ch);
 
 				try {
 					ch.pipeline().addLast(handlers);
@@ -72,7 +74,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			}
 		};
 
-		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target);
+		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
 		cf.addListener(new ChannelFutureListener() {
 
 			@Override
@@ -172,7 +174,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			if (ch != null && ch.remoteAddress() != null)
 				dst = ch.remoteAddress();
 			else
-				dst = ctx.channel().attr(ChannelAttributes.TARGET).get();
+				dst = ctx.channel().attr(ChannelAttributes.TARGET).get().getTarget();
 		} else {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;

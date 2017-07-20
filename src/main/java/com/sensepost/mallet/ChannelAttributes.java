@@ -1,7 +1,5 @@
 package com.sensepost.mallet;
 
-import java.net.SocketAddress;
-
 import com.sensepost.mallet.graph.GraphLookup;
 
 import io.netty.channel.Channel;
@@ -11,7 +9,7 @@ public class ChannelAttributes {
 
 	public static final AttributeKey<Channel> CHANNEL = AttributeKey.valueOf("channel");
 
-	public static final AttributeKey<SocketAddress> TARGET = AttributeKey.valueOf("target");
+	public static final AttributeKey<ConnectRequest> TARGET = AttributeKey.valueOf("target");
 
 	public static final AttributeKey<GraphLookup> GRAPH = AttributeKey.valueOf("graph");
 

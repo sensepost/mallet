@@ -1,7 +1,5 @@
 package com.sensepost.mallet;
 
-import java.net.InetSocketAddress;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -11,7 +9,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
  * 
  * It confirms that the connection has been successfully made, even though no
  * such thing has happened. This is done in order to allow data to be read from
- * the client.
+ * the client. Care should be taken to address the case where the client waits
+ * for the server to write data first, though.
  * 
  * Subsequent handlers must retrieve the TARGET Channel Attribute, and make the
  * outbound connection accordingly, before any data can be written.
@@ -25,12 +24,12 @@ public class ConnectTargetHandler extends ChannelInboundHandlerAdapter {
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt instanceof ConnectRequest) {
 			ConnectRequest cr = (ConnectRequest) evt;
-			ctx.channel().attr(ChannelAttributes.TARGET)
-					.set(InetSocketAddress.createUnresolved(cr.getHost(), cr.getPort()));
-			cr.getConnectPromise().setSuccess(ctx.channel());
+			ctx.channel().attr(ChannelAttributes.TARGET).set(cr);
+			if (!cr.getConnectPromise().isDone())
+				cr.getConnectPromise().setSuccess(ctx.channel());
 			ctx.pipeline().remove(this);
-		} else
-			super.userEventTriggered(ctx, evt);
+		}
+		super.userEventTriggered(ctx, evt);
 	}
 
 }

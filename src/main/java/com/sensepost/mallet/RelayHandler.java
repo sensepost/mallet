@@ -37,7 +37,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void handlerAdded(final ChannelHandlerContext ctx) throws Exception {
-		if (!added) {
+		if (!added && ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
 			added = true;
 			setupOutboundChannel(ctx);
 		}
@@ -45,17 +45,17 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
 		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-		final SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 
 		logger.info("Connecting " + ctx.channel().remoteAddress() + " -> " + target);
 		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
 
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
-				ch.attr(ChannelAttributes.TARGET).set(target);
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
+				target.getConnectPromise().setSuccess(ch);
 
 				ChannelHandler[] handlers = gl.getClientChannelInitializer(RelayHandler.this);
 				ch.pipeline().addLast(handlers);
@@ -63,7 +63,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		};
 
 		try {
-			bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target).sync();
+			bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget()).sync();
 		} catch (Exception e) {
 			ctx.close();
 		}
@@ -109,8 +109,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt instanceof ChannelInputShutdownEvent) {
 			((SocketChannel) ctx.channel().attr(ChannelAttributes.CHANNEL).get()).shutdownOutput();
-		} else
-			super.userEventTriggered(ctx, evt);
+		} else if (evt instanceof ConnectRequest) {
+			added = true;
+			setupOutboundChannel(ctx);
+		}
+		super.userEventTriggered(ctx, evt);
 	}
 
 }

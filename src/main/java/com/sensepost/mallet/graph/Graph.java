@@ -42,6 +42,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
+import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
@@ -207,6 +209,10 @@ public class Graph implements GraphLookup {
 		} else if (TargetSpecificChannelHandler.class.isAssignableFrom(clazz)) {
 			// FIXME need to extract the options from the value object
 			return new TargetSpecificChannelHandler();
+		} else if (WebSocketServerProtocolHandler.class.isAssignableFrom(clazz)) {
+			return (WebSocketServerProtocolHandler) clazz.newInstance();
+		} else if (WebSocketClientCompressionHandler.class.isAssignableFrom(clazz)) {
+			return WebSocketClientCompressionHandler.INSTANCE;
 		} else if (ChannelHandler.class.isAssignableFrom(clazz))
 			return (ChannelHandler) clazz.newInstance();
 		throw new IllegalArgumentException(handlerClass + " does not implement ChannelHandler!");

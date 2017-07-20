@@ -1,11 +1,11 @@
 package com.sensepost.mallet.graph;
 
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
+import com.sensepost.mallet.ConnectRequest;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -21,8 +21,38 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 	public TargetSpecificChannelHandler() {
 		targets.add(new InetSocketAddress("*", 80));
 		targets.add(new InetSocketAddress("*", 443));
-		targets.add(new InetSocketAddress("*", 8000));
 	}
+
+	
+	@Override
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		super.channelActive(ctx);
+		ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+		if (target != null) 
+			this.userEventTriggered(ctx, target);
+	}
+
+
+	@Override
+	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+		if (evt instanceof ConnectRequest) {
+			ConnectRequest cr = (ConnectRequest) evt;
+			InetSocketAddress target = (InetSocketAddress) cr.getTarget();
+			
+			String option = DEFAULT;
+			for (InetSocketAddress sa : targets) {
+				String hs = sa.getHostString();
+				if ((hs.equals("*") || hs.equals(((InetSocketAddress) target).getHostString()))
+						&& (sa.getPort() == ((InetSocketAddress) target).getPort())) {
+					option = targetToString(sa);
+					break;
+				}
+			}
+			optionSelected(ctx, option);
+		}
+		super.userEventTriggered(ctx, evt);
+	}
+
 
 	@Override
 	public String[] getOutboundOptions() {
@@ -40,22 +70,10 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 	}
 
 	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+	public void optionSelected(ChannelHandlerContext ctx, String option) throws Exception {
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-
-		SocketAddress target = ctx.channel().attr(ChannelAttributes.TARGET).get();
-
 		if (gl == null)
 			throw new NullPointerException("gl");
-		String option = DEFAULT;
-		for (InetSocketAddress sa : targets) {
-			String hs = sa.getHostString();
-			if ((hs.equals("*") || hs.equals(((InetSocketAddress) target).getHostString()))
-					&& (sa.getPort() == ((InetSocketAddress) target).getPort())) {
-				option = targetToString(sa);
-				break;
-			}
-		}
 		ChannelHandler[] handlers = gl.getNextHandlers(this, option);
 		String name = ctx.name();
 		for (int i = handlers.length - 1; i >= 0; i--) {
@@ -69,7 +87,5 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			}
 		}
 		ctx.pipeline().remove(name);
-		super.channelRead(ctx, msg);
 	}
-
 }

@@ -15,6 +15,8 @@
  */
 package com.sensepost.mallet;
 
+import java.net.InetSocketAddress;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -96,7 +98,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 		// channel is connected, or if the connection should be closed.
 		connectPromise.addListener(new SocksConnectionResponseSender(ctx, success, failure, socksEncoder));
 
-		ConnectRequest tp = new ConnectRequest(host, port, connectPromise);
+		ConnectRequest tp = new ConnectRequest(InetSocketAddress.createUnresolved(host, port), connectPromise);
 		ctx.fireUserEventTriggered(tp);
 
 		ctx.pipeline().remove(this);
