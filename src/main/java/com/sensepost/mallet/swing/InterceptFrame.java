@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -14,8 +15,10 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.swing.view.mxICellEditor;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.graph.Graph;
@@ -32,6 +35,7 @@ public class InterceptFrame extends JFrame implements InterceptController {
 
 	private Graph graph;
 	private JMenuItem loadMenuItem;
+	private File currentDir = new File(".");
 
 	public InterceptFrame() {
 		setTitle("Mallet");
@@ -40,7 +44,15 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		tabbedPane = new JTabbedPane(JTabbedPane.TOP);
 		getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
-		graphComponent = new mxGraphComponent(new mxGraph());
+		graphComponent = new mxGraphComponent(new mxGraph()) {
+
+			@Override
+			protected mxICellEditor createCellEditor() {
+				// return super.createCellEditor();
+				return new CustomCellEditor(this);
+			}
+			
+		};
 		tabbedPane.addTab("Graph", graphComponent);
 
 		connectionPanel = new ConnectionPanel();
@@ -70,8 +82,19 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		loadMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
-					graph.loadGraph(new File("graph.mxe"));
-					graphComponent.setEnabled(false); // FIXME: Remove this to
+					JFileChooser jfc = new JFileChooser(currentDir);
+				    FileNameExtensionFilter filter = new FileNameExtensionFilter(
+				            "Graph files", "mxe");
+			        jfc.setFileFilter(filter);
+			        int r = jfc.showOpenDialog(InterceptFrame.this);
+			        if (r != JFileChooser.APPROVE_OPTION)
+			        	return;
+					File f = jfc.getSelectedFile();
+					if (f == null) 
+						return;
+					currentDir = jfc.getCurrentDirectory();
+					graph.loadGraph(f);
+					graphComponent.setEnabled(true); // FIXME: Remove this to
 														// enable graph editing
 					try {
 						graph.startServers();

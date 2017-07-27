@@ -7,11 +7,13 @@ import javax.swing.ListModel;
 
 import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelEvent;
+import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
 
 public class ConnectionData {
 
 	private DefaultListModel<ChannelEvent> events = new DefaultListModel<>();
 	private BitSet pending = new BitSet();
+	private int closed = 0;
 	
 	public ConnectionData() {
 	}
@@ -24,6 +26,21 @@ public class ConnectionData {
 			e.execute();
 			pending.clear(events.size());
 		}
+		if (e instanceof ChannelInactiveEvent) {
+			closed++;
+		}
+	}
+	
+	public int getEventCount() {
+		return events.size();
+	}
+	
+	public int getPendingEventCount() {
+		return pending.cardinality();
+	}
+	
+	public boolean isClosed() {
+		return closed == 2;
 	}
 	
 	public void executeNextEvents(int p) throws Exception {

@@ -174,7 +174,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			if (ch != null && ch.remoteAddress() != null)
 				dst = ch.remoteAddress();
 			else
-				dst = ctx.channel().attr(ChannelAttributes.TARGET).get().getTarget();
+				dst = ctx.channel().localAddress();
 		} else {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;

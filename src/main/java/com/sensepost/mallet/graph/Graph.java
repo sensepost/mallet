@@ -2,6 +2,10 @@ package com.sensepost.mallet.graph;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
@@ -20,6 +24,8 @@ import com.mxgraph.analysis.mxAnalysisGraph;
 import com.mxgraph.analysis.mxGraphProperties;
 import com.mxgraph.analysis.mxGraphStructure;
 import com.mxgraph.io.mxCodec;
+import com.mxgraph.layout.mxIGraphLayout;
+import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
@@ -42,7 +48,6 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import io.netty.handler.logging.LogLevel;
@@ -67,17 +72,21 @@ public class Graph implements GraphLookup {
 
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
+	private Map<String, Object> api = new HashMap<>();
 
 	private ChannelGroup channels = null;
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	public Graph(Mapping<? super String, ? extends SslContext> serverCertMapping, SslContext clientContext) {
 		this.serverCertMapping = serverCertMapping;
+		api.put("SSLServerCertificateMap", serverCertMapping);
 		this.clientContext = clientContext;
+		api.put("SSLClientContext", clientContext);
 	}
 
 	public void setInterceptController(InterceptController ic) {
 		this.ic = ic;
+		api.put("InterceptController", ic);
 	}
 
 	public mxGraph getGraph() {
@@ -91,8 +100,24 @@ public class Graph implements GraphLookup {
 
 		mxCodec codec = new mxCodec(document);
 		codec.decode(document.getDocumentElement(), graph.getModel());
+		layoutGraph(graph);
 	}
 
+	private void layoutGraph(mxGraph graph) {
+		mxIGraphLayout layout = new mxHierarchicalLayout(graph);
+		graph.getModel().beginUpdate();
+		try {
+			Object[] cells = graph.getChildCells(graph.getDefaultParent());
+			for (int i = 0; i < cells.length; i++) {
+				graph.updateCellSize(cells[i]);
+			}
+
+			layout.execute(graph.getDefaultParent());
+		} finally {
+			graph.getModel().endUpdate();
+		}
+	}
+	
 	private void startServersFromGraph()
 			throws StructuralException, ClassNotFoundException, IllegalAccessException, InstantiationException {
 		mxAnalysisGraph aGraph = new mxAnalysisGraph();
@@ -181,12 +206,19 @@ public class Graph implements GraphLookup {
 				break;
 			ChannelHandler h = getChannelHandler(v);
 			handlers.add(h);
+			Object[] outgoing = graph.getOutgoingEdges(o);
+			if (h instanceof IndeterminateChannelHandler) {
+				IndeterminateChannelHandler ich = (IndeterminateChannelHandler) h;
+				String[] options = new String[outgoing.length];
+				for (int i = 0; i < outgoing.length; i++)
+					options[i] = (String) graph.getModel().getValue(outgoing[i]);
+				ich.setOutboundOptions(options);
+			}
 			if ((h instanceof InterceptHandler) || (h instanceof RelayHandler)
 					|| (h instanceof IndeterminateChannelHandler)) {
 				handlerVertexMap.put(h, o);
 				break;
 			}
-			Object[] outgoing = graph.getOutgoingEdges(o);
 			if (outgoing == null || outgoing.length != 1)
 				break;
 			o = outgoing[0];
@@ -194,29 +226,88 @@ public class Graph implements GraphLookup {
 		return handlers.toArray(new ChannelHandler[handlers.size()]);
 	}
 
+	private ChannelHandler getChannelHandler(GraphNode node)
+			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		Object handler = getClassInstance(node.getClassName(), ChannelHandler.class, node.getArguments());
+		return (ChannelHandler) handler;
+	}
+
+	private Object getClassInstance(String description, Class<?> type, String[] arguments)
+			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		// See if it is a defined internal object
+		if (description.startsWith("{") && description.endsWith("}"))
+			return api.get(description.substring(1, description.length() - 1));
+		// See if it is an basic type that can easily be converted from a String
+		if (type.equals(String.class)) {
+			return description;
+		} else if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
+			return Integer.parseInt(description);
+		}
+		// Try to do a naive instantiation
+		try {
+			Class<?> clz = Class.forName(description);
+			if (type.isAssignableFrom(clz)) {
+				if (arguments == null || arguments.length == 0)
+					return clz.newInstance();
+				Constructor<?>[] constructors = clz.getConstructors();
+				for (Constructor<?> c : constructors) {
+					try {
+						if (c.getParameterCount() == arguments.length) {
+							Object[] args = new Object[arguments.length];
+							Parameter[] parameters = c.getParameters();
+							for (int i = 0; i < parameters.length; i++) {
+								args[i] = getClassInstance(arguments[i], parameters[i].getType(), null);
+							}
+							return c.newInstance(args);
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			} else
+				throw new RuntimeException(description + " exists, but does not implement " + type.getName());
+		} catch (ClassNotFoundException cnfe) {
+		}
+		// try to return a static field of a class
+		try {
+			int dot = description.lastIndexOf('.');
+			String clsname = description.substring(0, dot);
+			String fieldName = description.substring(dot + 1);
+			Class<?> clz = Class.forName(clsname);
+			Field f = clz.getField(fieldName);
+			if (Modifier.isStatic(f.getModifiers())) {
+				Object instance = f.get(null);
+				if (instance != null && type.isAssignableFrom(instance.getClass()))
+					return instance;
+			}
+		} catch (ClassNotFoundException cnfe) {
+		} catch (NoSuchFieldException nsfe) {
+		}
+		throw new ClassNotFoundException(description + " not found");
+	}
+
 	private ChannelHandler getChannelHandler(Object o)
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-		String handlerClass = getClassName(o);
-		Class<?> clazz = Class.forName(handlerClass);
-		if (InterceptHandler.class.isAssignableFrom(clazz)) {
-			return new InterceptHandler(ic);
-		} else if (SniHandler.class.isAssignableFrom(clazz)) {
-			return new SniHandler(serverCertMapping);
-		} else if (SslHandler.class.isAssignableFrom(clazz)) {
-			return clientContext.newHandler(PooledByteBufAllocator.DEFAULT);
-		} else if (HttpObjectAggregator.class.isAssignableFrom(clazz)) {
-			// FIXME need to extract the options from the value object
-			return new HttpObjectAggregator(10 * 1024 * 1024);
-		} else if (TargetSpecificChannelHandler.class.isAssignableFrom(clazz)) {
-			// FIXME need to extract the options from the value object
-			return new TargetSpecificChannelHandler();
-		} else if (WebSocketServerProtocolHandler.class.isAssignableFrom(clazz)) {
-			return (WebSocketServerProtocolHandler) clazz.newInstance();
-		} else if (WebSocketClientCompressionHandler.class.isAssignableFrom(clazz)) {
-			return WebSocketClientCompressionHandler.INSTANCE;
-		} else if (ChannelHandler.class.isAssignableFrom(clazz))
-			return (ChannelHandler) clazz.newInstance();
-		throw new IllegalArgumentException(handlerClass + " does not implement ChannelHandler!");
+		if (o instanceof GraphNode) {
+			return getChannelHandler((GraphNode) o);
+		} else {
+			String handlerClass = getClassName(o);
+			Class<?> clazz = Class.forName(handlerClass);
+			if (SniHandler.class.isAssignableFrom(clazz)) {
+				return new SniHandler(serverCertMapping);
+			} else if (SslHandler.class.isAssignableFrom(clazz)) {
+				return clientContext.newHandler(PooledByteBufAllocator.DEFAULT);
+			} else if (TargetSpecificChannelHandler.class.isAssignableFrom(clazz)) {
+				// FIXME need to extract the options from the value object
+				return new TargetSpecificChannelHandler();
+			} else if (WebSocketServerProtocolHandler.class.isAssignableFrom(clazz)) {
+				return (WebSocketServerProtocolHandler) clazz.newInstance();
+			} else if (WebSocketClientCompressionHandler.class.isAssignableFrom(clazz)) {
+				return WebSocketClientCompressionHandler.INSTANCE;
+			} else if (ChannelHandler.class.isAssignableFrom(clazz))
+				return (ChannelHandler) clazz.newInstance();
+			throw new IllegalArgumentException(handlerClass + " does not implement ChannelHandler!");
+		}
 	}
 
 	private String getClassName(Object o) {

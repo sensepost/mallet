@@ -7,10 +7,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Date;
 
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -22,6 +20,7 @@ import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelEvent;
@@ -30,7 +29,6 @@ import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelReadEvent;
 import com.sensepost.mallet.InterceptController.ChannelUserEvent;
 import com.sensepost.mallet.InterceptController.Direction;
-import com.sensepost.mallet.swing.editors.ByteBufEditor;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
 
@@ -45,6 +43,8 @@ public class ConnectionDataPanel extends JPanel {
 	private ConnectionData connectionData = null;
 	private EditorController editorController = new EditorController();
 	private ChannelEventRenderer channelEventRenderer = new ChannelEventRenderer();
+	private DateRenderer dateRenderer = new DateRenderer();
+	private DirectionRenderer directionRenderer = new DirectionRenderer();
 
 	private ChannelReadEvent editing = null;
 	private JTable table;
@@ -60,7 +60,7 @@ public class ConnectionDataPanel extends JPanel {
 		pendingPanel.setLayout(new BorderLayout(0, 0));
 		splitPane.setBottomComponent(pendingPanel);
 
-//		ObjectEditor editor = new ByteBufEditor();
+		// ObjectEditor editor = new ByteBufEditor();
 		ObjectEditor editor = new AutoEditor();
 		editor.setEditorController(editorController);
 		pendingPanel.add(editor.getComponent(), BorderLayout.CENTER);
@@ -144,7 +144,7 @@ public class ConnectionDataPanel extends JPanel {
 					editorController.setReadOnly(evt.isExecuted());
 				} else if (evt instanceof ChannelExceptionEvent) {
 					editing = null;
-					editorController.setObject(((ChannelExceptionEvent)evt).getCause());
+					editorController.setObject(((ChannelExceptionEvent) evt).getCause());
 					editorController.setReadOnly(true);
 				} else {
 					editing = null;
@@ -153,6 +153,9 @@ public class ConnectionDataPanel extends JPanel {
 				}
 			}
 		});
+		table.setDefaultRenderer(Date.class, dateRenderer);
+		table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
+		table.setDefaultRenderer(Direction.class, directionRenderer);
 	}
 
 	public void setConnectionData(ConnectionData connectionData) {
@@ -165,41 +168,53 @@ public class ConnectionDataPanel extends JPanel {
 		}
 	}
 
-	private class ChannelEventRenderer extends DefaultListCellRenderer {
+	private class ChannelEventRenderer extends DefaultTableCellRenderer {
 
 		@Override
-		public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
-				boolean cellHasFocus) {
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+				int row, int column) {
 			if (value instanceof ChannelEvent) {
 				ChannelEvent evt = (ChannelEvent) value;
-				value = evt.getDirection() == Direction.Client_Server ? " -> " : " <- ";
-				if (evt instanceof ChannelActiveEvent) {
-					value += " Open";
-				} else if (evt instanceof ChannelReadEvent) {
+				value = "";
+				if (evt instanceof ChannelReadEvent) {
 					Object o = ((ChannelReadEvent) evt).getMessage();
-					value += " Read: ";
 					if (o != null) {
-						value += o.getClass().getName();
+						value = o.getClass().getName();
 						if (o instanceof ByteBuf)
 							value += " (" + ((ByteBuf) o).readableBytes() + " bytes)";
 						else if (o instanceof byte[]) {
 							value += " (" + ((byte[]) o).length + " bytes)";
 						}
 					}
-				} else if (evt instanceof ChannelInactiveEvent) {
-					value += " Close";
 				} else if (evt instanceof ChannelUserEvent) {
 					Object uevt = ((ChannelUserEvent) evt).getUserEvent();
 					if (uevt != null) {
 						if ((uevt instanceof ChannelInputShutdownEvent))
-							value += " Input Shutdown";
+							value = "Input Shutdown";
 						else
-							value += " UserEvent " + uevt.toString();
+							value = "UserEvent " + uevt.toString();
 					} else
 						value += " UserEvent (null)";
 				}
 			}
-			return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+		}
+
+	}
+
+	private class DirectionRenderer extends DefaultTableCellRenderer {
+
+		@Override
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+				int row, int column) {
+			if (value instanceof Direction) {
+				Direction d = (Direction) value;
+				if (d == Direction.Client_Server)
+					value = "->";
+				else
+					value = "<-";
+			}
+			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 		}
 
 	}
@@ -208,7 +223,8 @@ public class ConnectionDataPanel extends JPanel {
 
 		private ListModel<ChannelEvent> listModel = null;
 		private String[] columnNames = new String[] { "Received", "Sent", "Direction", "Event Type", "Value" };
-		private Class<?>[] columnClasses = new Class<?>[] { Date.class, Date.class, Direction.class, String.class, Object.class };
+		private Class<?>[] columnClasses = new Class<?>[] { Date.class, Date.class, Direction.class, String.class,
+				ChannelEvent.class };
 
 		public void setListModel(ListModel<ChannelEvent> listModel) {
 			if (this.listModel != null)
@@ -264,12 +280,7 @@ public class ConnectionDataPanel extends JPanel {
 					return "Event";
 				return "Unknown event";
 			case 4:
-				if (e instanceof ChannelReadEvent)
-					return ((ChannelReadEvent) e).getMessage();
-				else if (e instanceof ChannelExceptionEvent)
-					return ((ChannelExceptionEvent) e).getCause();
-				else if (e instanceof ChannelUserEvent)
-					return ((ChannelUserEvent) e).getUserEvent();
+				return e;
 			}
 			return null;
 		}

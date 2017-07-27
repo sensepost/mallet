@@ -1,6 +1,7 @@
 package com.sensepost.mallet.swing;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.net.SocketAddress;
 import java.util.HashMap;
@@ -89,6 +90,8 @@ public class ConnectionPanel extends JPanel {
 			synchronized (connAddrMap) {
 				if (connAddrMap.get(cp) == null)
 					connAddrMap.put(cp, ap);
+				else
+					connAddrMap.get(cp).dst = cae.getSourceAddress();
 			}	
 		}
 		
@@ -102,6 +105,11 @@ public class ConnectionPanel extends JPanel {
 				eventList = channelEventMap.get(cp);
 			}
 			eventList.addChannelEvent(evt);
+
+			// force redraw of the element in the list
+			int index = listModel.indexOf(cp);
+			listModel.setElementAt(listModel.getElementAt(index), index);
+
 			if (!intercept) {
 				try {
 					eventList.executeAllEvents();
@@ -162,8 +170,14 @@ public class ConnectionPanel extends JPanel {
 
 			AddrPair ap = connAddrMap.get(value);
 			String text = value + " : " + ap.src + " -> " + ap.dst;
+			ConnectionData cd = channelEventMap.get(value);
+			text += " (" + cd.getPendingEventCount() + "/" + cd.getEventCount() + ")";
+			if (cd.isClosed())
+				text += " CLOSED";
 			JLabel renderer = (JLabel) defaultRenderer.getListCellRendererComponent(list, text, index, isSelected,
 					cellHasFocus);
+			if (cd.isClosed())
+				renderer.setBackground(Color.LIGHT_GRAY);
 
 			return renderer;
 		}
