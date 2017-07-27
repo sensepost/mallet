@@ -1,29 +1,35 @@
 package com.sensepost.mallet;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import javax.script.Bindings;
+import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import io.netty.channel.ChannelInitializer;
 
 @Sharable
-public class ScriptHandler extends ChannelDuplexHandler {
+public class ScriptHandler extends ChannelInitializer<Channel> {
 
 	private ScriptEngineManager sem = new ScriptEngineManager();
+	private ScriptEngine engine;
 
-	private String language = null;
-	private String script = null;
-	
+	private ChannelHandler handler;
+
 	private static String SCRIPT = null;
-	
+
 	static {
 		try {
 			InputStream is = ScriptHandler.class.getResourceAsStream("script.groovy");
@@ -39,53 +45,41 @@ public class ScriptHandler extends ChannelDuplexHandler {
 			SCRIPT = null;
 		}
 	}
-	
-	public ScriptHandler() {
-		if (SCRIPT != null) {
-			language = "groovy";
-			script = SCRIPT;
-		}
+
+	public ScriptHandler() throws ScriptException {
+		this(SCRIPT, "groovy");
 	}
-	public void setScript(String language, String script) {
-		this.language = language;
-		this.script = script;
+
+	public ScriptHandler(String script, String language) throws ScriptException {
+		this.engine = sem.getEngineByName(language);
+		handler = getScriptHandler(engine, engine.eval(script));
 	}
-	
-	private Object executeScript(Object object) throws Exception {
-		if (language == null || script == null)
-			return object;
-		ScriptEngine engine = sem.getEngineByName(language);
-		if (engine == null)
-			return object;
-		try {
-			Bindings bindings = engine.createBindings();
-			bindings.put("object", object);
-			engine.eval(script, bindings);
-			object = bindings.get("object");
-		} catch (Exception e) {
-			e.printStackTrace();
-			script = null;
-			language = null;
-		}
-		return object;
+
+	public ScriptHandler(String filename) throws FileNotFoundException, ScriptException {
+		String extension = filename.substring(filename.lastIndexOf('.'));
+		this.engine = sem.getEngineByExtension(extension);
+		handler = getScriptHandler(engine, engine.eval(new FileReader(filename)));
 	}
-	
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		msg = executeScript(msg);
-		super.channelRead(ctx, msg);
+
+	private ChannelHandler getScriptHandler(ScriptEngine engine, Object script) {
+		if (script == null)
+			throw new NullPointerException("script result is null");
+
+		if (!Invocable.class.isAssignableFrom(engine.getClass()))
+			throw new RuntimeException("Script engine cannot implement objects");
+		
+		if (script instanceof ChannelDuplexHandler)
+			return (ChannelDuplexHandler) script;
+		if (script instanceof ChannelHandler) {
+			return (ChannelHandler) script;
+		} else 
+			throw new ClassCastException("Script does not implement ChannelHandler");
 	}
 
 	@Override
-	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-		evt = executeScript(evt);
-		super.userEventTriggered(ctx, evt);
+	protected void initChannel(Channel ch) throws Exception {
+		String name = ch.pipeline().context(this).name();
+		ch.pipeline().addAfter(name, null, handler);
 	}
 
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		msg = executeScript(msg);
-		super.write(ctx, msg, promise);
-	}
-	
 }
