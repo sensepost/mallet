@@ -24,4 +24,8 @@ public class ConnectRequest {
 		return connectPromise;
 	}
 
+	@Override
+	public String toString() {
+		return "Connect " + target;
+	}
 }
