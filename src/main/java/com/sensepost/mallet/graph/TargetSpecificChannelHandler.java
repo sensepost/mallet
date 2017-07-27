@@ -1,8 +1,6 @@
 package com.sensepost.mallet.graph;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.ConnectRequest;
@@ -14,16 +12,20 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 
 public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter implements IndeterminateChannelHandler {
 
-	private static final String DEFAULT = "DEFAULT";
-
-	private List<InetSocketAddress> targets = new ArrayList<>();
-
 	public TargetSpecificChannelHandler() {
-		targets.add(new InetSocketAddress("*", 80));
-		targets.add(new InetSocketAddress("*", 443));
 	}
 
+	private String[] options = new String[0];
 	
+	public void setOutboundOptions(String[] options) {
+		this.options = options;
+	}
+	
+	@Override
+	public String[] getOutboundOptions() {
+		return options;
+	}
+
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		super.channelActive(ctx);
@@ -38,35 +40,16 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 		if (evt instanceof ConnectRequest) {
 			ConnectRequest cr = (ConnectRequest) evt;
 			InetSocketAddress target = (InetSocketAddress) cr.getTarget();
+			String hs = target.getHostString() + ":" + target.getPort();
 			
-			String option = DEFAULT;
-			for (InetSocketAddress sa : targets) {
-				String hs = sa.getHostString();
-				if ((hs.equals("*") || hs.equals(((InetSocketAddress) target).getHostString()))
-						&& (sa.getPort() == ((InetSocketAddress) target).getPort())) {
-					option = targetToString(sa);
+			for (String option : options) {
+				if (hs.matches(option)) {
+					optionSelected(ctx, option);
 					break;
 				}
 			}
-			optionSelected(ctx, option);
 		}
 		super.userEventTriggered(ctx, evt);
-	}
-
-
-	@Override
-	public String[] getOutboundOptions() {
-		String[] ret = new String[targets.size() + 1];
-		int i = 0;
-		for (InetSocketAddress sa : targets) {
-			ret[i++] = targetToString(sa);
-		}
-		ret[i] = DEFAULT;
-		return ret;
-	}
-
-	private String targetToString(InetSocketAddress sa) {
-		return sa.getHostString() + ":" + sa.getPort();
 	}
 
 	@Override
