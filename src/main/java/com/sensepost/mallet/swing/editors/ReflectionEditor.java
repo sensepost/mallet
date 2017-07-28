@@ -366,7 +366,8 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 						}
 					}
 				}
-				n.setValue(value);
+				if (n.getType().isAssignableFrom(value.getClass()))
+					n.setValue(value);
 			} catch (RuntimeException e) {
 				uiError(e);
 			}
