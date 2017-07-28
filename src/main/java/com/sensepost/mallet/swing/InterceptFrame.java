@@ -48,10 +48,8 @@ public class InterceptFrame extends JFrame implements InterceptController {
 
 			@Override
 			protected mxICellEditor createCellEditor() {
-				// return super.createCellEditor();
 				return new CustomCellEditor(this);
 			}
-			
 		};
 		tabbedPane.addTab("Graph", graphComponent);
 
@@ -83,19 +81,17 @@ public class InterceptFrame extends JFrame implements InterceptController {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					JFileChooser jfc = new JFileChooser(currentDir);
-				    FileNameExtensionFilter filter = new FileNameExtensionFilter(
-				            "Graph files", "mxe");
-			        jfc.setFileFilter(filter);
-			        int r = jfc.showOpenDialog(InterceptFrame.this);
-			        if (r != JFileChooser.APPROVE_OPTION)
-			        	return;
+					FileNameExtensionFilter filter = new FileNameExtensionFilter("Graph files", "mxe");
+					jfc.setFileFilter(filter);
+					int r = jfc.showOpenDialog(InterceptFrame.this);
+					if (r != JFileChooser.APPROVE_OPTION)
+						return;
 					File f = jfc.getSelectedFile();
-					if (f == null) 
+					if (f == null)
 						return;
 					currentDir = jfc.getCurrentDirectory();
 					graph.loadGraph(f);
-					graphComponent.setEnabled(true); // FIXME: Remove this to
-														// enable graph editing
+					graphComponent.setEnabled(true);
 					try {
 						graph.startServers();
 					} catch (Exception ex) {

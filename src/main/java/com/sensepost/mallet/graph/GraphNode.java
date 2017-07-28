@@ -22,6 +22,6 @@ public class GraphNode implements Serializable {
 	
 	@Override
 	public String toString() {
-		return className + (arguments == null ? "" : "\n" + Arrays.asList(arguments));
+		return className; // + (arguments == null ? "" : "\n" + Arrays.asList(arguments));
 	}
 }
