@@ -46,13 +46,19 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 		}
 	}
 
-	public ScriptHandler() throws ScriptException {
+	public ScriptHandler() throws Exception {
 		this(SCRIPT, "groovy");
 	}
 
-	public ScriptHandler(String script, String language) throws ScriptException {
+	public ScriptHandler(String script, String language) throws Exception {
 		this.engine = sem.getEngineByName(language);
-		handler = getScriptHandler(engine, engine.eval(script));
+		try {
+			Object scriptResult = engine.eval(script);
+			handler = getScriptHandler(engine, scriptResult);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
 	}
 
 	public ScriptHandler(String filename) throws FileNotFoundException, ScriptException {
@@ -67,12 +73,12 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 
 		if (!Invocable.class.isAssignableFrom(engine.getClass()))
 			throw new RuntimeException("Script engine cannot implement objects");
-		
+
 		if (script instanceof ChannelDuplexHandler)
 			return (ChannelDuplexHandler) script;
 		if (script instanceof ChannelHandler) {
 			return (ChannelHandler) script;
-		} else 
+		} else
 			throw new ClassCastException("Script does not implement ChannelHandler");
 	}
 
