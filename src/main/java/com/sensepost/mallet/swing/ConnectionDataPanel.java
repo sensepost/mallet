@@ -63,7 +63,7 @@ public class ConnectionDataPanel extends JPanel {
 		// ObjectEditor editor = new ByteBufEditor();
 		ObjectEditor editor = new AutoEditor();
 		editor.setEditorController(editorController);
-		pendingPanel.add(editor.getComponent(), BorderLayout.CENTER);
+		pendingPanel.add(editor.getEditorComponent(), BorderLayout.CENTER);
 
 		JPanel buttonPanel = new JPanel();
 		pendingPanel.add(buttonPanel, BorderLayout.SOUTH);

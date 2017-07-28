@@ -9,14 +9,14 @@ public interface ObjectEditor {
 	 * 
 	 * @return
 	 */
-	JComponent getComponent();
+	JComponent getEditorComponent();
 
 	/**
 	 * the description of this editor, when added to the user interface
 	 * 
 	 * @return
 	 */
-	String getName();
+	String getEditorName();
 
 	/**
 	 * the list of classes that this editor is capable of editing

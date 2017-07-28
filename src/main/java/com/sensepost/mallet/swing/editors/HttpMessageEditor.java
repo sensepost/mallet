@@ -108,7 +108,7 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 
 		contentEditor = new ByteBufEditor();
 		contentEditor.setEditorController(contentController);
-		panel_1.add(contentEditor.getComponent(), BorderLayout.CENTER);
+		panel_1.add(contentEditor.getEditorComponent(), BorderLayout.CENTER);
 	}
 
 	private JPanel createPanel(String label, JTextField field) {
@@ -122,7 +122,7 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 	}
 
 	@Override
-	public JComponent getComponent() {
+	public JComponent getEditorComponent() {
 		return this;
 	}
 
@@ -192,7 +192,7 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 	}
 
 	@Override
-	public String getName() {
+	public String getEditorName() {
 		return "HTTP Message";
 	}
 

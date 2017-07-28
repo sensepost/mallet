@@ -141,12 +141,12 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 	private JTextArea scriptResultTextArea;
 
 	@Override
-	public JComponent getComponent() {
+	public JComponent getEditorComponent() {
 		return this;
 	}
 
 	@Override
-	public String getName() {
+	public String getEditorName() {
 		return "Reflection";
 	}
 

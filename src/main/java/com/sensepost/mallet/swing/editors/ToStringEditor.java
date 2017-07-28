@@ -50,7 +50,7 @@ public class ToStringEditor extends JPanel implements ObjectEditor {
 	}
 	
 	@Override
-	public JComponent getComponent() {
+	public JComponent getEditorComponent() {
 		return this;
 	}
 
@@ -60,7 +60,7 @@ public class ToStringEditor extends JPanel implements ObjectEditor {
 	}
 	
 	@Override
-	public String getName() {
+	public String getEditorName() {
 		return "toString()";
 	}
 

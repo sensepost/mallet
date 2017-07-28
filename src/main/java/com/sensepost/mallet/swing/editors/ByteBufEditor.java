@@ -43,12 +43,12 @@ public class ByteBufEditor implements ObjectEditor {
 	}
 
 	@Override
-	public JComponent getComponent() {
+	public JComponent getEditorComponent() {
 		return bae;
 	}
 
 	@Override
-	public String getName() {
+	public String getEditorName() {
 		return "ByteBuf";
 	}
 

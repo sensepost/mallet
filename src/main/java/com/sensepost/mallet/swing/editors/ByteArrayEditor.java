@@ -125,7 +125,7 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 	}
 
 	@Override
-	public JComponent getComponent() {
+	public JComponent getEditorComponent() {
 		return this;
 	}
 
@@ -154,7 +154,7 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 		tableUpdating = false;
 	}
 
-	public String getName() {
+	public String getEditorName() {
 		return "Byte[]";
 	}
 
