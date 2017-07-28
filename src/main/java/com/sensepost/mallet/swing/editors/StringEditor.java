@@ -69,7 +69,6 @@ public class StringEditor extends JPanel implements ObjectEditor {
 		textArea = new JTextArea();
 		textArea.getDocument().addDocumentListener(docListener);
 		scrollPane.setViewportView(textArea);
-		textArea.addPropertyChangeListener(listener);
 	}
 
 	private void updateEditor() {

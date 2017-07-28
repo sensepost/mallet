@@ -43,8 +43,8 @@ public class AutoEditor extends JPanel implements ObjectEditor {
 		addEditor(new HttpMessageEditor());
 		addEditor(new ByteArrayEditor());
 		addEditor(new ByteBufEditor());
-		addEditor(new ToStringEditor());
 		addEditor(new ReflectionEditor());
+		addEditor(new ToStringEditor());
 	}
 
 	public void setEditorController(EditorController controller) {
