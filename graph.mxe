@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<mxGraphModel>
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <Listener address="localhost:1080" classname="io.netty.channel.socket.nio.NioServerSocketChannel" id="2">
+      <mxCell parent="1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="140.0" x="2.0" y="2.56640625"/>
+      </mxCell>
+    </Listener>
+    <Sink id="3">
+      <mxCell parent="1" style="shape=cylinder" vertex="1">
+        <mxGeometry as="geometry" height="20.0" width="30.0" x="57.0" y="595.99609375"/>
+      </mxCell>
+    </Sink>
+    <mxCell edge="1" id="4" parent="1" source="16" style="noEdgeStyle=1;orthogonal=1" target="3" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="60.0"/>
+        <mxPoint as="targetPoint" x="290.0" y="70.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="557.9296875"/>
+          <mxPoint x="72.0" y="583.9296875"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <Relay classname="com.sensepost.mallet.InterceptHandler" id="5">
+      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <mxCell parent="1" style="rectangle;shape=doubleRectangle" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="100.0" x="22.0" y="343.09765625"/>
+      </mxCell>
+    </Relay>
+    <mxCell edge="1" id="6" parent="1" source="14" style="noEdgeStyle=1;orthogonal=1" target="5" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="120.0"/>
+        <mxPoint as="targetPoint" x="80.0" y="170.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="302.53125"/>
+          <mxPoint x="72.0" y="328.53125"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <ChannelHandler classname="com.sensepost.mallet.SocksInitializer" id="7">
+      <mxCell parent="1" style="rounded=1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="100.0" x="22.0" y="87.69921875"/>
+      </mxCell>
+    </ChannelHandler>
+    <mxCell edge="1" id="11" parent="1" source="2" style="noEdgeStyle=1;orthogonal=1" target="7" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="300.0" y="60.0"/>
+        <mxPoint as="targetPoint" x="70.0" y="60.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="47.1328125"/>
+          <mxPoint x="72.0" y="73.1328125"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <ChannelHandler classname="io.netty.handler.codec.http.HttpServerCodec" id="12">
+      <mxCell parent="1" style="rounded=1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="100.0" x="22.0" y="172.83203125"/>
+      </mxCell>
+    </ChannelHandler>
+    <mxCell edge="1" id="13" parent="1" source="7" style="noEdgeStyle=1;orthogonal=1" target="12" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="290.0"/>
+        <mxPoint as="targetPoint" x="80.0" y="340.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="132.265625"/>
+          <mxPoint x="72.0" y="158.265625"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <ChannelHandler classname="io.netty.handler.codec.http.HttpMessageAggregator" id="14">
+      <Parameter><![CDATA[10240]]></Parameter>
+      <mxCell parent="1" style="rounded=1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="140.0" x="2.0" y="257.96484375"/>
+      </mxCell>
+    </ChannelHandler>
+    <mxCell edge="1" id="15" parent="1" source="12" style="noEdgeStyle=1;orthogonal=1" target="14" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="460.0"/>
+        <mxPoint as="targetPoint" x="80.0" y="510.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="217.3984375"/>
+          <mxPoint x="72.0" y="243.3984375"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <ChannelHandler classname="io.netty.handler.codec.http.HttpClientCodec" id="16">
+      <mxCell parent="1" style="rounded=1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="100.0" x="22.0" y="513.36328125"/>
+      </mxCell>
+    </ChannelHandler>
+    <mxCell edge="1" id="17" parent="1" source="18" style="noEdgeStyle=1;orthogonal=1" target="16" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="800.0"/>
+        <mxPoint as="targetPoint" x="80.0" y="850.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="472.796875"/>
+          <mxPoint x="72.0" y="498.796875"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <ChannelHandler classname="io.netty.handler.codec.http.HttpMessageAggregator" id="18">
+      <Parameter><![CDATA[10240]]></Parameter>
+      <mxCell parent="1" style="rounded=1" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="140.0" x="2.0" y="428.23046875"/>
+      </mxCell>
+    </ChannelHandler>
+    <mxCell edge="1" id="19" parent="1" source="5" style="noEdgeStyle=1;orthogonal=1" target="18" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="800.0"/>
+        <mxPoint as="targetPoint" x="80.0" y="850.0"/>
+        <Array as="points">
+          <mxPoint x="72.0" y="387.6640625"/>
+          <mxPoint x="72.0" y="413.6640625"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+  </root>
+</mxGraphModel>
