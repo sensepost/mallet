@@ -16,8 +16,11 @@ import java.security.cert.Certificate;
 
 import javax.security.auth.x500.X500Principal;
 
+import com.mxgraph.swing.mxGraphComponent;
 import com.sensepost.mallet.graph.Graph;
 import com.sensepost.mallet.ssl.AutoGeneratingContextSelector;
+import com.sensepost.mallet.swing.GraphEditor.CustomGraph;
+import com.sensepost.mallet.swing.GraphEditor.CustomGraphComponent;
 import com.sensepost.mallet.swing.InterceptFrame;
 
 import io.netty.handler.ssl.SslContext;
@@ -107,7 +110,8 @@ public class Main {
 	}
 
 	public static void main(String[] args) throws Exception {
-		InterceptFrame ui = new InterceptFrame();
+		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
+		InterceptFrame ui = new InterceptFrame(graphComponent);
 		ui.setSize(800, 600);
 
 		final SslContext clientContext = SslContextBuilder.forClient()
@@ -125,7 +129,7 @@ public class Main {
 				}
 			}
 		});
-		Graph graph = new Graph(serverCertMapping, clientContext);
+		Graph graph = new Graph(graphComponent.getGraph(), serverCertMapping, clientContext);
 		ui.setGraph(graph);
 		ui.setVisible(true);
 	}

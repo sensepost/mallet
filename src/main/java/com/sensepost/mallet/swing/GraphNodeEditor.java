@@ -9,6 +9,7 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
 import javax.swing.JButton;
@@ -22,6 +23,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableColumnModelEvent;
 import javax.swing.event.TableColumnModelListener;
 import javax.swing.event.TableModelEvent;
@@ -31,40 +33,80 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.text.BadLocationException;
 
-import com.sensepost.mallet.graph.GraphNode;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 public class GraphNodeEditor extends JPanel implements TableModelListener {
 	private JTable table;
 	private DefaultTableModel tableModel = new DefaultTableModel();
 	private JTextField classField;
 	private JButton cancelButton, okButton;
+	private JPanel parameterPanel;
+	private JTextField addressTextField;
+	private JPanel addressPanel;
+	private JPanel cardPanel;
 
+	private Element node = null;
+
+	@SuppressWarnings("serial")
 	public GraphNodeEditor() {
 		setLayout(new BorderLayout(0, 0));
 
-		JPanel panel = new JPanel();
-		add(panel, BorderLayout.NORTH);
-		panel.setLayout(new BorderLayout(0, 0));
+		JPanel classPanel = new JPanel();
+		add(classPanel, BorderLayout.NORTH);
+		classPanel.setLayout(new BorderLayout(0, 0));
 
 		JLabel lblClass = new JLabel("Class");
-		panel.add(lblClass, BorderLayout.WEST);
+		classPanel.add(lblClass, BorderLayout.WEST);
 
 		classField = new JTextField();
-		panel.add(classField, BorderLayout.CENTER);
+		classPanel.add(classField, BorderLayout.CENTER);
+
+		tableModel.addColumn("Parameter");
+
+		RowHeightCellRenderer dynRow = new RowHeightCellRenderer();
+
+		JPanel buttonPanel = new JPanel();
+		add(buttonPanel, BorderLayout.SOUTH);
+
+		cancelButton = new JButton();
+		buttonPanel.add(cancelButton);
+
+		okButton = new JButton();
+		buttonPanel.add(okButton);
+
+		cardPanel = new JPanel();
+		add(cardPanel, BorderLayout.CENTER);
+		cardPanel.setLayout(new BorderLayout(0, 0));
+
+		addressPanel = new JPanel();
+		addressPanel.setLayout(new BorderLayout(0, 0));
+
+		JLabel lblNewLabel = new JLabel("Address");
+		addressPanel.add(lblNewLabel, BorderLayout.WEST);
+
+		addressTextField = new JTextField();
+		addressPanel.add(addressTextField, BorderLayout.CENTER);
+
+		System.out.println("Address panel preferred size = " + addressPanel.getPreferredSize());
+		
+		parameterPanel = new JPanel();
+		parameterPanel.setLayout(new BorderLayout(0, 0));
+
+		JScrollPane scrollPane = new JScrollPane();
+		parameterPanel.add(scrollPane, BorderLayout.CENTER);
+
+		table = new JTable(tableModel);
+		table.setGridColor(Color.GRAY);
+		table.setShowGrid(true);
+		scrollPane.setViewportView(table);
 
 		JPanel panel_1 = new JPanel();
-		add(panel_1, BorderLayout.EAST);
+		parameterPanel.add(panel_1, BorderLayout.EAST);
 		panel_1.setLayout(new GridLayout(0, 1, 0, 0));
 
-		JButton addParamButton = new JButton("+");
-		addParamButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				tableModel.addRow(new String[tableModel.getColumnCount()]);
-			}
-		});
-
-		JButton moveUpParameterButton = new JButton("^");
-		moveUpParameterButton.addActionListener(new ActionListener() {
+		final JButton moveParameterUpButton = new JButton(new AbstractAction("^") {
 			public void actionPerformed(ActionEvent e) {
 				int row = table.getSelectedRow();
 				if (row < 1)
@@ -77,11 +119,17 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 				tableModel.insertRow(row - 1, data);
 			}
 		});
-		panel_1.add(moveUpParameterButton);
+		panel_1.add(moveParameterUpButton);
+
+		final JButton addParamButton = new JButton(new AbstractAction("+") {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				tableModel.addRow(new String[tableModel.getColumnCount()]);
+			}
+		});
 		panel_1.add(addParamButton);
 
-		JButton removeParamButton = new JButton("-");
-		removeParamButton.addActionListener(new ActionListener() {
+		final JButton removeParamButton = new JButton(new AbstractAction("-") {
 			public void actionPerformed(ActionEvent e) {
 				int row = table.getSelectedRow();
 				if (row == -1)
@@ -91,8 +139,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		});
 		panel_1.add(removeParamButton);
 
-		JButton moveParameterDownButton = new JButton("v");
-		moveParameterDownButton.addActionListener(new ActionListener() {
+		final JButton moveParameterDownButton = new JButton(new AbstractAction("v") {
 			public void actionPerformed(ActionEvent e) {
 				int row = table.getSelectedRow();
 				if (row == -1 || row == table.getRowCount() - 1)
@@ -107,17 +154,19 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		});
 		panel_1.add(moveParameterDownButton);
 
-		JScrollPane scrollPane = new JScrollPane();
-		add(scrollPane, BorderLayout.CENTER);
+		System.out.println("Parameter panel preferred size = " + parameterPanel.getPreferredSize());
 
-		tableModel.addColumn("Parameter");
+		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 
-		table = new JTable(tableModel);
-		table.setGridColor(Color.GRAY);
-		table.setShowGrid(true);
-		scrollPane.setViewportView(table);
+			@Override
+			public void valueChanged(ListSelectionEvent e) {
+				boolean rowSelected = table.getSelectedRowCount() != 0;
+				moveParameterUpButton.setEnabled(rowSelected);
+				moveParameterDownButton.setEnabled(rowSelected);
+				removeParamButton.setEnabled(rowSelected);
+			}
 
-		RowHeightCellRenderer dynRow = new RowHeightCellRenderer();
+		});
 		table.getColumnModel().getColumn(0).setCellRenderer(dynRow);
 		table.getColumnModel().getColumn(0).setCellEditor(new MultilineTableCellEditor());
 
@@ -169,15 +218,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 			public void columnSelectionChanged(ListSelectionEvent e) {
 			}
 		});
-
-		JPanel panel_2 = new JPanel();
-		add(panel_2, BorderLayout.SOUTH);
-
-		cancelButton = new JButton();
-		panel_2.add(cancelButton);
-
-		okButton = new JButton();
-		panel_2.add(okButton);
+		tableChanged(null);
 	}
 
 	public void tableChanged(TableModelEvent e) {
@@ -230,34 +271,66 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		okButton.setAction(okAction);
 	}
 
-	public GraphNode getGraphNode() {
+	public Element getGraphNode() {
 		String className = classField.getText();
 		int r = tableModel.getRowCount();
 		String[] args = new String[r];
 		for (int i = 0; i < r; i++) {
 			args[i] = (String) tableModel.getValueAt(i, 0);
 		}
-		GraphNode node = new GraphNode();
-		node.setClassName(className);
-		node.setArguments(args);
+		node.setAttribute("classname", className);
+		if ("Listener".equals(node.getTagName())) {
+			node.setAttribute("address", addressTextField.getText());
+		}
+		NodeList nl = node.getElementsByTagName("Parameter");
+		for (int i = 0; i < nl.getLength(); i++)
+			node.removeChild(nl.item(i));
+		Document doc = node.getOwnerDocument();
+		for (int i = 0; i < args.length; i++)
+			node.appendChild(doc.createElement("Parameter")).appendChild(doc.createCDATASection(args[i]));
 		return node;
 	}
 
-	public void setGraphNode(GraphNode node) {
+	public String getClassName(Element e) {
+		return e.getAttribute("classname");
+	}
+
+	public String[] getParameters(Element e) {
+		NodeList nl = e.getElementsByTagName("Parameter");
+		String[] args = new String[nl.getLength()];
+		for (int i = 0; i < nl.getLength(); i++)
+			args[i] = nl.item(i).getTextContent();
+		return args;
+	}
+
+	public void setGraphNode(Element node) {
+		this.node = node;
 		int r = tableModel.getRowCount();
 		for (int i = 0; i < r; i++)
 			tableModel.removeRow(0);
 
 		if (node == null) {
 			classField.setText("");
+			addressTextField.setText("");
 		} else {
-			classField.setText(node.getClassName());
-			String[] args = node.getArguments();
-			if (args == null)
-				args = new String[0];
+			classField.setText(node.getAttribute("classname"));
+			addressTextField.setText(node.getAttribute("address"));
+
+			if ("Listener".equals(node.getTagName())) {
+				cardPanel.remove(parameterPanel);
+				cardPanel.add(addressPanel, BorderLayout.CENTER);
+			} else if ("ChannelHandler".equals(node.getTagName()) || "Relay".equals(node.getTagName())) {
+				cardPanel.remove(addressPanel);
+				cardPanel.add(parameterPanel, BorderLayout.CENTER);
+			}
+			// addressPanel.setVisible();
+			// parameterPanel.setVisible("ChannelHandler".equals(node.getTagName())
+			// || "Relay".equals(node.getTagName()));
+			String[] args = getParameters(node);
 			for (int i = 0; i < args.length; i++)
 				tableModel.addRow(new String[] { args[i] });
 		}
+		tableChanged(null);
 	}
 
 	private static class RowHeightCellRenderer extends JTextArea implements TableCellRenderer {
@@ -321,5 +394,13 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		public Object getCellEditorValue() {
 			return ((JTextArea) component).getText();
 		}
+	}
+
+	protected JPanel getParameterPanel() {
+		return parameterPanel;
+	}
+
+	protected JPanel getSourcePanel() {
+		return addressPanel;
 	}
 }

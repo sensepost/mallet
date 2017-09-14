@@ -18,6 +18,9 @@ import java.util.Map.Entry;
 import java.util.WeakHashMap;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.mxgraph.analysis.StructuralException;
 import com.mxgraph.analysis.mxAnalysisGraph;
@@ -36,7 +39,6 @@ import com.sensepost.mallet.InterceptHandler;
 import com.sensepost.mallet.RelayHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
@@ -48,27 +50,19 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
-import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
-import io.netty.handler.ssl.SniHandler;
 import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslHandler;
 import io.netty.util.Mapping;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 public class Graph implements GraphLookup {
 
-	private InterceptController ic;
-	private Mapping<? super String, ? extends SslContext> serverCertMapping;
-	private SslContext clientContext;
-
 	private boolean direct = true, socks = false;
 
-	private mxGraph graph = new mxGraph();
+	private mxGraph graph;
 
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
@@ -77,15 +71,13 @@ public class Graph implements GraphLookup {
 	private ChannelGroup channels = null;
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
-	public Graph(Mapping<? super String, ? extends SslContext> serverCertMapping, SslContext clientContext) {
-		this.serverCertMapping = serverCertMapping;
+	public Graph(mxGraph graph, Mapping<? super String, ? extends SslContext> serverCertMapping, SslContext clientContext) {
+		this.graph = graph;
 		api.put("SSLServerCertificateMap", serverCertMapping);
-		this.clientContext = clientContext;
 		api.put("SSLClientContext", clientContext);
 	}
 
 	public void setInterceptController(InterceptController ic) {
-		this.ic = ic;
 		api.put("InterceptController", ic);
 	}
 
@@ -117,7 +109,7 @@ public class Graph implements GraphLookup {
 			graph.getModel().endUpdate();
 		}
 	}
-	
+
 	private void startServersFromGraph()
 			throws StructuralException, ClassNotFoundException, IllegalAccessException, InstantiationException {
 		mxAnalysisGraph aGraph = new mxAnalysisGraph();
@@ -171,28 +163,49 @@ public class Graph implements GraphLookup {
 		if (NioServerSocketChannel.class.isAssignableFrom(channelClass)) {
 			// parse as an InetSocketAddress
 			if (o instanceof String) {
-				String s = (String) o;
-				if (s.indexOf('\n') > -1) {
-					s = s.substring(s.indexOf('\n') + 1);
-					int c = s.indexOf(':');
-					if (c > -1) {
-						String address = s.substring(0, c);
-						int port = Integer.parseInt(s.substring(c + 1));
-						return new InetSocketAddress(address, port);
-						// FIXME: check that this is actually a bind-able
-						// address?
-					}
+				String sa = (String) o;
+				if (sa.indexOf('\n') > -1) {
+					sa = sa.substring(sa.indexOf('\n') + 1);
+					return parseInetSocketAddress(sa);
 				}
+			} else if (o instanceof Element) {
+				Element e = (Element) o;
+				String sa = e.getAttribute("address");
+				return parseInetSocketAddress(sa);
 			}
 		}
 		throw new IllegalArgumentException("Could not parse the socket address from: '" + o + "'");
 	}
 
+	private InetSocketAddress parseInetSocketAddress(String sa) {
+		int c = sa.indexOf(':');
+		if (c > -1) {
+			String address = sa.substring(0, c);
+			int port = Integer.parseInt(sa.substring(c + 1));
+			return new InetSocketAddress(address, port);
+			// FIXME: check that this is actually a bind-able
+			// address?
+		}
+		throw new RuntimeException("Could not parse '" + sa + "' as an InetSocketAddress");
+	}
+	
 	private Class<? extends ServerChannel> getServerClass(String className) throws ClassNotFoundException {
 		Class<?> clazz = Class.forName(className);
 		if (ServerChannel.class.isAssignableFrom(clazz))
-			return (Class<ServerChannel>) clazz;
+			return (Class<? extends ServerChannel>) clazz;
 		throw new IllegalArgumentException(className + " does not implement ServerChannel");
+	}
+
+	private boolean isSink(Object v) {
+		if (v instanceof String)
+			return ("Connect".equals(v));
+		if (v instanceof Element) {
+			Element e = (Element) v;
+			return "Sink".equals(e.getTagName());
+		}
+		if (v instanceof GraphNode)
+			return false;
+		throw new RuntimeException("Unexpected cell value");
 	}
 
 	private ChannelHandler[] getChannelHandlers(Object o)
@@ -202,7 +215,7 @@ public class Graph implements GraphLookup {
 			if (graph.getModel().isEdge(o))
 				o = graph.getModel().getTerminal(o, false);
 			Object v = graph.getModel().getValue(o);
-			if ("Connect".equals(v))
+			if (isSink(v))
 				break;
 			ChannelHandler h = getChannelHandler(v);
 			handlers.add(h);
@@ -224,12 +237,6 @@ public class Graph implements GraphLookup {
 			o = outgoing[0];
 		} while (true);
 		return handlers.toArray(new ChannelHandler[handlers.size()]);
-	}
-
-	private ChannelHandler getChannelHandler(GraphNode node)
-			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-		Object handler = getClassInstance(node.getClassName(), ChannelHandler.class, node.getArguments());
-		return (ChannelHandler) handler;
 	}
 
 	private Object getClassInstance(String description, Class<?> type, String[] arguments)
@@ -283,31 +290,15 @@ public class Graph implements GraphLookup {
 		} catch (ClassNotFoundException cnfe) {
 		} catch (NoSuchFieldException nsfe) {
 		}
-		throw new ClassNotFoundException(description + " not found");
+		throw new ClassNotFoundException("'" + description + "' not found");
 	}
 
 	private ChannelHandler getChannelHandler(Object o)
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-		if (o instanceof GraphNode) {
-			return getChannelHandler((GraphNode) o);
-		} else {
-			String handlerClass = getClassName(o);
-			Class<?> clazz = Class.forName(handlerClass);
-			if (SniHandler.class.isAssignableFrom(clazz)) {
-				return new SniHandler(serverCertMapping);
-			} else if (SslHandler.class.isAssignableFrom(clazz)) {
-				return clientContext.newHandler(PooledByteBufAllocator.DEFAULT);
-			} else if (TargetSpecificChannelHandler.class.isAssignableFrom(clazz)) {
-				// FIXME need to extract the options from the value object
-				return new TargetSpecificChannelHandler();
-			} else if (WebSocketServerProtocolHandler.class.isAssignableFrom(clazz)) {
-				return (WebSocketServerProtocolHandler) clazz.newInstance();
-			} else if (WebSocketClientCompressionHandler.class.isAssignableFrom(clazz)) {
-				return WebSocketClientCompressionHandler.INSTANCE;
-			} else if (ChannelHandler.class.isAssignableFrom(clazz))
-				return (ChannelHandler) clazz.newInstance();
-			throw new IllegalArgumentException(handlerClass + " does not implement ChannelHandler!");
-		}
+		String className = getClassName(o);
+		String[] parameters = getParameters(o);
+		Object handler = getClassInstance(className, ChannelHandler.class, parameters);
+		return (ChannelHandler) handler;
 	}
 
 	private String getClassName(Object o) {
@@ -316,8 +307,28 @@ public class Graph implements GraphLookup {
 			if (s.indexOf('\n') > -1)
 				s = s.substring(0, s.indexOf('\n'));
 			return s;
+		} else if (o instanceof Element) {
+			Element e = (Element) o;
+			String className = e.getAttribute("classname");
+			return className;
 		}
-		return null;
+		throw new RuntimeException("Don't know how to get classname from a " + o.getClass());
+	}
+
+	private String[] getParameters(Object o) {
+		if (o instanceof GraphNode) {
+			return ((GraphNode) o).getArguments();
+		} else if (o instanceof Element) {
+			Element e = (Element) o;
+			NodeList parameters = e.getElementsByTagName("Parameter");
+			String[] p = new String[parameters.getLength()];
+			for (int i = 0; i < parameters.getLength(); i++) {
+				Node n = parameters.item(i);
+				p[i] = n.getTextContent();
+			}
+			return p;
+		}
+		throw new RuntimeException("Don't know how to get parameters from a " + o.getClass());
 	}
 
 	@Override

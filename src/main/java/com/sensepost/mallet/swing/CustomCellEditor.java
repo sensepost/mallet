@@ -13,6 +13,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import org.w3c.dom.Element;
+
 import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.swing.mxGraphComponent;
@@ -66,7 +68,6 @@ public class CustomCellEditor implements mxICellEditor {
 
 		});
 		dialog.pack();
-		dialog.setSize(450, 200);
 	}
 
 	@Override
@@ -82,9 +83,10 @@ public class CustomCellEditor implements mxICellEditor {
 
 		editingCell = cell;
 		Object value = graphComponent.getGraph().getModel().getValue(cell);
-		if (value instanceof GraphNode) {
-			GraphNode node = (GraphNode) value;
-			editor.setGraphNode(node);
+		if (value instanceof Element) {
+			editor.setGraphNode((Element) value);
+			dialog.pack();
+			dialog.setLocationRelativeTo(graphComponent);
 			dialog.setVisible(true);
 		}
 	}

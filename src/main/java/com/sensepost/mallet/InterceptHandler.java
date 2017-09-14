@@ -161,6 +161,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
+		System.out.println("Pipeline is " + ctx.channel().pipeline());
 		ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
 	}
 

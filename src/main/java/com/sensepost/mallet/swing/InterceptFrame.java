@@ -31,28 +31,27 @@ public class InterceptFrame extends JFrame implements InterceptController {
 	private ConnectionPanel connectionPanel;
 	private JTabbedPane tabbedPane;
 
+	private GraphEditor editor;
+	
 	private mxGraphComponent graphComponent;
 
 	private Graph graph;
 	private JMenuItem loadMenuItem;
 	private File currentDir = new File(".");
 
-	public InterceptFrame() {
+	public InterceptFrame(mxGraphComponent graphComponent) {
 		setTitle("Mallet");
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
+		this.graphComponent = graphComponent;
+		
 		tabbedPane = new JTabbedPane(JTabbedPane.TOP);
 		getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
-		graphComponent = new mxGraphComponent(new mxGraph()) {
-
-			@Override
-			protected mxICellEditor createCellEditor() {
-				return new CustomCellEditor(this);
-			}
-		};
-		tabbedPane.addTab("Graph", graphComponent);
-
+		editor = new GraphEditor("", graphComponent);
+		
+		tabbedPane.addTab("Graph Editor", editor);
+		
 		connectionPanel = new ConnectionPanel();
 		tabbedPane.addTab("Connections", connectionPanel);
 
@@ -91,7 +90,7 @@ public class InterceptFrame extends JFrame implements InterceptController {
 						return;
 					currentDir = jfc.getCurrentDirectory();
 					graph.loadGraph(f);
-					graphComponent.setEnabled(true);
+					InterceptFrame.this.graphComponent.setEnabled(true);
 					try {
 						graph.startServers();
 					} catch (Exception ex) {
