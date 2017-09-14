@@ -67,6 +67,18 @@ public class GraphEditor extends BasicGraphEditor {
 		this("mxGraph Editor", new CustomGraphComponent(new CustomGraph()));
 	}
 
+	private Element createElement(Document doc, String type, String className, String... params) {
+		Element e = doc.createElement(type);
+		e.setAttribute("classname", className);
+		if (params != null) {
+			for (int i=0; i<params.length; i++) {
+				e.appendChild(doc.createElement("Parameter")).
+					appendChild(doc.createCDATASection(params[i]));
+			}
+		}
+		return e;
+	}
+	
 	/**
 	 * 
 	 */
@@ -79,28 +91,31 @@ public class GraphEditor extends BasicGraphEditor {
 		listener.setAttribute("classname", "io.netty.channel.socket.nio.NioServerSocketChannel");
 		listener.setAttribute("address", "localhost:1080");
 
-		Element socks = xmlDocument.createElement("ChannelHandler");
-		socks.setAttribute("classname", "com.sensepost.mallet.SocksInitializer");
+		Element socks = createElement(xmlDocument, "ChannelHandler", 
+				"com.sensepost.mallet.SocksInitializer");
 
-		Element handler = xmlDocument.createElement("ChannelHandler");
+		Element handler = createElement(xmlDocument, "ChannelHandler", 
+				"io.netty.channel.ChannelDuplexHandler");
 
-		Element relay = xmlDocument.createElement("Relay");
-		relay.setAttribute("classname", "com.sensepost.mallet.InterceptHandler");
-		relay.appendChild(xmlDocument.createElement("Parameter"))
-				.appendChild(xmlDocument.createTextNode("{InterceptController}"));
+		Element scriptHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
+				"import io.netty.channel.*;\r\n\r\nreturn new ChannelDuplexHandler();\r\n", 
+				"groovy");
+
+		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.InterceptHandler", 
+				"{InterceptController}");
 
 		Element sink = xmlDocument.createElement("Sink");
 
 		// Creates the shapes palette
-		EditorPalette shapesPalette = insertPalette(mxResources.get("shapes"));
-		// EditorPalette imagesPalette =
-		// insertPalette(mxResources.get("images"));
+		EditorPalette basicPalette = insertPalette(mxResources.get("basic"));
+		EditorPalette protocolPalette =
+				insertPalette(mxResources.get("protocolHandlers"));
 		// EditorPalette symbolsPalette =
 		// insertPalette(mxResources.get("symbols"));
 
 		// Sets the edge template to be used for creating new edges if an edge
 		// is clicked in the shape palette
-		shapesPalette.addListener(mxEvent.SELECT, new mxIEventListener() {
+		basicPalette.addListener(mxEvent.SELECT, new mxIEventListener() {
 			public void invoke(Object sender, mxEventObject evt) {
 				Object tmp = evt.getProperty("transferable");
 
@@ -140,16 +155,19 @@ public class GraphEditor extends BasicGraphEditor {
 		// .getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 		// "label;image=/com/mxgraph/examples/swing/images/gear.png",
 		// 130, 50, "Label");
-		shapesPalette.addTemplate("Listener",
+		basicPalette.addTemplate("Listener",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rectangle.png")), null,
 				160, 120, listener);
-		shapesPalette.addTemplate("Socks",
+		basicPalette.addTemplate("Socks",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, socks);
-		shapesPalette.addTemplate("Handler",
+		basicPalette.addTemplate("Handler",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, handler);
-		shapesPalette.addTemplate("Relay",
+		basicPalette.addTemplate("Script",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, scriptHandler);
+		basicPalette.addTemplate("Relay",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
 				"rectangle;shape=doubleRectangle", 160, 120, relay);
 		// shapesPalette
@@ -194,7 +212,7 @@ public class GraphEditor extends BasicGraphEditor {
 		// GraphEditor.class
 		// .getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
 		// "shape=hexagon", 160, 120, "");
-		shapesPalette.addTemplate("Sink",
+		basicPalette.addTemplate("Sink",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/cylinder.png")),
 				"shape=cylinder", 120, 160, sink);
 		// shapesPalette
@@ -441,6 +459,16 @@ public class GraphEditor extends BasicGraphEditor {
 		// .getResource("/com/mxgraph/examples/swing/images/timer.png")),
 		// "roundImage;image=/com/mxgraph/examples/swing/images/timer.png",
 		// 80, 80, "Timer");
+		protocolPalette.addTemplate("HttpServerCodec",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));
+		protocolPalette.addTemplate("HttpClientCodec",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpClientCodec"));
+		protocolPalette.addTemplate("HttpMessageAggregator",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "10240"));
+
 	}
 
 	/**
