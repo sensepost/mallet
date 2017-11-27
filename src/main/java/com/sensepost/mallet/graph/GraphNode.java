@@ -1,7 +1,6 @@
 package com.sensepost.mallet.graph;
 
 import java.io.Serializable;
-import java.util.Arrays;
 
 public class GraphNode implements Serializable {
 
