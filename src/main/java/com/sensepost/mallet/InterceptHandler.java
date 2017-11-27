@@ -109,6 +109,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		cause.printStackTrace();
 		if (!ignoreException(cause))
 			ensureUpstreamConnectedAndFire(ctx, createChannelExceptionEvent(ctx, cause));
 		else {
@@ -161,7 +162,6 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-		System.out.println("Pipeline is " + ctx.channel().pipeline());
 		ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
 	}
 

@@ -63,6 +63,7 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			try {
 				ctx.pipeline().addAfter(name, null, handlers[i]);
 			} catch (Exception e) {
+				ctx.fireExceptionCaught(e);
 				Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 				ctx.close();
 				if (ch != null && ch.isOpen())
