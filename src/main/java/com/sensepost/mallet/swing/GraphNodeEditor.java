@@ -89,8 +89,6 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		addressTextField = new JTextField();
 		addressPanel.add(addressTextField, BorderLayout.CENTER);
 
-		System.out.println("Address panel preferred size = " + addressPanel.getPreferredSize());
-		
 		parameterPanel = new JPanel();
 		parameterPanel.setLayout(new BorderLayout(0, 0));
 
@@ -153,8 +151,6 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 			}
 		});
 		panel_1.add(moveParameterDownButton);
-
-		System.out.println("Parameter panel preferred size = " + parameterPanel.getPreferredSize());
 
 		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 
