@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
@@ -16,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.WeakHashMap;
+
+import javax.script.Bindings;
+import javax.script.ScriptContext;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -34,7 +38,6 @@ import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
-import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.InterceptHandler;
 import com.sensepost.mallet.RelayHandler;
 
@@ -54,8 +57,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
-import io.netty.handler.ssl.SslContext;
-import io.netty.util.Mapping;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 public class Graph implements GraphLookup {
@@ -66,19 +67,15 @@ public class Graph implements GraphLookup {
 
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
-	private Map<String, Object> api = new HashMap<>();
 
 	private ChannelGroup channels = null;
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
-	public Graph(mxGraph graph, Mapping<? super String, ? extends SslContext> serverCertMapping, SslContext clientContext) {
-		this.graph = graph;
-		api.put("SSLServerCertificateMap", serverCertMapping);
-		api.put("SSLClientContext", clientContext);
-	}
+	private Bindings scriptContext;
 
-	public void setInterceptController(InterceptController ic) {
-		api.put("InterceptController", ic);
+	public Graph(mxGraph graph, Bindings scriptContext) {
+		this.graph = graph;
+		this.scriptContext = scriptContext;
 	}
 
 	public mxGraph getGraph() {
@@ -188,7 +185,7 @@ public class Graph implements GraphLookup {
 		}
 		throw new RuntimeException("Could not parse '" + sa + "' as an InetSocketAddress");
 	}
-	
+
 	private Class<? extends ServerChannel> getServerClass(String className) throws ClassNotFoundException {
 		Class<?> clazz = Class.forName(className);
 		if (ServerChannel.class.isAssignableFrom(clazz))
@@ -210,6 +207,13 @@ public class Graph implements GraphLookup {
 
 	private ChannelHandler[] getChannelHandlers(Object o)
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		// FIXME: Add a handler to catch exceptions and link them back to the graph node
+		// By inserting an exception catching handler after each "node", we can wrap the
+		// exception with a "GraphNodeException" that contains a reference to the graph node
+		// that threw the exception. When it reaches the end of the pipeline, we can then 
+		// annotate the graph to show where the exception was thrown. This is useful in 
+		// cases where you may have more than one of a particular handler in the graph
+		// e.g. multiple SSLHandler's (client and server, for example)
 		List<ChannelHandler> handlers = new ArrayList<ChannelHandler>();
 		do {
 			if (graph.getModel().isEdge(o))
@@ -239,12 +243,68 @@ public class Graph implements GraphLookup {
 		return handlers.toArray(new ChannelHandler[handlers.size()]);
 	}
 
+	private Object[] getArgumentInstances(String[] arguments, Parameter[] parameters)
+			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		Object[] args = new Object[arguments.length];
+		for (int i = 0; i < parameters.length; i++) {
+			args[i] = getClassInstance(arguments[i], parameters[i].getType(), null);
+		}
+		return args;
+	}
+
 	private Object getClassInstance(String description, Class<?> type, String[] arguments)
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		if (arguments == null)
+			arguments = new String[0];
+
 		// See if it is a defined internal object
-		if (description.startsWith("{") && description.endsWith("}"))
-			return api.get(description.substring(1, description.length() - 1));
-		// See if it is an basic type that can easily be converted from a String
+		if (description.startsWith("{")) {
+			String obj = null;
+			int b = description.indexOf('}');
+			if (b > -1)
+				obj = description.substring(1, b);
+			if (obj == null)
+				throw new RuntimeException("Unable to parse '" + description + "'");
+			Object internal = scriptContext.get(obj);
+			if (b < description.length() - 2 && description.charAt(b + 1) == '.') {
+				String method = description.substring(b + 2);
+				Method[] methods = internal.getClass().getMethods();
+				for (Method m : methods) {
+					if (m.getName().equals(method) && type.isAssignableFrom(m.getReturnType())
+							&& m.getParameterCount() == arguments.length) {
+						try {
+							Object[] args = getArgumentInstances(arguments, m.getParameters());
+							return m.invoke(internal, args);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+			if (!type.isAssignableFrom(internal.getClass()))
+				throw new InstantiationException(
+						"Wanted a " + type + ", but cannot assign from " + internal.getClass());
+
+			return internal;
+		}
+		// try to return a static field of a class
+		try {
+			int dot = description.lastIndexOf('.');
+			if (dot > 0) {
+				String clsname = description.substring(0, dot);
+				String fieldName = description.substring(dot + 1);
+				Class<?> clz = Class.forName(clsname);
+				Field f = clz.getField(fieldName);
+				if (Modifier.isStatic(f.getModifiers())) {
+					Object instance = f.get(null);
+					if (instance != null && type.isAssignableFrom(instance.getClass()))
+						return instance;
+				}
+			}
+		} catch (ClassNotFoundException | NoSuchFieldException e) {
+			System.out.println(description + " is not a static field: " + e.getMessage());
+		}
+		// See if it is a basic type that can easily be converted from a String
 		if (type.equals(String.class)) {
 			return description;
 		} else if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
@@ -254,41 +314,22 @@ public class Graph implements GraphLookup {
 		try {
 			Class<?> clz = Class.forName(description);
 			if (type.isAssignableFrom(clz)) {
-				if (arguments == null || arguments.length == 0)
-					return clz.newInstance();
 				Constructor<?>[] constructors = clz.getConstructors();
 				for (Constructor<?> c : constructors) {
+					Object[] args = null;
 					try {
 						if (c.getParameterCount() == arguments.length) {
-							Object[] args = new Object[arguments.length];
-							Parameter[] parameters = c.getParameters();
-							for (int i = 0; i < parameters.length; i++) {
-								args[i] = getClassInstance(arguments[i], parameters[i].getType(), null);
-							}
+							args = getArgumentInstances(arguments, c.getParameters());
 							return c.newInstance(args);
 						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						System.out.println("Can't instatiate " + description + "(" + Arrays.toString(args) + ") using " + c + ": " + e.getMessage());
 					}
 				}
 			} else
 				throw new RuntimeException(description + " exists, but does not implement " + type.getName());
 		} catch (ClassNotFoundException cnfe) {
-		}
-		// try to return a static field of a class
-		try {
-			int dot = description.lastIndexOf('.');
-			String clsname = description.substring(0, dot);
-			String fieldName = description.substring(dot + 1);
-			Class<?> clz = Class.forName(clsname);
-			Field f = clz.getField(fieldName);
-			if (Modifier.isStatic(f.getModifiers())) {
-				Object instance = f.get(null);
-				if (instance != null && type.isAssignableFrom(instance.getClass()))
-					return instance;
-			}
-		} catch (ClassNotFoundException cnfe) {
-		} catch (NoSuchFieldException nsfe) {
+			System.out.println(description + " could not be instantiated as a class");
 		}
 		throw new ClassNotFoundException("'" + description + "' not found");
 	}
@@ -412,11 +453,15 @@ public class Graph implements GraphLookup {
 
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
-			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
-			GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
-			ch.attr(ChannelAttributes.GRAPH).set(gl);
-			ch.pipeline().addFirst(new ConnectionNumberChannelHandler());
-			ch.pipeline().addLast(handlers);
+			try {
+				ChannelHandler[] handlers = getChannelHandlers(serverEdge);
+				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
+				ch.attr(ChannelAttributes.GRAPH).set(gl);
+				ch.pipeline().addFirst(new ConnectionNumberChannelHandler());
+				ch.pipeline().addLast(handlers);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 
 	}

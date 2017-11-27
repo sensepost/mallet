@@ -122,7 +122,6 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		if (graph == null)
 			throw new NullPointerException("graph");
 		this.graph = graph;
-		graph.setInterceptController(this);
 		this.graphComponent.setGraph(graph.getGraph());
 	}
 

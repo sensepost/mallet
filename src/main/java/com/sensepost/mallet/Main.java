@@ -12,13 +12,20 @@ import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.security.Key;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.cert.Certificate;
+import java.util.Arrays;
 
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.X509KeyManager;
+import javax.script.Bindings;
+import javax.script.SimpleBindings;
 import javax.security.auth.x500.X500Principal;
 
 import com.mxgraph.swing.mxGraphComponent;
 import com.sensepost.mallet.graph.Graph;
 import com.sensepost.mallet.ssl.AutoGeneratingContextSelector;
+import com.sensepost.mallet.ssl.KeyStoreX509KeyManager;
 import com.sensepost.mallet.swing.GraphEditor.CustomGraph;
 import com.sensepost.mallet.swing.GraphEditor.CustomGraphComponent;
 import com.sensepost.mallet.swing.InterceptFrame;
@@ -26,8 +33,11 @@ import com.sensepost.mallet.swing.InterceptFrame;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.util.Mapping;
 
 public class Main {
+
+	private final static char[] PASSWORD = "password".toCharArray();
 
 	private static boolean initFromP12(KeyStore keyStore, File ca, char[] password, char[] keyPassword) {
 		if (!ca.exists())
@@ -57,79 +67,88 @@ public class Main {
 		}
 	}
 
-	private static AutoGeneratingContextSelector getServerSslContextSelector()
+	private static AutoGeneratingContextSelector getServerSslContextSelector(KeyStore keystore)
 			throws GeneralSecurityException, IOException {
-		File ks = new File("keystore.jks");
-		char[] password = "password".toCharArray();
-		KeyStore keyStore = KeyStore.getInstance("JKS");
-		if (!ks.exists()) {
-			AutoGeneratingContextSelector selector = null;
-			if (!initFromP12(keyStore, new File("ca.p12"), password, password)) {
-				keyStore.load(null, password);
-				System.err.println("Generating a new CA");
-				X500Principal ca = new X500Principal(
-						"cn=OWASP Custom CA for " + java.net.InetAddress.getLocalHost().getHostName()
-								+ ",ou=OWASP Custom CA,o=OWASP,l=OWASP,st=OWASP,c=OWASP");
-				selector = new AutoGeneratingContextSelector(ca, keyStore, password);
-			} else {
-				selector = new AutoGeneratingContextSelector(keyStore, password);
-			}
-			OutputStream out = new FileOutputStream(ks);
-			try {
-				keyStore.store(out, password);
-			} finally {
-				out.close();
-			}
-			File pem = new File("ca.pem");
-			if (!pem.exists()) {
-				FileWriter w = null;
-				try {
-					w = new FileWriter(pem);
-					w.write(selector.getCACert());
-				} catch (IOException e) {
-					System.err.println("Error exporting CA cert : " + e.getLocalizedMessage());
-				} finally {
-					if (w != null)
-						w.close();
+		return new AutoGeneratingContextSelector(keystore, PASSWORD);
+	}
+
+	private static KeyStore loadOrInitKeyStore(String location) throws GeneralSecurityException {
+		try {
+			File ks = new File("keystore.jks");
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			if (!ks.exists()) {
+				AutoGeneratingContextSelector selector = null;
+				if (!initFromP12(keyStore, new File("ca.p12"), PASSWORD, PASSWORD)) {
+					keyStore.load(null, PASSWORD);
+					System.err.println("Generating a new CA");
+					X500Principal ca = new X500Principal(
+							"cn=OWASP Custom CA for " + java.net.InetAddress.getLocalHost().getHostName()
+									+ ",ou=OWASP Custom CA,o=OWASP,l=OWASP,st=OWASP,c=OWASP");
+					selector = new AutoGeneratingContextSelector(ca, keyStore, PASSWORD);
 				}
-			}
-			return selector;
-		}
-		if (ks.exists()) {
-			try {
+				OutputStream out = new FileOutputStream(ks);
+				try {
+					keyStore.store(out, PASSWORD);
+				} finally {
+					out.close();
+				}
+				File pem = new File("ca.pem");
+				if (!pem.exists()) {
+					FileWriter w = null;
+					try {
+						w = new FileWriter(pem);
+						w.write(selector.getCACert());
+					} catch (IOException e) {
+						System.err.println("Error exporting CA cert : " + e.getLocalizedMessage());
+					} finally {
+						if (w != null)
+							w.close();
+					}
+				}
+				return keyStore;
+			} else {
 				InputStream in = new FileInputStream(ks);
-				keyStore.load(in, password);
-				return new AutoGeneratingContextSelector(keyStore, password);
-			} catch (GeneralSecurityException e) {
-				System.err.println("Error loading keystore: " + e.getLocalizedMessage());
-			} catch (IOException e) {
-				System.err.println("Error loading keystore: " + e.getLocalizedMessage());
+				keyStore.load(in, PASSWORD);
+				return keyStore;
 			}
+		} catch (KeyStoreException | IOException e) {
+			throw new GeneralSecurityException("Could not initialise Server SSL ContextSelector", e);
 		}
-		throw new GeneralSecurityException("Could not initialise Server SSL ContextSelector");
 	}
 
 	public static void main(String[] args) throws Exception {
-		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
-		InterceptFrame ui = new InterceptFrame(graphComponent);
-		ui.setSize(800, 600);
+		final KeyStore ks = loadOrInitKeyStore("keystore.jks");
+
+		final AutoGeneratingContextSelector serverCertMapping = getServerSslContextSelector(ks);
 
 		final SslContext clientContext = SslContextBuilder.forClient()
 				.trustManager(InsecureTrustManagerFactory.INSTANCE).build();
 
-		final AutoGeneratingContextSelector serverCertMapping = getServerSslContextSelector();
+		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
+		InterceptFrame ui = new InterceptFrame(graphComponent);
+		ui.setSize(800, 600);
 
 		ui.addWindowStateListener(new WindowStateListener() {
 			@Override
 			public void windowStateChanged(WindowEvent arg0) {
 				try {
-					serverCertMapping.save(new File("keystore.jks"), "password".toCharArray());
+					ks.store(new FileOutputStream("keystore.jks"), PASSWORD);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 		});
-		Graph graph = new Graph(graphComponent.getGraph(), serverCertMapping, clientContext);
+
+		Bindings scriptContext = new SimpleBindings();
+
+		scriptContext.put("SSLServerCertificateMap", serverCertMapping);
+		scriptContext.put("SSLClientContext", clientContext);
+		scriptContext.put("InterceptController", ui);
+
+		X509KeyManager clientKeyManager = new KeyStoreX509KeyManager(ks, PASSWORD);
+		scriptContext.put("SSLClientKeyManager", clientKeyManager);
+
+		Graph graph = new Graph(graphComponent.getGraph(), scriptContext);
 		ui.setGraph(graph);
 		ui.setVisible(true);
 	}
