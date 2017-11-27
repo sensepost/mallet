@@ -8,8 +8,6 @@ import java.net.URL;
 import java.text.NumberFormat;
 import java.util.EventObject;
 import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.List;
 
 import javax.swing.ImageIcon;
 import javax.swing.UIManager;
@@ -36,7 +34,6 @@ import com.mxgraph.util.mxDomUtils;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
-import com.mxgraph.util.mxPoint;
 import com.mxgraph.util.mxResources;
 import com.mxgraph.util.mxUtils;
 import com.mxgraph.view.mxCellState;
@@ -104,6 +101,8 @@ public class GraphEditor extends BasicGraphEditor {
 		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.InterceptHandler", 
 				"{InterceptController}");
 
+		Element targetHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
+		
 		Element sink = xmlDocument.createElement("Sink");
 
 		// Creates the shapes palette
@@ -205,13 +204,9 @@ public class GraphEditor extends BasicGraphEditor {
 		// GraphEditor.class
 		// .getResource("/com/mxgraph/examples/swing/images/hline.png")),
 		// "line", 160, 10, "");
-		// shapesPalette
-		// .addTemplate(
-		// "Hexagon",
-		// new ImageIcon(
-		// GraphEditor.class
-		// .getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
-		// "shape=hexagon", 160, 120, "");
+		basicPalette.addTemplate("TargetSpecific",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+				"shape=hexagon", 160, 120, targetHandler);
 		basicPalette.addTemplate("Sink",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/cylinder.png")),
 				"shape=cylinder", 120, 160, sink);
@@ -459,6 +454,14 @@ public class GraphEditor extends BasicGraphEditor {
 		// .getResource("/com/mxgraph/examples/swing/images/timer.png")),
 		// "roundImage;image=/com/mxgraph/examples/swing/images/timer.png",
 		// 80, 80, "Timer");
+		
+		protocolPalette.addTemplate("SSL Server",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.ssl.SniHandler", "{SSLServerCertificateMap}"));
+		protocolPalette.addTemplate("SSL Client",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "{SSLClientContext}.newHandler", "io.netty.buffer.PooledByteBufAllocator.DEFAULT"));
+
 		protocolPalette.addTemplate("HttpServerCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));
