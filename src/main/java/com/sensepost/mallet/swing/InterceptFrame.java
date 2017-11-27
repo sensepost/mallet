@@ -23,6 +23,8 @@ import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.graph.Graph;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
 public class InterceptFrame extends JFrame implements InterceptController {
@@ -128,8 +130,12 @@ public class InterceptFrame extends JFrame implements InterceptController {
 	@Override
 	public void addChannelEvent(final ChannelEvent evt) throws Exception {
 		if (evt instanceof ChannelReadEvent) {
-			Object o = ((ChannelReadEvent) evt).getMessage();
-			ReferenceCountUtil.retain(o);
+			ChannelReadEvent e = (ChannelReadEvent) evt;
+			Object o = e.getMessage();
+			if (o instanceof ByteBuf) {
+				ByteBuf bb = (ByteBuf) o;
+				e.setMessage(Unpooled.unreleasableBuffer(bb));
+			}
 		}
 		SwingUtilities.invokeAndWait(new Runnable() {
 			public void run() {
