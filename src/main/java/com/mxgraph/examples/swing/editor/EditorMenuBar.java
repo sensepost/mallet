@@ -1,22 +1,9 @@
 package com.mxgraph.examples.swing.editor;
 
-import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.util.ArrayList;
-
-import javax.swing.AbstractAction;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.TransferHandler;
 
-import com.mxgraph.analysis.StructuralException;
-import com.mxgraph.analysis.mxAnalysisGraph;
-import com.mxgraph.analysis.mxGraphProperties;
-import com.mxgraph.analysis.mxGraphProperties.GraphType;
-import com.mxgraph.analysis.mxGraphStructure;
-import com.mxgraph.analysis.mxTraversal;
-import com.mxgraph.costfunction.mxCostFunction;
 import com.mxgraph.examples.swing.editor.EditorActions.AlignCellsAction;
 import com.mxgraph.examples.swing.editor.EditorActions.AutosizeAction;
 import com.mxgraph.examples.swing.editor.EditorActions.ColorAction;
@@ -34,13 +21,10 @@ import com.mxgraph.examples.swing.editor.EditorActions.StyleAction;
 import com.mxgraph.examples.swing.editor.EditorActions.ToggleAction;
 import com.mxgraph.examples.swing.editor.EditorActions.ToggleOutlineItem;
 import com.mxgraph.examples.swing.editor.EditorActions.ZoomPolicyAction;
-import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxGraphActions;
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.util.mxResources;
-import com.mxgraph.view.mxGraph;
-import com.mxgraph.view.mxGraphView;
 
 public class EditorMenuBar extends JMenuBar
 {
@@ -57,9 +41,9 @@ public class EditorMenuBar extends JMenuBar
 
 	public EditorMenuBar(final BasicGraphEditor editor)
 	{
-		final mxGraphComponent graphComponent = editor.getGraphComponent();
-		final mxGraph graph = graphComponent.getGraph();
-		mxAnalysisGraph aGraph = new mxAnalysisGraph();
+//		final mxGraphComponent graphComponent = editor.getGraphComponent();
+//		final mxGraph graph = graphComponent.getGraph();
+//		mxAnalysisGraph aGraph = new mxAnalysisGraph();
 
 		JMenu menu = null;
 		JMenu submenu = null;
