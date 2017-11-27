@@ -1,7 +1,5 @@
 package com.sensepost.mallet;
 
-import java.net.SocketAddress;
-
 import com.sensepost.mallet.graph.GraphLookup;
 
 import io.netty.bootstrap.Bootstrap;
@@ -14,7 +12,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
