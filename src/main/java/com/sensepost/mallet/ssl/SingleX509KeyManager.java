@@ -1,8 +1,13 @@
 package com.sensepost.mallet.ssl;
 
 import java.net.Socket;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.PrivateKey;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 
 import javax.net.ssl.SSLEngine;
@@ -17,12 +22,18 @@ public class SingleX509KeyManager extends X509ExtendedKeyManager {
 	private X509Certificate[] certs;
 
 	public SingleX509KeyManager(String alias, PrivateKey pk,
-			X509Certificate[] certs) {
+			Certificate[] certs) {
 		this.alias = alias;
 		this.pk = pk;
 		this.certs = copy(certs);
 	}
 
+	public SingleX509KeyManager(KeyStore ks, char[] password, String alias)
+			throws UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException {
+		this.alias = alias;
+		this.pk = (PrivateKey) ks.getKey(alias, password);
+		this.certs = copy(ks.getCertificateChain(alias));
+	}
 	
 	@Override
 	public String chooseEngineClientAlias(String[] paramArrayOfString,
@@ -64,7 +75,7 @@ public class SingleX509KeyManager extends X509ExtendedKeyManager {
 		return new String[] { alias };
 	}
 
-	private X509Certificate[] copy(X509Certificate[] certs) {
+	private X509Certificate[] copy(Certificate[] certs) {
 		if (certs == null)
 			return null;
 		X509Certificate[] copy = new X509Certificate[certs.length];
