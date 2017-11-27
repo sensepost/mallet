@@ -11,10 +11,10 @@
     <version>1.0-SNAPSHOT</version>
     <name>mallet</name>
     <properties>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
-        <maven.compiler.testSource>1.7</maven.compiler.testSource>
-        <maven.compiler.testTarget>1.7</maven.compiler.testTarget>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.testSource>1.8</maven.compiler.testSource>
+        <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 	<repositories>
@@ -27,7 +27,7 @@
     	<dependency>
     		<groupId>io.netty</groupId>
     		<artifactId>netty-all</artifactId>
-    		<version>4.1.11.Final</version>
+    		<version>4.1.16.Final</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
