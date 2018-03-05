@@ -8,6 +8,7 @@ import javax.swing.ListModel;
 import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelEvent;
 import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelReadEvent;
 
 public class ConnectionData {
 
@@ -15,16 +16,13 @@ public class ConnectionData {
 	private BitSet pending = new BitSet();
 	private int closed = 0;
 	
-	public ConnectionData() {
-	}
-	
 	public void addChannelEvent(ChannelEvent e) throws Exception {
 		events.addElement(e);
 		int n = events.size() - 1;
 		pending.set(n);
 		if ((e instanceof ChannelActiveEvent) && pending.nextSetBit(0) == n) {
 			e.execute();
-			pending.clear(events.size());
+			pending.clear(n);
 		}
 		if (e instanceof ChannelInactiveEvent) {
 			closed++;
@@ -67,8 +65,13 @@ public class ConnectionData {
 			ChannelEvent e = events.elementAt(n);
 			try {
 				pending.clear(n);
-				if (execute)
+				if (execute) {
+					if (e instanceof ChannelReadEvent) {
+						ChannelReadEvent cre = (ChannelReadEvent) e;
+						events.set(n, cre);
+					}
 					e.execute();
+				}
 				events.set(n, events.get(n)); // trigger an update event
 			} catch (Exception ex) {
 				ex.printStackTrace();
@@ -94,4 +97,5 @@ public class ConnectionData {
 	public ListModel<ChannelEvent> getEvents() {
 		return events;
 	}
+	
 }

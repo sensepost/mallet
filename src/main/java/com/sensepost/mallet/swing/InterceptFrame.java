@@ -27,7 +27,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
-public class InterceptFrame extends JFrame implements InterceptController {
+public class InterceptFrame extends JFrame {
 
 	private JCheckBoxMenuItem interceptMenuItem;
 	private ConnectionPanel connectionPanel;
@@ -127,25 +127,8 @@ public class InterceptFrame extends JFrame implements InterceptController {
 		this.graphComponent.setGraph(graph.getGraph());
 	}
 
-	@Override
-	public void addChannelEvent(final ChannelEvent evt) throws Exception {
-		if (evt instanceof ChannelReadEvent) {
-			ChannelReadEvent e = (ChannelReadEvent) evt;
-			Object o = e.getMessage();
-			if (o instanceof ByteBuf) {
-				ByteBuf bb = (ByteBuf) o;
-				e.setMessage(Unpooled.unreleasableBuffer(bb));
-			}
-		}
-		SwingUtilities.invokeAndWait(new Runnable() {
-			public void run() {
-				try {
-					connectionPanel.addChannelEvent(evt);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
+	public InterceptController getInterceptController() {
+		return connectionPanel;
 	}
 
 	protected JCheckBoxMenuItem getInterceptMenuItem() {

@@ -1,5 +1,8 @@
 package com.sensepost.mallet.swing;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.socket.ChannelInputShutdownEvent;
+
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
@@ -31,9 +34,6 @@ import com.sensepost.mallet.InterceptController.ChannelUserEvent;
 import com.sensepost.mallet.InterceptController.Direction;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.socket.ChannelInputShutdownEvent;
 
 public class ConnectionDataPanel extends JPanel {
 
@@ -301,4 +301,5 @@ public class ConnectionDataPanel extends JPanel {
 		}
 
 	}
+	
 }

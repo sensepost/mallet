@@ -121,7 +121,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		}
 	}
 
-	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, Throwable cause) {
+	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, final Throwable cause) {
 		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		Direction direction = Direction.Client_Server;
@@ -133,7 +133,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doExceptionCaught(ctx, getCause());
+				doExceptionCaught(ctx, cause);
 			}
 		};
 	}
@@ -166,23 +166,24 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelActiveEvent(final ChannelHandlerContext ctx) {
-		SocketAddress src, dst;
+		SocketAddress remote, local;
+		if (ctx == null)
+			throw new NullPointerException("ctx");
+		if (ctx.channel() == null)
+			throw new NullPointerException("ctx.channel()");
+		if (ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER) == null)
+			throw new NullPointerException("ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER)");
 		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		Direction direction = Direction.Client_Server;
-		if (connection != null) {
-			src = ctx.channel().remoteAddress();
-			if (ch != null && ch.remoteAddress() != null)
-				dst = ch.remoteAddress();
-			else
-				dst = ctx.channel().localAddress();
-		} else {
-			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-			direction = Direction.Server_Client;
-			src = ch.remoteAddress();
-			dst = ctx.channel().remoteAddress();
-		}
-		return new ChannelActiveEvent(connection, direction, src, dst) {
+		Direction direction = connection != null ? Direction.Client_Server : Direction.Server_Client;
+		if (connection == null)
+			connection = ctx.channel().attr(ChannelAttributes.CHANNEL).get().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		remote = ctx.channel().remoteAddress();
+		local = ctx.channel().localAddress();
+		if (remote == null)
+			throw new NullPointerException("remote");
+		if (local == null)
+			throw new NullPointerException("local");
+		return new ChannelActiveEvent(connection, direction, remote, local) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();

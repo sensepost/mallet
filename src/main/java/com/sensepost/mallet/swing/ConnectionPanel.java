@@ -17,13 +17,14 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelEvent;
+import com.sensepost.mallet.InterceptController;
+import com.sensepost.mallet.persistence.MessageDAO;
 
-public class ConnectionPanel extends JPanel {
+public class ConnectionPanel extends JPanel implements InterceptController {
 
 	private ConnectionDataPanel cdp;
 
@@ -34,6 +35,7 @@ public class ConnectionPanel extends JPanel {
 	private Map<Integer, ConnectionData> channelEventMap = new LinkedHashMap<>();
 
 	private boolean intercept = false;
+	private MessageDAO dao = null;
 	
 	public ConnectionPanel() {
 		setLayout(new BorderLayout(0, 0));
@@ -79,19 +81,41 @@ public class ConnectionPanel extends JPanel {
 		}
 	}
 
-	public void addChannelEvent(ChannelEvent evt) throws Exception {
+	public void setMessageDAO(MessageDAO dao) {
+		this.dao = dao;
+	}
+	
+	@Override
+	public void addChannelEvent(final ChannelEvent evt) throws Exception {
+		if (evt instanceof ChannelReadEvent && dao != null) {
+			((ChannelReadEvent) evt).setDao(dao);
+		}
+		
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					addChannelEventEDT(evt);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+	
+	private void addChannelEventEDT(ChannelEvent evt) throws Exception {
 		Integer cp = evt.getConnectionIdentifier();
 
 		if (evt instanceof ChannelActiveEvent) {
 			ChannelActiveEvent cae = (ChannelActiveEvent) evt;
-			SocketAddress src = cae.getSourceAddress();
-			SocketAddress dst = cae.getDestinationAddress();
-			AddrPair ap = new AddrPair(src, dst);
+			SocketAddress remote = cae.getRemoteAddress();
+			SocketAddress local = cae.getLocalAddress();
 			synchronized (connAddrMap) {
-				if (connAddrMap.get(cp) == null)
+				if (connAddrMap.get(cp) == null) {
+					AddrPair ap = new AddrPair(remote, local);
 					connAddrMap.put(cp, ap);
-				else
-					connAddrMap.get(cp).dst = cae.getSourceAddress();
+				} else {
+					connAddrMap.get(cp).dst = remote;
+				}
 			}	
 		}
 		
@@ -170,6 +194,7 @@ public class ConnectionPanel extends JPanel {
 
 			AddrPair ap = connAddrMap.get(value);
 			String text = value + " : " + ap.src + " -> " + ap.dst;
+			
 			ConnectionData cd = channelEventMap.get(value);
 			text += " (" + cd.getPendingEventCount() + "/" + cd.getEventCount() + ")";
 			if (cd.isClosed())

@@ -1,9 +1,15 @@
 package com.sensepost.mallet;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.SocketAddress;
+
+import com.sensepost.mallet.persistence.MessageDAO;
 
 public interface InterceptController {
 
+	void setMessageDAO(MessageDAO dao);
+	
 	void addChannelEvent(ChannelEvent evt) throws Exception;
 
 	public enum Direction {
@@ -13,18 +19,25 @@ public interface InterceptController {
 	public class ChannelEvent {
 
 		private long eventTime, executionTime = -1;
-		private int connection_number;
+		private int connectionNumber;
 		private Direction direction;
-		private boolean executed = false;
+		private Throwable previousExecution = null;
 
+		public ChannelEvent(int connection, Direction direction, long eventTime, long executionTime) {
+			this.connectionNumber = connection;
+			this.direction = direction;
+			this.eventTime = eventTime;
+			this.executionTime = executionTime;
+		}
+		
 		public ChannelEvent(int connection, Direction direction) {
-			this.connection_number = connection;
+			this.connectionNumber = connection;
 			this.direction = direction;
 			this.eventTime = System.currentTimeMillis();
 		}
 
 		public int getConnectionIdentifier() {
-			return connection_number;
+			return connectionNumber;
 		}
 
 		public long getEventTime() {
@@ -36,12 +49,16 @@ public interface InterceptController {
 		}
 
 		public void execute() throws Exception {
-			executed = true;
-			executionTime = System.currentTimeMillis();
+			if (!isExecuted()) {
+				executionTime = System.currentTimeMillis();
+				previousExecution = new RuntimeException("Executed by");
+			}
+			else 
+				throw new IllegalStateException("Already executed!", previousExecution);
 		}
 
 		public boolean isExecuted() {
-			return executed;
+			return executionTime != -1;
 		}
 		
 		public long getExecutionTime() {
@@ -51,24 +68,34 @@ public interface InterceptController {
 
 	public abstract class ChannelActiveEvent extends ChannelEvent {
 
-		private SocketAddress src, dst;
+		private SocketAddress remote, local;
 
-		public ChannelActiveEvent(int connection, Direction direction, SocketAddress src, SocketAddress dst) {
+		public ChannelActiveEvent(int connection, Direction direction, long eventTime, long executionTime, SocketAddress remote, SocketAddress local) {
+			super(connection, direction, eventTime, executionTime);
+			this.remote = remote;
+			this.local = local;
+		}
+		
+		public ChannelActiveEvent(int connection, Direction direction, SocketAddress remote, SocketAddress local) {
 			super(connection, direction);
-			this.src = src;
-			this.dst = dst;
+			this.remote = remote;
+			this.local = local;
 		}
 
-		public SocketAddress getSourceAddress() {
-			return src;
+		public SocketAddress getRemoteAddress() {
+			return remote;
 		}
 
-		public SocketAddress getDestinationAddress() {
-			return dst;
+		public SocketAddress getLocalAddress() {
+			return local;
 		}
 	}
 
 	public abstract class ChannelInactiveEvent extends ChannelEvent {
+		public ChannelInactiveEvent(int connection, Direction direction, long eventTime, long executionTime) {
+			super(connection, direction, eventTime, executionTime);
+		}
+		
 		public ChannelInactiveEvent(int connection, Direction direction) {
 			super(connection, direction);
 		}
@@ -76,14 +103,21 @@ public interface InterceptController {
 
 	public abstract class ChannelExceptionEvent extends ChannelEvent {
 
-		private Throwable cause;
+		private String cause;
 
-		public ChannelExceptionEvent(int connection, Direction direction, Throwable cause) {
-			super(connection, direction);
+		public ChannelExceptionEvent(int connection, Direction direction, long eventTime, long executionTime, String cause) {
+			super(connection, direction, eventTime, executionTime);
 			this.cause = cause;
 		}
+		
+		public ChannelExceptionEvent(int connection, Direction direction, Throwable cause) {
+			super(connection, direction);
+			StringWriter sw = new StringWriter();
+			cause.printStackTrace(new PrintWriter(sw));
+			this.cause = sw.toString();
+		}
 
-		public Throwable getCause() {
+		public String getCause() {
 			return cause;
 		}
 
@@ -92,18 +126,45 @@ public interface InterceptController {
 	public abstract class ChannelReadEvent extends ChannelEvent {
 
 		private Object msg;
+		private MessageDAO dao = null;
+		private String messageId = null;
+		
+		public ChannelReadEvent(int connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
+			super(connection, direction, eventTime, executionTime);
+			this.dao = dao;
+			this.messageId = messageId;
+		}
 		
 		public ChannelReadEvent(int connection, Direction direction, Object msg) {
 			super(connection, direction);
-			this.msg = msg;
+			setMessage(msg);
 		}
 		
 		public Object getMessage() {
+			if (msg == null && dao != null && messageId != null)
+				return dao.readObject(messageId);
 			return msg;
 		}
 		
 		public void setMessage(Object msg) {
+			if (dao != null && msg != null)
+				this.messageId = dao.writeObject(msg);
 			this.msg = msg;
+		}
+		
+		public void setDao(MessageDAO dao) {
+			messageId = dao.writeObject(getMessage());
+			this.dao = dao;
+		}
+		
+		public String getMessageId() {
+			return messageId;
+		}
+		
+		public void execute() throws Exception {
+			super.execute();
+			if (messageId != null)
+				msg = null;
 		}
 	}
 
@@ -111,6 +172,11 @@ public interface InterceptController {
 
 		private Object evt;
 
+		public ChannelUserEvent(int connection, Direction direction, long eventTime, long executionTime, Object evt) {
+			super(connection, direction, eventTime, executionTime);
+			this.evt = evt;
+		}
+		
 		public ChannelUserEvent(int connection, Direction direction, Object evt) {
 			super(connection, direction);
 			this.evt = evt;
