@@ -27,17 +27,22 @@
     	<dependency>
     		<groupId>io.netty</groupId>
     		<artifactId>netty-all</artifactId>
-    		<version>4.1.16.Final</version>
+    		<version>4.1.22.Final</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
     		<artifactId>bcprov-jdk15on</artifactId>
-    		<version>1.52</version>
+    		<version>1.59</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
     		<artifactId>bcpkix-jdk15on</artifactId>
-    		<version>1.52</version>
+    		<version>1.59</version>
+    	</dependency>
+    	<dependency>
+    		<groupId>org.bouncycastle</groupId>
+    		<artifactId>bctls-jdk15on</artifactId>
+    		<version>1.59</version>
     	</dependency>
         <dependency>
             <groupId>org.springframework</groupId>
