@@ -200,10 +200,10 @@ public class EditorMenuBar extends JMenuBar
 
 		menu.add(editor.bind(mxResources.get("actualSize"), mxGraphActions.getZoomActualAction()));
 
-		// Creates the format menu
-		menu = add(new JMenu(mxResources.get("format")));
-
-		populateFormatMenu(menu, editor);
+//		// Creates the format menu
+//		menu = add(new JMenu(mxResources.get("format")));
+//
+//		populateFormatMenu(menu, editor);
 
 //		// Creates the shape menu
 //		menu = add(new JMenu(mxResources.get("shape")));
