@@ -91,58 +91,58 @@ public class EditorToolBar extends JToolBar
 
 		// Gets the list of available fonts from the local graphics environment
 		// and adds some frequently used fonts at the beginning of the list
-		GraphicsEnvironment env = GraphicsEnvironment
-				.getLocalGraphicsEnvironment();
-		List<String> fonts = new ArrayList<String>();
-		fonts.addAll(Arrays.asList(new String[] { "Helvetica", "Verdana",
-				"Times New Roman", "Garamond", "Courier New", "-" }));
-		fonts.addAll(Arrays.asList(env.getAvailableFontFamilyNames()));
-
-		final JComboBox fontCombo = new JComboBox(fonts.toArray());
-		fontCombo.setEditable(true);
-		fontCombo.setMinimumSize(new Dimension(120, 0));
-		fontCombo.setPreferredSize(new Dimension(120, 0));
-		fontCombo.setMaximumSize(new Dimension(120, 100));
-		add(fontCombo);
-
-		fontCombo.addActionListener(new ActionListener()
-		{
-			/**
-			 * 
-			 */
-			public void actionPerformed(ActionEvent e)
-			{
-				String font = fontCombo.getSelectedItem().toString();
-
-				if (font != null && !font.equals("-"))
-				{
-					mxGraph graph = editor.getGraphComponent().getGraph();
-					graph.setCellStyles(mxConstants.STYLE_FONTFAMILY, font);
-				}
-			}
-		});
-
-		final JComboBox sizeCombo = new JComboBox(new Object[] { "6pt", "8pt",
-				"9pt", "10pt", "12pt", "14pt", "18pt", "24pt", "30pt", "36pt",
-				"48pt", "60pt" });
-		sizeCombo.setEditable(true);
-		sizeCombo.setMinimumSize(new Dimension(65, 0));
-		sizeCombo.setPreferredSize(new Dimension(65, 0));
-		sizeCombo.setMaximumSize(new Dimension(65, 100));
-		add(sizeCombo);
-
-		sizeCombo.addActionListener(new ActionListener()
-		{
-			/**
-			 * 
-			 */
-			public void actionPerformed(ActionEvent e)
-			{
-				mxGraph graph = editor.getGraphComponent().getGraph();
-				graph.setCellStyles(mxConstants.STYLE_FONTSIZE, sizeCombo
-						.getSelectedItem().toString().replace("pt", ""));
-			}
-		});
+//		GraphicsEnvironment env = GraphicsEnvironment
+//				.getLocalGraphicsEnvironment();
+//		List<String> fonts = new ArrayList<String>();
+//		fonts.addAll(Arrays.asList(new String[] { "Helvetica", "Verdana",
+//				"Times New Roman", "Garamond", "Courier New", "-" }));
+//		fonts.addAll(Arrays.asList(env.getAvailableFontFamilyNames()));
+//
+//		final JComboBox fontCombo = new JComboBox(fonts.toArray());
+//		fontCombo.setEditable(true);
+//		fontCombo.setMinimumSize(new Dimension(120, 0));
+//		fontCombo.setPreferredSize(new Dimension(120, 0));
+//		fontCombo.setMaximumSize(new Dimension(120, 100));
+//		add(fontCombo);
+//
+//		fontCombo.addActionListener(new ActionListener()
+//		{
+//			/**
+//			 * 
+//			 */
+//			public void actionPerformed(ActionEvent e)
+//			{
+//				String font = fontCombo.getSelectedItem().toString();
+//
+//				if (font != null && !font.equals("-"))
+//				{
+//					mxGraph graph = editor.getGraphComponent().getGraph();
+//					graph.setCellStyles(mxConstants.STYLE_FONTFAMILY, font);
+//				}
+//			}
+//		});
+//
+//		final JComboBox sizeCombo = new JComboBox(new Object[] { "6pt", "8pt",
+//				"9pt", "10pt", "12pt", "14pt", "18pt", "24pt", "30pt", "36pt",
+//				"48pt", "60pt" });
+//		sizeCombo.setEditable(true);
+//		sizeCombo.setMinimumSize(new Dimension(65, 0));
+//		sizeCombo.setPreferredSize(new Dimension(65, 0));
+//		sizeCombo.setMaximumSize(new Dimension(65, 100));
+//		add(sizeCombo);
+//
+//		sizeCombo.addActionListener(new ActionListener()
+//		{
+//			/**
+//			 * 
+//			 */
+//			public void actionPerformed(ActionEvent e)
+//			{
+//				mxGraph graph = editor.getGraphComponent().getGraph();
+//				graph.setCellStyles(mxConstants.STYLE_FONTSIZE, sizeCombo
+//						.getSelectedItem().toString().replace("pt", ""));
+//			}
+//		});
 
 //		addSeparator();
 //
@@ -162,20 +162,20 @@ public class EditorToolBar extends JToolBar
 //		add(editor.bind("Right", new KeyValueAction(mxConstants.STYLE_ALIGN,
 //				mxConstants.ALIGN_RIGHT),
 //				"/com/mxgraph/examples/swing/images/right.gif"));
-
-		addSeparator();
-
-		add(editor.bind("Font", new ColorAction("Font",
-				mxConstants.STYLE_FONTCOLOR),
-				"/com/mxgraph/examples/swing/images/fontcolor.gif"));
-		add(editor.bind("Stroke", new ColorAction("Stroke",
-				mxConstants.STYLE_STROKECOLOR),
-				"/com/mxgraph/examples/swing/images/linecolor.gif"));
-		add(editor.bind("Fill", new ColorAction("Fill",
-				mxConstants.STYLE_FILLCOLOR),
-				"/com/mxgraph/examples/swing/images/fillcolor.gif"));
-
-		addSeparator();
+//
+//		addSeparator();
+//
+//		add(editor.bind("Font", new ColorAction("Font",
+//				mxConstants.STYLE_FONTCOLOR),
+//				"/com/mxgraph/examples/swing/images/fontcolor.gif"));
+//		add(editor.bind("Stroke", new ColorAction("Stroke",
+//				mxConstants.STYLE_STROKECOLOR),
+//				"/com/mxgraph/examples/swing/images/linecolor.gif"));
+//		add(editor.bind("Fill", new ColorAction("Fill",
+//				mxConstants.STYLE_FILLCOLOR),
+//				"/com/mxgraph/examples/swing/images/fillcolor.gif"));
+//
+//		addSeparator();
 
 		final mxGraphView view = editor.getGraphComponent().getGraph()
 				.getView();
