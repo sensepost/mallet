@@ -496,6 +496,8 @@ public class GraphEditor extends BasicGraphEditor {
 			setGridVisible(false);
 			setToolTips(true);
 			getConnectionHandler().setCreateTarget(true);
+			
+			graph.setSplitEnabled(true);
 
 			// Loads the default stylesheet from an external file
 			mxCodec codec = new mxCodec();
@@ -556,12 +558,18 @@ public class GraphEditor extends BasicGraphEditor {
 				if (target instanceof mxICell && cells[0] instanceof mxICell) {
 					mxICell targetCell = (mxICell) target;
 					mxICell dropCell = (mxICell) cells[0];
+					
+					if (targetCell.isVertex() == dropCell.isVertex()) {
+						// make target null, otherwise we create a group
+						cells = super.importCells(cells, dx, dy, null, location);
 
-					if (targetCell.isVertex() == dropCell.isVertex() || targetCell.isEdge() == dropCell.isEdge()) {
-						mxIGraphModel model = graph.getModel();
-						model.setStyle(target, model.getStyle(cells[0]));
-						graph.setSelectionCell(target);
-
+						Object parent = graph.getModel().getParent(target);
+						// we cloned it, so update the reference
+						dropCell = (mxICell) cells[0];
+						graph.insertEdge(parent, null, "", target, dropCell);
+						
+						graph.setSelectionCell(dropCell);
+						
 						return null;
 					}
 				}
@@ -618,7 +626,7 @@ public class GraphEditor extends BasicGraphEditor {
 				String classname = e.getAttribute("classname");
 				tip += "Class: " + classname;
 				String sa = e.getAttribute("address");
-				if (sa != null) {
+				if (sa != null && sa.length() > 0) {
 					tip += "<br>Address: " + sa;
 				} else {
 					NodeList p = e.getElementsByTagName("Parameter");
@@ -690,6 +698,12 @@ public class GraphEditor extends BasicGraphEditor {
 				}
 			}
 			return super.convertValueToString(cell);
+		}
+
+		@Override
+		public boolean isValidDropTarget(Object cell, Object[] cells) {
+			// FIXME: implement this to stop cells being dropped incorrectly
+			return super.isValidDropTarget(cell, cells);
 		}
 
 	}
