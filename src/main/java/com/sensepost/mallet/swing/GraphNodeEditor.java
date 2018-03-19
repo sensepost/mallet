@@ -7,7 +7,6 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
@@ -35,6 +34,7 @@ import javax.swing.text.BadLocationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class GraphNodeEditor extends JPanel implements TableModelListener {
@@ -268,6 +268,10 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 	}
 
 	public Element getGraphNode() {
+		Node newNode = node.cloneNode(true);
+		if (newNode instanceof Element) {
+			node = (Element) newNode;
+		}
 		String className = classField.getText();
 		int r = tableModel.getRowCount();
 		String[] args = new String[r];
