@@ -194,6 +194,9 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	 * .String, int)
 	 */
 	public synchronized SslContext map(String target) {
+		if (target == null)
+			throw new NullPointerException("target");
+		
 		SslContext sslContext = contextCache.get(target);
 		if (sslContext == null) {
 			try {
@@ -221,7 +224,6 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 
 	private X509KeyManager createKeyMaterial(String target)
 			throws GeneralSecurityException, IOException, OperatorCreationException {
-
 		if (keyStore.containsAlias(target))
 			return KeystoreUtils.getKeyManagerForAlias(keyStore, target, keyPassword);
 
