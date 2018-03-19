@@ -29,6 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -48,11 +49,11 @@ import com.mxgraph.swing.handler.mxRubberband;
 import com.mxgraph.swing.util.mxMorphing;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventObject;
+import com.mxgraph.util.mxEventSource.mxIEventListener;
 import com.mxgraph.util.mxRectangle;
 import com.mxgraph.util.mxResources;
 import com.mxgraph.util.mxUndoManager;
 import com.mxgraph.util.mxUndoableEdit;
-import com.mxgraph.util.mxEventSource.mxIEventListener;
 import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
 import com.mxgraph.view.mxGraph;
 
@@ -160,7 +161,6 @@ public class BasicGraphEditor extends JPanel {
 
 	protected void updateGraphLayout() {
 		updatingLayout = true;
-		System.out.println("doLayout!");
 		mxGraph graph = graphComponent.getGraph();
 
 		// Remove the update listeners while updating the layout
@@ -174,12 +174,12 @@ public class BasicGraphEditor extends JPanel {
 
 		graph.getModel().beginUpdate();
 		try {
-//			Object[] cells = graph.getChildCells(graph.getDefaultParent());
-//			for (int i = 0; i < cells.length; i++) {
-//				graph.updateCellSize(cells[i]);
-//			}
+			Object[] cells = graph.getChildCells(graph.getDefaultParent());
+			for (int i = 0; i < cells.length; i++) {
+				graph.updateCellSize(cells[i]);
+			}
 
-			mxIGraphLayout layout = new mxHierarchicalLayout(graph);
+			mxIGraphLayout layout = new mxHierarchicalLayout(graph, SwingConstants.NORTH);
 			layout.execute(graph.getDefaultParent());
 		} finally {
 			graph.getModel().endUpdate();
@@ -194,6 +194,11 @@ public class BasicGraphEditor extends JPanel {
 		graph.getModel().addListener(mxEvent.UNDO, undoHandler);
 		graph.getView().addListener(mxEvent.UNDO, undoHandler);
 		updatingLayout = false;
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				repaint();
+			}
+		});
 	}
 
 	/**
