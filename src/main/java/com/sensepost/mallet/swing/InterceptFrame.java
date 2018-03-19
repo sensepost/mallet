@@ -14,18 +14,12 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JTabbedPane;
-import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import com.mxgraph.examples.swing.editor.EditorMenuBar;
 import com.mxgraph.swing.mxGraphComponent;
-import com.mxgraph.swing.view.mxICellEditor;
-import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.graph.Graph;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.util.ReferenceCountUtil;
 
 public class InterceptFrame extends JFrame {
 
@@ -57,58 +51,8 @@ public class InterceptFrame extends JFrame {
 		connectionPanel = new ConnectionPanel();
 		tabbedPane.addTab("Connections", connectionPanel);
 
-		JMenuBar menuBar = new JMenuBar();
+		JMenuBar menuBar = new EditorMenuBar(editor);
 		setJMenuBar(menuBar);
-
-		JMenu mnFile = new JMenu("File");
-		menuBar.add(mnFile);
-
-		JMenuItem mntmExit = new JMenuItem("Exit");
-		mntmExit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (graph != null)
-					try {
-						graph.shutdownServers();
-					} catch (Exception ex) {
-						JOptionPane.showMessageDialog(InterceptFrame.this, ex.getLocalizedMessage(), "Error",
-								JOptionPane.ERROR_MESSAGE);
-					}
-				System.exit(0);
-			}
-		});
-
-		loadMenuItem = new JMenuItem("Load");
-		loadMenuItem.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					JFileChooser jfc = new JFileChooser(currentDir);
-					FileNameExtensionFilter filter = new FileNameExtensionFilter("Graph files", "mxe");
-					jfc.setFileFilter(filter);
-					int r = jfc.showOpenDialog(InterceptFrame.this);
-					if (r != JFileChooser.APPROVE_OPTION)
-						return;
-					File f = jfc.getSelectedFile();
-					if (f == null)
-						return;
-					currentDir = jfc.getCurrentDirectory();
-					graph.loadGraph(f);
-					InterceptFrame.this.graphComponent.setEnabled(true);
-					try {
-						graph.startServers();
-					} catch (Exception ex) {
-						ex.printStackTrace();
-						JOptionPane.showMessageDialog(InterceptFrame.this, ex.getLocalizedMessage(), "Error",
-								JOptionPane.ERROR_MESSAGE);
-					}
-
-				} catch (IOException ex) {
-					JOptionPane.showMessageDialog(InterceptFrame.this, ex.getLocalizedMessage(), "Error",
-							JOptionPane.ERROR_MESSAGE);
-				}
-			}
-		});
-		mnFile.add(loadMenuItem);
-		mnFile.add(mntmExit);
 
 		interceptMenuItem = new JCheckBoxMenuItem("Intercept");
 		interceptMenuItem.addActionListener(new ActionListener() {
