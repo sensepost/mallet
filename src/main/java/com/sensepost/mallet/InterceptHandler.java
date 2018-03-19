@@ -1,16 +1,5 @@
 package com.sensepost.mallet;
 
-import java.net.SocketAddress;
-
-import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
-import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelReadEvent;
-import com.sensepost.mallet.InterceptController.ChannelUserEvent;
-import com.sensepost.mallet.InterceptController.Direction;
-import com.sensepost.mallet.graph.GraphLookup;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -26,6 +15,17 @@ import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+
+import java.net.SocketAddress;
+
+import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelEvent;
+import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
+import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelReadEvent;
+import com.sensepost.mallet.InterceptController.ChannelUserEvent;
+import com.sensepost.mallet.InterceptController.Direction;
+import com.sensepost.mallet.graph.GraphLookup;
 
 @Sharable
 public class InterceptHandler extends ChannelInboundHandlerAdapter {
@@ -275,7 +275,8 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
-		if (evt instanceof ChannelInputShutdownReadComplete) {
+		if (evt == ChannelInputShutdownReadComplete.INSTANCE) {
+			System.out.print(".");
 			// ignore
 		} else
 			ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
