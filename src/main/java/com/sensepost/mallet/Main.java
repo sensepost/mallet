@@ -152,7 +152,7 @@ public class Main {
 		X509KeyManager clientKeyManager = new KeyStoreX509KeyManager(ks, PASSWORD);
 		scriptContext.put("SSLClientKeyManager", clientKeyManager);
 
-		Graph graph = new Graph(graphComponent.getGraph(), scriptContext);
+		Graph graph = new Graph(graphComponent, scriptContext);
 		ui.setGraph(graph);
 		ui.setVisible(true);
 	}

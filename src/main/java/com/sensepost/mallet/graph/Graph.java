@@ -1,7 +1,34 @@
 package com.sensepost.mallet.graph;
 
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.ServerChannel;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.proxy.HttpProxyHandler;
+import io.netty.handler.proxy.Socks5ProxyHandler;
+import io.netty.util.Attribute;
+import io.netty.util.concurrent.GlobalEventExecutor;
+
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -13,13 +40,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.WeakHashMap;
 
 import javax.script.Bindings;
-import javax.script.ScriptContext;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -33,7 +66,17 @@ import com.mxgraph.analysis.mxGraphStructure;
 import com.mxgraph.io.mxCodec;
 import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
-import com.mxgraph.model.mxIGraphModel;
+import com.mxgraph.model.mxGraphModel.mxChildChange;
+import com.mxgraph.model.mxGraphModel.mxGeometryChange;
+import com.mxgraph.model.mxGraphModel.mxRootChange;
+import com.mxgraph.model.mxGraphModel.mxValueChange;
+import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.swing.util.mxCellOverlay;
+import com.mxgraph.util.mxEvent;
+import com.mxgraph.util.mxEventObject;
+import com.mxgraph.util.mxEventSource.mxIEventListener;
+import com.mxgraph.util.mxUndoableEdit;
+import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
 import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxGraph;
@@ -41,41 +84,53 @@ import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.InterceptHandler;
 import com.sensepost.mallet.RelayHandler;
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.ServerChannel;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.proxy.HttpProxyHandler;
-import io.netty.handler.proxy.Socks5ProxyHandler;
-import io.netty.util.concurrent.GlobalEventExecutor;
-
 public class Graph implements GraphLookup {
 
 	private boolean direct = true, socks = false;
 
+	private mxGraphComponent graphComponent;
 	private mxGraph graph;
 
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
 
-	private ChannelGroup channels = null;
+	private ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
+
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	private Bindings scriptContext;
 
-	public Graph(mxGraph graph, Bindings scriptContext) {
-		this.graph = graph;
+	public Graph(final mxGraphComponent graphComponent, Bindings scriptContext) {
+		this.graphComponent = graphComponent;
+		this.graph = graphComponent.getGraph();
 		this.scriptContext = scriptContext;
+		
+		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
+			
+			@Override
+			public void invoke(Object sender, mxEventObject evt) {
+				mxUndoableEdit edit = (mxUndoableEdit) evt.getProperty("edit");
+				List<mxUndoableChange> changes = edit.getChanges();
+				for (mxUndoableChange change : changes) {
+					if (change instanceof mxRootChange) {
+						try {
+							startServers();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					} else if (change instanceof mxValueChange) {
+						mxValueChange vc = (mxValueChange) change;
+						restartServerFromChange(vc.getPrevious(), vc.getCell());
+					} else if (change instanceof mxChildChange) {
+						mxChildChange cc = (mxChildChange) change;
+						restartServerFromChange(cc.getPrevious(), cc.getChild());
+					} else if (!(change instanceof mxGeometryChange)) {
+						System.out.println("Change: " + change.getClass());
+					}
+				}
+			}
+		});
+
 	}
 
 	public mxGraph getGraph() {
@@ -83,10 +138,7 @@ public class Graph implements GraphLookup {
 	}
 
 	public void loadGraph(File file) throws IOException {
-		System.out.println(file.getAbsolutePath());
-
 		Document document = mxXmlUtils.parseXml(mxUtils.readFile(file.getAbsolutePath()));
-
 		mxCodec codec = new mxCodec(document);
 		codec.decode(document.getDocumentElement(), graph.getModel());
 		layoutGraph(graph);
@@ -115,25 +167,50 @@ public class Graph implements GraphLookup {
 		mxGraphProperties.setDirected(aGraph.getProperties(), true);
 
 		Object[] sourceVertices = mxGraphStructure.getSourceVertices(aGraph);
-		mxIGraphModel model = aGraph.getGraph().getModel();
 
-		channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
 		for (int i = 0; i < sourceVertices.length; i++) {
-			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
-					.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
-					.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
-			// parse getValue() for each of sourceVertices to
-			// determine what sort of EventLoopGroup we need, etc
-			Object serverValue = model.getValue(sourceVertices[i]);
-			Class<? extends ServerChannel> channelClass = getServerClass(getClassName(serverValue));
-			b.channel(channelClass);
-			SocketAddress address = parseSocketAddress(channelClass, serverValue);
-			b.childHandler(new GraphChannelInitializer(graph.getOutgoingEdges(sourceVertices[i])[0]));
-			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
-			channels.add(b.bind(address).syncUninterruptibly().channel());
+			startServerFromSourceVertex(sourceVertices[i]).addListener(new AddServerChannelListener());
 		}
 	}
 
+	private ChannelFuture startServerFromSourceVertex(Object vertex) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+		ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
+				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
+				.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
+		Object serverValue = graph.getModel().getValue(vertex);
+
+		// parse getValue() for vertex to
+		// determine what sort of EventLoopGroup we need, etc
+		Class<? extends ServerChannel> channelClass = getServerClass(getClassName(serverValue));
+		b.channel(channelClass);
+		SocketAddress address = parseSocketAddress(channelClass, serverValue);
+		b.childHandler(new GraphChannelInitializer(vertex));
+		b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
+		return b.bind(address);
+	}
+	
+	private ChannelFuture stopServerFromSourceValue(Object serverValue) throws ClassNotFoundException {
+		if (channels == null || channels.size() == 0)
+			return null;
+		
+		// parse getValue() for each of sourceVertices to
+		// determine what sort of EventLoopGroup we need, etc
+		Class<? extends ServerChannel> channelClass = getServerClass(getClassName(serverValue));
+		SocketAddress address = parseSocketAddress(channelClass, serverValue);
+		Iterator<Channel> it = channels.iterator();
+		while (it.hasNext()) {
+			Channel channel = it.next();
+			if (channel instanceof ServerChannel) {
+				ServerChannel serverChannel = (ServerChannel) channel;
+				if (address.equals(serverChannel.localAddress())) {
+					it.remove();
+					return serverChannel.close();
+				}
+			}
+		}
+		return null;
+	}
+	
 	private EventLoopGroup getEventGroup(Map<Class<? extends Channel>, EventLoopGroup> cache,
 			Class<? extends Channel> channelClass, int threads) {
 		EventLoopGroup group = cache.get(channelClass);
@@ -186,11 +263,12 @@ public class Graph implements GraphLookup {
 		throw new RuntimeException("Could not parse '" + sa + "' as an InetSocketAddress");
 	}
 
+	@SuppressWarnings("unchecked")
 	private Class<? extends ServerChannel> getServerClass(String className) throws ClassNotFoundException {
 		Class<?> clazz = Class.forName(className);
 		if (ServerChannel.class.isAssignableFrom(clazz))
 			return (Class<? extends ServerChannel>) clazz;
-		throw new IllegalArgumentException(className + " does not implement ServerChannel");
+		throw new ClassCastException(className + " does not implement ServerChannel");
 	}
 
 	private boolean isSink(Object v) {
@@ -223,6 +301,7 @@ public class Graph implements GraphLookup {
 				break;
 			ChannelHandler h = getChannelHandler(v);
 			handlers.add(h);
+			handlers.add(new ExceptionCatcher(o));
 			Object[] outgoing = graph.getOutgoingEdges(o);
 			if (h instanceof IndeterminateChannelHandler) {
 				IndeterminateChannelHandler ich = (IndeterminateChannelHandler) h;
@@ -302,7 +381,7 @@ public class Graph implements GraphLookup {
 				}
 			}
 		} catch (ClassNotFoundException | NoSuchFieldException e) {
-			System.out.println(description + " is not a static field: " + e.getMessage());
+			// that didn't work, try something else
 		}
 		// See if it is a basic type that can easily be converted from a String
 		if (type.equals(String.class)) {
@@ -434,6 +513,7 @@ public class Graph implements GraphLookup {
 				shutdownEventLoop(bossGroups);
 				shutdownEventLoop(workerGroups);
 			}
+		channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
 	}
 
 	private void shutdownEventLoop(Map<Class<? extends Channel>, EventLoopGroup> cache) {
@@ -443,17 +523,53 @@ public class Graph implements GraphLookup {
 		}
 	}
 
+	private void restartServerFromChange(Object previous, Object cell) {
+		ChannelFuture stopFuture = null;
+		if (previous != null) {
+			Object[] incomingPrevious = graph.getIncomingEdges(previous);
+			if (incomingPrevious == null || incomingPrevious.length == 0) {
+				try {
+					stopFuture = stopServerFromSourceValue(previous);
+				} catch (ClassNotFoundException e) {
+					// It wasn't really a listener! No worries!
+				}
+			}
+		}
+		if (cell != null) {
+			try {
+				ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
+				if (stopFuture == null) {
+					try {
+						cfl.operationComplete(null);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				} else
+					stopFuture.addListener(cfl);
+			} catch (ClassCastException e) {
+				// not a ServerChannel class, ignore
+			}
+		}
+	}
+	
 	private class GraphChannelInitializer extends ChannelInitializer<SocketChannel> {
 
-		private Object serverEdge;
+		private Object serverVertex;
 
-		public GraphChannelInitializer(Object serverEdge) {
-			this.serverEdge = serverEdge;
+		public GraphChannelInitializer(Object serverVertex) {
+			this.serverVertex = serverVertex;
 		}
 
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
 			try {
+				Object[] edges = graph.getEdges(serverVertex);
+				if (edges == null || edges.length == 0)
+					throw new IllegalStateException("No outbound edge for Server Vertex: " + serverVertex);
+				if (edges.length > 1)
+					throw new IllegalStateException("Too many outbound edges for Server Vertex: " + serverVertex);
+				Object serverEdge = edges[0];
 				ChannelHandler[] handlers = getChannelHandlers(serverEdge);
 				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
@@ -464,5 +580,135 @@ public class Graph implements GraphLookup {
 			}
 		}
 
+	}
+	
+	private class AddServerChannelListener implements ChannelFutureListener {
+
+		@Override
+		public void operationComplete(ChannelFuture future)
+				throws Exception {
+			if (future.isSuccess()) {
+				channels.add(future.channel());
+			} else {
+				future.cause().printStackTrace();
+			}
+		}
+		
+	}
+	
+	private class StopAndStartChannelListener implements ChannelFutureListener {
+
+		private Object vertex;
+		
+		public StopAndStartChannelListener(Object vertex) {
+			this.vertex = vertex;
+		}
+		
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			try {
+				startServerFromSourceVertex(vertex).addListener(new AddServerChannelListener());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	private class ExceptionCatcher extends ChannelDuplexHandler {
+		
+		private Object node;
+		public ExceptionCatcher(Object node) {
+			this.node = node;
+		}
+		
+		@Override
+		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
+				throws Exception {
+			addCause(ctx, cause);
+			// super.exceptionCaught(ctx, cause);
+			ctx.close();
+		}
+
+		private void addCause(ChannelHandlerContext ctx, final Throwable cause) {
+			Attribute<Throwable> attr = ctx.channel().attr(ChannelAttributes.CAUSE);
+			Throwable prev = attr.get();
+			if (cause != prev) {
+				attr.set(cause);
+				mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, cause.getLocalizedMessage());
+				overlay.addMouseListener(new MouseAdapter() {
+					/**
+					 * Selects the associated cell in the graph
+					 */
+					public void mousePressed(MouseEvent e) {
+						cause.printStackTrace();
+					}
+				});
+			}
+		}
+		
+		@Override
+		public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
+				throws Exception {
+			if (evt != null) {
+				try {
+					Attribute<Object> attr = ctx.channel().attr(ChannelAttributes.CAUSE_EVENT);
+					Object prev = attr.get();
+					if (prev != evt) {
+						attr.set(evt);
+						Class<?> c = evt.getClass();
+						Method[] methods = c.getMethods();
+						for (Method m : methods) {
+							if (Throwable.class.isAssignableFrom(m.getReturnType()) && m.getParameterCount() == 0) {
+								System.out.println("Method " + m + " on class " + c + " returns a Throwable");
+								Throwable cause = (Throwable) m.invoke(evt);
+								if (cause != null) {
+									System.out.println("It was not null: " + cause);
+									addCause(ctx, cause);
+								}
+								
+							}
+						}
+					}
+				} catch (Exception e) {}
+			}
+			super.userEventTriggered(ctx, evt);
+		}
+
+		@Override
+		public void connect(ChannelHandlerContext ctx,
+				SocketAddress remoteAddress, SocketAddress localAddress,
+				ChannelPromise promise) throws Exception {
+			// DefaultChannelPromise
+			super.connect(ctx, remoteAddress, localAddress, promise);
+		}
+
+		@Override
+		public void write(ChannelHandlerContext ctx, Object msg,
+				ChannelPromise promise) throws Exception {
+			super.write(ctx, msg, promise);
+		}
+
+		
+	}
+	
+	private String elementAsString(Object o) {
+		if (o instanceof Element) {
+			Element e = (Element) o;
+			try {
+				TransformerFactory transFactory = TransformerFactory.newInstance();
+				Transformer transformer = transFactory.newTransformer();
+				StringWriter buffer = new StringWriter();
+				transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+				transformer.transform(new DOMSource(e),
+						new StreamResult(buffer));
+				return buffer.toString();
+			} catch (TransformerException e1) {
+				e1.printStackTrace();
+				return null;
+			}
+		} else {
+			return String.valueOf(o);
+		}
 	}
 }
