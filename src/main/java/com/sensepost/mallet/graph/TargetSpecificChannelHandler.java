@@ -7,6 +7,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.ConnectRequest;
@@ -71,6 +72,15 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			throw new NullPointerException("gl");
 		ChannelHandler[] handlers = gl.getNextHandlers(this, option);
 		String name = ctx.name();
+		List<String> names = ctx.pipeline().names();
+		int pos = names.indexOf(name);
+		ChannelHandler exceptionCatcher = null;
+		if (pos > -1 && pos < names.size()-1) {
+			String next = names.get(pos+1);
+			ChannelHandler nextHandler = ctx.pipeline().get(next);
+			if (nextHandler instanceof ExceptionCatcher)
+				exceptionCatcher = nextHandler;
+		}
 		for (int i = handlers.length - 1; i >= 0; i--) {
 			try {
 				ctx.pipeline().addAfter(name, null, handlers[i]);
@@ -83,5 +93,7 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			}
 		}
 		ctx.pipeline().remove(name);
+		if (exceptionCatcher != null)
+			ctx.pipeline().remove(exceptionCatcher);
 	}
 }
