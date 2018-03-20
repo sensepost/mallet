@@ -38,12 +38,15 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 	private Mapping<? super String, ? extends SslContext> mapping;
 	private String hostname = null;
 	private SniHandler sniHandler;
-	
-	public SslServerHandler(Mapping<? super String, ? extends SslContext> mapping) {
+
+	public SslServerHandler(
+			Mapping<? super String, ? extends SslContext> mapping) {
 		this.mapping = mapping;
 	}
 
-	public SslServerHandler(Mapping<? super String, ? extends SslContext> mapping, String hostname) {
+	public SslServerHandler(
+			Mapping<? super String, ? extends SslContext> mapping,
+			String hostname) {
 		this(mapping);
 		this.hostname = hostname;
 	}
@@ -57,10 +60,10 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 		p.addAfter(me, null, sniHandler);
 	}
 
-
 	private class TargetSslHandler extends ChannelInboundHandlerAdapter {
 
 		private boolean sniException = false;
+		private SslHandler sslHandler = null;
 
 		@Override
 		public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
@@ -70,16 +73,9 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 				sniException = sce.cause() != null;
 				if (!sniException)
 					ctx.pipeline().remove(this);
-			}
-			super.userEventTriggered(ctx, evt);
-		}
-
-		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-				throws Exception {
-			if (sniException) {
-				if (cause instanceof DecoderException) {
-					ConnectRequest cr = ctx.channel().attr(ChannelAttributes.TARGET).get();
+				else {
+					ConnectRequest cr = ctx.channel()
+							.attr(ChannelAttributes.TARGET).get();
 					if (cr != null) {
 						SocketAddress sa = cr.getTarget();
 						if (sa instanceof InetSocketAddress) {
@@ -87,43 +83,71 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 							String target = isa.getHostString();
 							SslContext context = mapping.map(target);
 							if (context != null) {
-								replaceHandler(ctx, target, context);
-								return;
+								addHandler(ctx, target, context);
 							}
 						} else {
-							throw new RuntimeException("Can't deal with non-InetSocketAddress targets: " + sa);
+							throw new RuntimeException(
+									"Can't deal with non-InetSocketAddress targets: "
+											+ sa);
 						}
 					} else {
 						// no target specified, let's use the default
 						SslContext context = mapping.map(hostname);
 						if (context != null) {
-							replaceHandler(ctx, hostname, context);
-							return;
-						}
+							addHandler(ctx, hostname, context);
+						} else
+							throw new RuntimeException(
+									"Couldn't get an SslContext for "
+											+ hostname);
 					}
 				}
 			}
+			super.userEventTriggered(ctx, evt);
+		}
+
+		@Override
+		public void exceptionCaught(final ChannelHandlerContext ctx,
+				Throwable cause) throws Exception {
+			if (sniException && cause instanceof DecoderException) {
+				// defer removal until the "ExceptionCaught" method is finished
+				// so that any further exceptions thrown by the new Handler
+				// can be properly caught by the ExceptionCatcher handlers.
+				// Otherwise, we fall foul of
+				// "Exception thrown by exceptionCaught handler"
+				ctx.executor().submit(new Runnable() {
+					public void run() {
+						try {
+							ctx.pipeline().remove(sniHandler);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				});
+				return; // swallow this exception
+			} else if (sslHandler != null) {
+				ctx.pipeline().remove(sslHandler);
+				cause.printStackTrace();
+			}
 			super.exceptionCaught(ctx, cause);
 		}
-		
-	    protected void replaceHandler(ChannelHandlerContext ctx, String hostname, SslContext sslContext) throws Exception {
-	    	SslHandler sslHandler = null;
-	        try {
-	            sslHandler = sslContext.newHandler(ctx.alloc());
-	            ctx.pipeline().replace(this, SslHandler.class.getName(), sslHandler);
-	            sslHandler = null;
-	        } finally {
-	            // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
-	            // transferred to the SslHandler.
-	            // See https://github.com/netty/netty/issues/5678
-	            if (sslHandler != null) {
-	                ReferenceCountUtil.safeRelease(sslHandler.engine());
-	            }
-	        }
-	        // remove this last, otherwise it triggers a read event for any pending bytes, which gets
-	        // handled by the next handler, before we can add our sslHandler!
-	        ctx.pipeline().remove(sniHandler);
-	    }
+
+		protected void addHandler(ChannelHandlerContext ctx, String hostname,
+				SslContext sslContext) throws Exception {
+			try {
+				String me = ctx.name();
+				sslHandler = sslContext.newHandler(ctx.alloc());
+				ctx.pipeline().addAfter(me, null, sslHandler);
+				sslHandler = null;
+			} finally {
+				// Since the SslHandler was not inserted into the pipeline the
+				// ownership of the SSLEngine was not
+				// transferred to the SslHandler.
+				// See https://github.com/netty/netty/issues/5678
+				if (sslHandler != null) {
+					ReferenceCountUtil.safeRelease(sslHandler.engine());
+				}
+			}
+		}
 
 	}
 }
