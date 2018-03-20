@@ -195,6 +195,12 @@ public class ConnectionDataPanel extends JPanel {
 							value = "UserEvent " + uevt.toString();
 					} else
 						value += " UserEvent (null)";
+				} else if (evt instanceof ChannelExceptionEvent) {
+					String cause = ((ChannelExceptionEvent) evt).getCause();
+					int cr = cause.indexOf('\n');
+					if (cr != -1)
+						cause = cause.substring(0, cr);
+					value = cause;
 				}
 			}
 			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
