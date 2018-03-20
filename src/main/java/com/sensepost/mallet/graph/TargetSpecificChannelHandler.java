@@ -1,14 +1,15 @@
 package com.sensepost.mallet.graph;
 
-import java.net.InetSocketAddress;
-
-import com.sensepost.mallet.ChannelAttributes;
-import com.sensepost.mallet.ConnectRequest;
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+
+import com.sensepost.mallet.ChannelAttributes;
+import com.sensepost.mallet.ConnectRequest;
 
 public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter implements IndeterminateChannelHandler {
 
@@ -42,12 +43,23 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			InetSocketAddress target = (InetSocketAddress) cr.getTarget();
 			String hs = target.getHostString() + ":" + target.getPort();
 			
+			String branch = null;
+			boolean defaultOption = false;
 			for (String option : options) {
-				if (hs.matches(option)) {
-					optionSelected(ctx, option);
+				if ("".equals(option)) {
+					defaultOption = true;
+				} else if (hs.matches(option)) {
+					branch = option;
 					break;
 				}
 			}
+			if (branch == null) {
+				if (defaultOption)
+					branch = "";
+				else
+					throw new RuntimeException("No match for " + hs + " in " + Arrays.asList(options));
+			}
+			optionSelected(ctx, branch);
 		}
 		super.userEventTriggered(ctx, evt);
 	}
