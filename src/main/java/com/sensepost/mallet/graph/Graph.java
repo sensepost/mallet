@@ -7,6 +7,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.group.ChannelGroup;
@@ -556,23 +557,22 @@ public class Graph implements GraphLookup {
 
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
-			try {
-				Object[] edges = graph.getEdges(serverVertex);
-				if (edges == null || edges.length == 0)
-					throw new IllegalStateException("No outbound edge for Server Vertex: " + serverVertex);
-				if (edges.length > 1)
-					throw new IllegalStateException("Too many outbound edges for Server Vertex: " + serverVertex);
-				Object serverEdge = edges[0];
-				ChannelHandler[] handlers = getChannelHandlers(serverEdge);
-				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
-				ch.attr(ChannelAttributes.GRAPH).set(gl);
-				ch.pipeline().addFirst(new ConnectionNumberChannelHandler());
-				ch.pipeline().addLast(handlers);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			ChannelPipeline p = ch.pipeline();
+			String me = p.context(this).name();
+			p.addAfter(me, null, new ExceptionCatcher(graphComponent, serverVertex));
+			
+			Object[] edges = graph.getEdges(serverVertex);
+			if (edges == null || edges.length == 0)
+				throw new IllegalStateException("No outbound edge for Server Vertex: " + serverVertex);
+			if (edges.length > 1)
+				throw new IllegalStateException("Too many outbound edges for Server Vertex: " + serverVertex);
+			Object serverEdge = edges[0];
+			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
+			GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
+			ch.attr(ChannelAttributes.GRAPH).set(gl);
+			p.addAfter(me, null, new ConnectionNumberChannelHandler());
+			p.addLast(handlers);
 		}
-
 	}
 	
 	private class AddServerChannelListener implements ChannelFutureListener {
