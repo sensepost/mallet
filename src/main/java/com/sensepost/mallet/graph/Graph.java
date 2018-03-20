@@ -121,7 +121,11 @@ public class Graph implements GraphLookup {
 						}
 					} else if (change instanceof mxChildChange) {
 						mxChildChange cc = (mxChildChange) change;
-						restartServerFromChange(cc.getPrevious(), cc.getChild());
+						if (graph.getModel().isVertex(cc.getChild())) {
+							Object[] incoming = graph.getIncomingEdges(cc.getChild());
+							if (incoming == null || incoming.length == 0)
+								restartServerFromChange(cc.getPrevious(), cc.getChild());
+						}
 					} else if (!(change instanceof mxGeometryChange)) {
 						System.out.println("Change: " + change.getClass());
 					}
