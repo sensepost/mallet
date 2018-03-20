@@ -2,14 +2,11 @@ package com.sensepost.mallet.graph;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.group.ChannelGroup;
@@ -21,11 +18,8 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
-import io.netty.util.Attribute;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -71,7 +65,6 @@ import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.model.mxGraphModel.mxRootChange;
 import com.mxgraph.model.mxGraphModel.mxValueChange;
 import com.mxgraph.swing.mxGraphComponent;
-import com.mxgraph.swing.util.mxCellOverlay;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
@@ -301,7 +294,7 @@ public class Graph implements GraphLookup {
 				break;
 			ChannelHandler h = getChannelHandler(v);
 			handlers.add(h);
-			handlers.add(new ExceptionCatcher(o));
+			handlers.add(new ExceptionCatcher(graphComponent, o));
 			Object[] outgoing = graph.getOutgoingEdges(o);
 			if (h instanceof IndeterminateChannelHandler) {
 				IndeterminateChannelHandler ich = (IndeterminateChannelHandler) h;
@@ -612,83 +605,6 @@ public class Graph implements GraphLookup {
 				e.printStackTrace();
 			}
 		}
-		
-	}
-	
-	private class ExceptionCatcher extends ChannelDuplexHandler {
-		
-		private Object node;
-		public ExceptionCatcher(Object node) {
-			this.node = node;
-		}
-		
-		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-				throws Exception {
-			addCause(ctx, cause);
-			// super.exceptionCaught(ctx, cause);
-			ctx.close();
-		}
-
-		private void addCause(ChannelHandlerContext ctx, final Throwable cause) {
-			Attribute<Throwable> attr = ctx.channel().attr(ChannelAttributes.CAUSE);
-			Throwable prev = attr.get();
-			if (cause != prev) {
-				attr.set(cause);
-				mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, cause.getLocalizedMessage());
-				overlay.addMouseListener(new MouseAdapter() {
-					/**
-					 * Selects the associated cell in the graph
-					 */
-					public void mousePressed(MouseEvent e) {
-						cause.printStackTrace();
-					}
-				});
-			}
-		}
-		
-		@Override
-		public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
-				throws Exception {
-			if (evt != null) {
-				try {
-					Attribute<Object> attr = ctx.channel().attr(ChannelAttributes.CAUSE_EVENT);
-					Object prev = attr.get();
-					if (prev != evt) {
-						attr.set(evt);
-						Class<?> c = evt.getClass();
-						Method[] methods = c.getMethods();
-						for (Method m : methods) {
-							if (Throwable.class.isAssignableFrom(m.getReturnType()) && m.getParameterCount() == 0) {
-								System.out.println("Method " + m + " on class " + c + " returns a Throwable");
-								Throwable cause = (Throwable) m.invoke(evt);
-								if (cause != null) {
-									System.out.println("It was not null: " + cause);
-									addCause(ctx, cause);
-								}
-								
-							}
-						}
-					}
-				} catch (Exception e) {}
-			}
-			super.userEventTriggered(ctx, evt);
-		}
-
-		@Override
-		public void connect(ChannelHandlerContext ctx,
-				SocketAddress remoteAddress, SocketAddress localAddress,
-				ChannelPromise promise) throws Exception {
-			// DefaultChannelPromise
-			super.connect(ctx, remoteAddress, localAddress, promise);
-		}
-
-		@Override
-		public void write(ChannelHandlerContext ctx, Object msg,
-				ChannelPromise promise) throws Exception {
-			super.write(ctx, msg, promise);
-		}
-
 		
 	}
 	
