@@ -36,15 +36,20 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 		Throwable prev = attr.get();
 		if (cause != prev) {
 			attr.set(cause);
-			mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, cause.getLocalizedMessage());
-			overlay.addMouseListener(new MouseAdapter() {
-				/**
-				 * Selects the associated cell in the graph
-				 */
-				public void mousePressed(MouseEvent e) {
-					cause.printStackTrace();
-				}
-			});
+			String warning = cause.getLocalizedMessage();
+			if (warning == null) {
+				warning = cause.toString();
+			}
+			mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, warning);
+			if (overlay != null)
+				overlay.addMouseListener(new MouseAdapter() {
+					/**
+					 * Selects the associated cell in the graph
+					 */
+					public void mousePressed(MouseEvent e) {
+						cause.printStackTrace();
+					}
+				});
 		}
 	}
 	
@@ -57,20 +62,28 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 				Object prev = attr.get();
 				if (prev != evt) {
 					attr.set(evt);
-					Class<?> c = evt.getClass();
-					Method[] methods = c.getMethods();
-					for (Method m : methods) {
-						if (Throwable.class.isAssignableFrom(m.getReturnType()) && m.getParameterCount() == 0) {
-							Throwable cause = (Throwable) m.invoke(evt);
-							if (cause != null) {
-								addCause(ctx, cause);
-							}
-						}
-					}
+					Throwable cause = findThrowable(evt);
+					if (cause != null)
+						addCause(ctx, cause);
 				}
 			} catch (Exception e) {}
 		}
 		super.userEventTriggered(ctx, evt);
+	}
+
+	private Throwable findThrowable(Object evt) {
+		try {
+			Class<?> c = evt.getClass();
+			Method[] methods = c.getMethods();
+			for (Method m : methods) {
+				if (Throwable.class.isAssignableFrom(m.getReturnType()) && m.getParameterCount() == 0) {
+					Throwable cause = (Throwable) m.invoke(evt);
+					if (cause != null)
+						return cause;
+				}
+			}
+		} catch (Exception e) {}
+		return null;
 	}
 
 	@Override
@@ -87,5 +100,4 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 		super.write(ctx, msg, promise);
 	}
 
-	
 }
