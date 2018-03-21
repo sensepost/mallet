@@ -23,6 +23,7 @@ import javax.swing.KeyStroke;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 public class ByteArrayEditor extends JPanel implements ObjectEditor {
 
@@ -121,6 +122,11 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
                 }
             }
         });
+
+        // disable HTML rendering
+        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
+        renderer.putClientProperty("html.disable", Boolean.TRUE);
+        table.setDefaultRenderer(Object.class, renderer);
 
 	}
 
