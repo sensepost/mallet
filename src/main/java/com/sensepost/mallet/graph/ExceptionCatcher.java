@@ -9,6 +9,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
+import java.nio.channels.ClosedChannelException;
 
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxCellOverlay;
@@ -36,6 +37,8 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 		Throwable prev = attr.get();
 		if (cause != prev) {
 			attr.set(cause);
+			if (cause instanceof ClosedChannelException)
+				return;
 			String warning = cause.getLocalizedMessage();
 			if (warning == null) {
 				warning = cause.toString();
@@ -63,7 +66,7 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 				if (prev != evt) {
 					attr.set(evt);
 					Throwable cause = findThrowable(evt);
-					if (cause != null)
+					if (cause != null && !(cause instanceof ClosedChannelException))
 						addCause(ctx, cause);
 				}
 			} catch (Exception e) {}
