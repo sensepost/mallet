@@ -276,6 +276,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
 		if (evt == ChannelInputShutdownReadComplete.INSTANCE) {
+			ctx.channel().config().setAutoRead(false);
 			System.out.print(".");
 			// ignore
 		} else
