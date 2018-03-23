@@ -3,19 +3,15 @@ package com.sensepost.mallet.swing;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.IOException;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JMenu;
 import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JTabbedPane;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
+import com.mxgraph.examples.swing.editor.EditorActions.ExitAction;
 import com.mxgraph.examples.swing.editor.EditorMenuBar;
 import com.mxgraph.swing.mxGraphComponent;
 import com.sensepost.mallet.InterceptController;
@@ -30,10 +26,6 @@ public class InterceptFrame extends JFrame {
 	private GraphEditor editor;
 	
 	private mxGraphComponent graphComponent;
-
-	private Graph graph;
-	private JMenuItem loadMenuItem;
-	private File currentDir = new File(".");
 
 	public InterceptFrame(mxGraphComponent graphComponent) {
 		setTitle("Mallet");
@@ -54,6 +46,12 @@ public class InterceptFrame extends JFrame {
 		JMenuBar menuBar = new EditorMenuBar(editor);
 		setJMenuBar(menuBar);
 
+		addWindowListener(new WindowAdapter() {
+			@Override public void windowClosing(WindowEvent e) {
+				new ExitAction().actionPerformed(new ActionEvent(editor, 0, "Exit"));
+			}
+		});
+
 		interceptMenuItem = new JCheckBoxMenuItem("Intercept");
 		interceptMenuItem.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -67,7 +65,6 @@ public class InterceptFrame extends JFrame {
 	public void setGraph(final Graph graph) {
 		if (graph == null)
 			throw new NullPointerException("graph");
-		this.graph = graph;
 		this.graphComponent.setGraph(graph.getGraph());
 	}
 

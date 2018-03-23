@@ -208,17 +208,21 @@ public class EditorActions {
 			BasicGraphEditor editor = getEditor(e);
 
 			if (editor != null) {
-				// set a new empty graph, to trigger server shutdown
-				mxGraph graph = editor.getGraphComponent().getGraph();
+				if (!editor.isModified()
+						|| JOptionPane.showConfirmDialog(editor,
+								mxResources.get("loseChanges")) == JOptionPane.YES_OPTION) {
+					mxGraph graph = editor.getGraphComponent().getGraph();
 
-				// Check modified flag and display save dialog
-				mxCell root = new mxCell();
-				root.insert(new mxCell());
-				graph.getModel().setRoot(root);
+					// Check modified flag and display save dialog
+					mxCell root = new mxCell();
+					root.insert(new mxCell());
+					graph.getModel().setRoot(root);
 
-				editor.setModified(false);
-				editor.setCurrentFile(null);
-				editor.getGraphComponent().zoomAndCenter();
+					editor.setModified(false);
+					editor.setCurrentFile(null);
+					editor.getGraphComponent().zoomAndCenter();
+				} else
+					return;
 
 				editor.exit();
 			}
