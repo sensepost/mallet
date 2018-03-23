@@ -128,6 +128,7 @@ public interface InterceptController {
 		private Object msg;
 		private MessageDAO dao = null;
 		private String messageId = null;
+		private Class<?> msgClass = null;
 		
 		public ChannelReadEvent(int connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
 			super(connection, direction, eventTime, executionTime);
@@ -141,12 +142,17 @@ public interface InterceptController {
 		}
 		
 		public Object getMessage() {
-			if (msg == null && dao != null && messageId != null)
+			if (msg == null && dao != null && messageId != null) {
 				return dao.readObject(messageId);
+			}
 			return msg;
 		}
 		
 		public void setMessage(Object msg) {
+			if (msgClass != null) {
+				System.out.println("Changing message! Class was previously " + msgClass + ", now changing to " + msg.getClass());
+			}
+			msgClass = msg.getClass();
 			if (dao != null && msg != null)
 				this.messageId = dao.writeObject(msg);
 			this.msg = msg;
