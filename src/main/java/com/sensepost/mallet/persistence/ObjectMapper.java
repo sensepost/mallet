@@ -3,7 +3,9 @@ package com.sensepost.mallet.persistence;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.FullHttpMessage;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -16,53 +18,80 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ObjectMapper {
 
-	private Map<Class<?>, EmbeddedChannel> objectToByteMap = new HashMap<>(),
+	private Map<Class<?>, List<Class<? extends ChannelHandler>>> objectToByteMap = new HashMap<>(),
 			byteToObjectMap = new HashMap<>();
 
 	public ObjectMapper() {
-		registerMapping(FullHttpRequest.class,
-				new ChannelHandler[] { new HttpRequestEncoder() },
-				new ChannelHandler[] { new HttpRequestDecoder(),
-						new HttpObjectAggregator(Integer.MAX_VALUE) {
-							/*
-							 * Special implementation to prevent spurious
-							 * addition of Content-Length header to requests
-							 */
-							@Override
-							protected void finishAggregation(
-									FullHttpMessage aggregated)
-									throws Exception {
-								if (aggregated instanceof FullHttpResponse)
-									super.finishAggregation(aggregated);
-							}
-						} });
-		registerMapping(FullHttpResponse.class,
-				new ChannelHandler[] { new HttpResponseEncoder() },
-				new ChannelHandler[] { new HttpResponseDecoder(),
-						new HttpObjectAggregator(Integer.MAX_VALUE) });
+		registerDefaultMappings();
+	}
+
+	protected void registerDefaultMappings() {
+		registerMapping(
+				FullHttpRequest.class,
+				makeList(HttpRequestEncoder.class),
+				makeList(HttpRequestDecoder.class,
+						MaxHttpObjectAggregator.class));
+		registerMapping(
+				FullHttpResponse.class,
+				makeList(HttpResponseEncoder.class),
+				makeList(HttpResponseDecoder.class,
+						MaxHttpObjectAggregator.class));
+	}
+
+	private List<Class<? extends ChannelHandler>> makeList(
+			Class<? extends ChannelHandler> handler) {
+		List<Class<? extends ChannelHandler>> list = new ArrayList<>();
+		list.add(handler);
+		return list;
+	}
+
+	@SafeVarargs
+	final private List<Class<? extends ChannelHandler>> makeList(
+			Class<? extends ChannelHandler>... handlers) {
+		List<Class<? extends ChannelHandler>> list = new ArrayList<>();
+		for (Class<? extends ChannelHandler> c : handlers)
+			list.add(c);
+		return list;
 	}
 
 	public void registerMapping(Class<?> objectClass,
-			ChannelHandler objectToByteHandler,
-			ChannelHandler byteToObjectHandler) {
-		registerMapping(objectClass,
-				new ChannelHandler[] { objectToByteHandler },
-				new ChannelHandler[] { byteToObjectHandler });
+			Class<? extends ChannelHandler> objectToByteHandler,
+			Class<? extends ChannelHandler> byteToObjectHandler) {
+
+		registerMapping(objectClass, makeList(objectToByteHandler),
+				makeList(byteToObjectHandler));
 	}
 
 	public void registerMapping(Class<?> objectClass,
-			ChannelHandler[] objectToByteHandler,
-			ChannelHandler[] byteToObjectHandler) {
-		objectToByteMap.put(objectClass, new EmbeddedChannel(
-				objectToByteHandler));
-		byteToObjectMap.put(objectClass, new EmbeddedChannel(
-				byteToObjectHandler));
+			List<Class<? extends ChannelHandler>> objectToByteHandler,
+			List<Class<? extends ChannelHandler>> byteToObjectHandler) {
+		objectToByteMap.put(objectClass, objectToByteHandler);
+		byteToObjectMap.put(objectClass, byteToObjectHandler);
+	}
+
+	private EmbeddedChannel createEmbeddedChannel(
+			List<Class<? extends ChannelHandler>> handlers) {
+		EmbeddedChannel ec = new EmbeddedChannel();
+		for (Class<? extends ChannelHandler> c : handlers) {
+			try {
+				ChannelHandler h = c.newInstance();
+				ec.pipeline().addLast(h);
+			} catch (InstantiationException | IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return null;
+			}
+		}
+		return ec;
 	}
 
 	public byte[] convertToByte(Object object) throws HandlerNotFoundException {
@@ -89,7 +118,15 @@ public class ObjectMapper {
 			ReferenceCountUtil.retain(object);
 		}
 
-		EmbeddedChannel ec = getMappingForClass(objectClass, objectToByteMap);
+		Class<?> mapClass = getMappingClassForClass(objectClass,
+				objectToByteMap.keySet());
+		if (mapClass == null)
+			throw new HandlerNotFoundException("Handler not found for "
+					+ objectClass);
+
+		EmbeddedChannel ec = createEmbeddedChannel(objectToByteMap
+				.get(mapClass));
+
 		Object o;
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		synchronized (ec) {
@@ -115,14 +152,16 @@ public class ObjectMapper {
 						// this should never happen
 						throw new RuntimeException(e);
 					}
-				} else 
+				} else
 					throw new RuntimeException(
-						"Object returned from mapping was not a ByteBuf, but a "
-								+ o.getClass());
+							"Object returned from mapping was not a ByteBuf, but a "
+									+ o.getClass());
 			} while (!ec.outboundMessages().isEmpty());
 		}
+		ec.close();
 		if (baos.size() == 0)
-			throw new RuntimeException("Mapping from " + object + " to bytes resulted in 0 bytes written!");
+			throw new RuntimeException("Mapping from " + object
+					+ " to bytes resulted in 0 bytes written!");
 		return baos.toByteArray();
 	}
 
@@ -133,7 +172,16 @@ public class ObjectMapper {
 		if (ByteBuf.class.isAssignableFrom(objectClass))
 			return Unpooled.wrappedBuffer(bytes);
 		Object o;
-		EmbeddedChannel ec = getMappingForClass(objectClass, byteToObjectMap);
+
+		Class<?> mapClass = getMappingClassForClass(objectClass,
+				byteToObjectMap.keySet());
+		if (mapClass == null)
+			throw new HandlerNotFoundException("Handler not found for "
+					+ objectClass);
+
+		EmbeddedChannel ec = createEmbeddedChannel(byteToObjectMap
+				.get(mapClass));
+
 		synchronized (ec) {
 			if (!ec.inboundMessages().isEmpty())
 				throw new IllegalStateException(
@@ -147,35 +195,48 @@ public class ObjectMapper {
 						"Stray objects left in the codec channel after reading: "
 								+ ec.inboundMessages());
 		}
+
+		ec.close();
 		if (o == null)
 			throw new NullPointerException("No object read decoding "
 					+ Arrays.toString(bytes));
-		if (!objectClass.isAssignableFrom(objectClass))
-			throw new ClassCastException("Expected " + objectClass
+		if (!mapClass.isAssignableFrom(o.getClass()))
+			throw new ClassCastException("Expected " + mapClass
 					+ ", but got incompatible " + o.getClass());
 		return o;
 	}
 
-	private EmbeddedChannel getMappingForClass(Class<?> objectClass,
-			Map<Class<?>, EmbeddedChannel> map) throws HandlerNotFoundException {
-		EmbeddedChannel ec = null;
+	private Class<?> getMappingClassForClass(Class<?> objectClass,
+			Set<Class<?>> classes) {
 		Class<?> c = objectClass;
 		// Find by class hierarchy
-		do {
-			ec = map.get(c);
+		while (c != Object.class) {
+			if (classes.contains(c))
+				return c;
+			// or by interfaces
+			for (Class<?> i : c.getInterfaces())
+				if (classes.contains(i))
+					return i;
 			c = c.getSuperclass();
-		} while (ec == null && c != Object.class);
-		if (ec != null)
-			return ec;
-
-		// Find by interfaces
-		Class<?>[] interfaces = objectClass.getInterfaces();
-		for (int i = 0; i < interfaces.length; i++) {
-			ec = map.get(interfaces[i]);
-			if (ec != null)
-				return ec;
 		}
-		throw new HandlerNotFoundException("Handler for object class "
-				+ objectClass + " not found");
+		return null;
 	}
+
+	static class MaxHttpObjectAggregator extends ChannelInitializer<Channel> {
+		@Override
+		protected void initChannel(Channel ch) throws Exception {
+			String name = ch.pipeline().context(this).name();
+			ch.pipeline().addAfter(name, null,
+					new HttpObjectAggregator(Integer.MAX_VALUE) {
+						@Override
+						protected void finishAggregation(
+								FullHttpMessage aggregated) throws Exception {
+							if (aggregated instanceof FullHttpResponse)
+								super.finishAggregation(aggregated);
+						}
+					});
+		}
+
+	}
+
 }
