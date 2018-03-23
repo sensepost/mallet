@@ -3,14 +3,10 @@ package com.sensepost.mallet.persistence;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.FullHttpMessage;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpResponseDecoder;
@@ -24,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.sensepost.mallet.handlers.http.MaxHttpObjectAggregator;
 
 public class ObjectMapper {
 
@@ -220,23 +218,6 @@ public class ObjectMapper {
 			c = c.getSuperclass();
 		}
 		return null;
-	}
-
-	static class MaxHttpObjectAggregator extends ChannelInitializer<Channel> {
-		@Override
-		protected void initChannel(Channel ch) throws Exception {
-			String name = ch.pipeline().context(this).name();
-			ch.pipeline().addAfter(name, null,
-					new HttpObjectAggregator(Integer.MAX_VALUE) {
-						@Override
-						protected void finishAggregation(
-								FullHttpMessage aggregated) throws Exception {
-							if (aggregated instanceof FullHttpResponse)
-								super.finishAggregation(aggregated);
-						}
-					});
-		}
-
 	}
 
 }
