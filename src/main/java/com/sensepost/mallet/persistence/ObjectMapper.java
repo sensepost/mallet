@@ -11,9 +11,13 @@ import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.HttpResponseDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.websocketx.WebSocket13FrameDecoder;
+import io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 
 import com.sensepost.mallet.handlers.http.MaxHttpObjectAggregator;
+import com.sensepost.mallet.handlers.http.WebsocketDecoderInitializer;
+import com.sensepost.mallet.handlers.http.WebsocketEncoderInitializer;
 
 public class ObjectMapper {
 
@@ -43,6 +49,9 @@ public class ObjectMapper {
 				makeList(HttpResponseEncoder.class),
 				makeList(HttpResponseDecoder.class,
 						MaxHttpObjectAggregator.class));
+		registerMapping(WebSocketFrame.class,
+				makeList(WebsocketEncoderInitializer.class),
+				makeList(WebsocketDecoderInitializer.class));
 	}
 
 	private List<Class<? extends ChannelHandler>> makeList(
@@ -72,6 +81,20 @@ public class ObjectMapper {
 	public void registerMapping(Class<?> objectClass,
 			List<Class<? extends ChannelHandler>> objectToByteHandler,
 			List<Class<? extends ChannelHandler>> byteToObjectHandler) {
+		for (Class<?> clz : objectToByteHandler) {
+			try {
+				clz.getConstructor(new Class<?>[0]);
+			} catch (NoSuchMethodException | SecurityException e) {
+				throw new RuntimeException("No default constructor found for class " + clz, e);
+			}
+		}
+		for (Class<?> clz : byteToObjectHandler) {
+			try {
+				clz.getConstructor(new Class<?>[0]);
+			} catch (NoSuchMethodException | SecurityException e) {
+				throw new RuntimeException("No default constructor found for class " + clz, e);
+			}
+		}
 		objectToByteMap.put(objectClass, objectToByteHandler);
 		byteToObjectMap.put(objectClass, byteToObjectHandler);
 	}
