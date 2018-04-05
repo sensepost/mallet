@@ -201,7 +201,9 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 				text += " CLOSED";
 			JLabel renderer = (JLabel) defaultRenderer.getListCellRendererComponent(list, text, index, isSelected,
 					cellHasFocus);
-			if (cd.isClosed())
+			if (cd.isException())
+				renderer.setBackground(Color.PINK);
+			else if (cd.isClosed())
 				renderer.setBackground(Color.LIGHT_GRAY);
 
 			return renderer;
