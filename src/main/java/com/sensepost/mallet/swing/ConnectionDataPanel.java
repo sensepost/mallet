@@ -159,6 +159,9 @@ public class ConnectionDataPanel extends JPanel {
 	}
 
 	public void setConnectionData(ConnectionData connectionData) {
+		if (this.connectionData == connectionData)
+			return;
+
 		this.connectionData = connectionData;
 
 		if (connectionData != null) {
