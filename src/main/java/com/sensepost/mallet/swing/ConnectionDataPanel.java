@@ -120,10 +120,9 @@ public class ConnectionDataPanel extends JPanel {
 		splitPane.setTopComponent(scrollPane);
 
 		table = new JTable(tableModel);
-		table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(table);
-		table.setModel(tableModel);
 		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 			@Override
 			public void valueChanged(ListSelectionEvent e) {
