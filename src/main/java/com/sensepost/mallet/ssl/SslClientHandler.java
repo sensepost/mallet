@@ -1,18 +1,21 @@
 package com.sensepost.mallet.ssl;
 
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.security.Security;
 
 import javax.net.ssl.X509KeyManager;
 
-public class SslClientHandler extends ChannelInitializer<SocketChannel> {
+public class SslClientHandler extends ChannelOutboundHandlerAdapter {
 
 	private X509KeyManager km = null;
 	private String alias = null;
@@ -33,9 +36,11 @@ public class SslClientHandler extends ChannelInitializer<SocketChannel> {
 	}
 
 	@Override
-	protected void initChannel(SocketChannel ch) throws Exception {
-		ChannelPipeline p = ch.pipeline();
-		String me = p.context(this).name();
+	public void connect(ChannelHandlerContext ctx, final SocketAddress remoteAddress,
+			SocketAddress localAddress, ChannelPromise promise)
+			throws Exception {
+		ChannelPipeline p = ctx.channel().pipeline();
+		String me = ctx.name();
 		SslContextBuilder builder = SslContextBuilder.forClient().trustManager(
 				InsecureTrustManagerFactory.INSTANCE);
 		if (km != null && alias != null)
@@ -43,21 +48,19 @@ public class SslClientHandler extends ChannelInitializer<SocketChannel> {
 					km.getCertificateChain(alias));
 		if (provider != null)
 			builder.sslContextProvider(Security.getProvider(provider));
+		builder.protocols(new String[] { "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2"});
 		SslContext clientContext = builder.build();
-		final SslHandler s = clientContext.newHandler(ch.alloc());
-		// FIXME: Placeholder for future userEvent for debugging SSL handshaking
-//		s.handshakeFuture().addListener(
-//				new GenericFutureListener<Future<Channel>>() {
-//					@Override
-//					public void operationComplete(Future<Channel> future)
-//							throws Exception {
-//						System.out.println("Handshake complete");
-//						System.out.println(s.engine().getSession()
-//								.getCipherSuite());
-//					}
-//				});
+		final SslHandler s;
+		if (remoteAddress instanceof InetSocketAddress) {
+			InetSocketAddress remote = (InetSocketAddress) remoteAddress;
+			s = clientContext.newHandler(ctx.alloc(), remote.getHostString(), remote.getPort());
+		} else {
+			s = clientContext.newHandler(ctx.alloc());
+		}
 
 		p.addAfter(me, null, s);
+		p.remove(this);
+		super.connect(ctx, remoteAddress, localAddress, promise);
 	}
 
 }
