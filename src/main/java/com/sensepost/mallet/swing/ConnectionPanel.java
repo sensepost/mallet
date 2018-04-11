@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.net.SocketAddress;
+import java.sql.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,11 +16,17 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTable;
 import javax.swing.ListCellRenderer;
+import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
 
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.persistence.MessageDAO;
@@ -28,7 +35,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 	private ConnectionDataPanel cdp;
 
-	private JList<Integer> list;
+	private JTable table;
 	private DefaultListModel<Integer> listModel = new DefaultListModel<>();
 
 	private Map<Integer, AddrPair> connAddrMap = new HashMap<>();
@@ -40,29 +47,47 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	public ConnectionPanel() {
 		setLayout(new BorderLayout(0, 0));
 		JSplitPane splitPane = new JSplitPane();
-		splitPane.setResizeWeight(0.5);
+		splitPane.setResizeWeight(0.25);
 		add(splitPane);
 
 		JScrollPane scrollPane = new JScrollPane();
 		splitPane.setLeftComponent(scrollPane);
 
-		list = new JList<>(listModel);
-		list.addListSelectionListener(new ListSelectionListener() {
+		table = new JTable(new ListTableModelAdapter(listModel)) {
+			public Component prepareRenderer(TableCellRenderer renderer,
+					int row, int column) {
+				Component c = super.prepareRenderer(renderer, row, column);
+
+				int connection = listModel.getElementAt(row);
+				ConnectionData cd = channelEventMap.get(connection);
+				if (cd.isException()) {
+					c.setBackground(Color.PINK);
+				} else if (cd.isClosed()) {
+					c.setBackground(Color.LIGHT_GRAY);
+				} else {
+					c.setBackground(getBackground());
+				}
+				return c;
+			}
+		};
+		table.setRowSelectionAllowed(true);
+		table.setColumnSelectionAllowed(false);
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent e) {
 				if (e.getValueIsAdjusting())
 					return;
 				ConnectionData cd = null;
-				if (list.getSelectedValue() != null) {
+				if (e.getFirstIndex() != -1) {
 					synchronized (channelEventMap) {
-						cd = channelEventMap.get(list.getSelectedValue());
+						cd = channelEventMap.get(listModel.getElementAt(e.getFirstIndex()));
 					}
 				}
 				cdp.setConnectionData(cd);
 			}
 		});
-		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		list.setCellRenderer(new ChannelPairCellRenderer());
-		scrollPane.setViewportView(list);
+		table.setDefaultRenderer(Date.class, new DateRenderer(false));
+		scrollPane.setViewportView(table);
 
 		cdp = new ConnectionDataPanel();
 		splitPane.setRightComponent(cdp);
@@ -156,11 +181,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		}
 	}
 
-
-	protected JList<Integer> getConnectionList() {
-		return list;
-	}
-
 	protected static class AddrPair {
 		private SocketAddress src, dst;
 
@@ -211,5 +231,88 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 	}
 
+	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
 
+		private ListModel<Integer> listModel = null;
+		private String[] columnNames = new String[] { "#", "Src", "Dst", "Events", "Opened", "Closed" };
+		private Class<?>[] columnClasses = new Class<?>[] { Integer.class, SocketAddress.class, SocketAddress.class, String.class, Date.class, Date.class};
+
+		public ListTableModelAdapter(ListModel<Integer> listModel) {
+			setListModel(listModel);
+		}
+
+		public void setListModel(ListModel<Integer> listModel) {
+			if (this.listModel != null)
+				this.listModel.removeListDataListener(this);
+			this.listModel = listModel;
+			if (this.listModel != null)
+				this.listModel.addListDataListener(this);
+			fireTableDataChanged();
+		}
+
+		@Override
+		public int getRowCount() {
+			return listModel == null ? 0 : listModel.getSize();
+		}
+
+		@Override
+		public int getColumnCount() {
+			return columnNames.length;
+		}
+
+		@Override
+		public String getColumnName(int columnIndex) {
+			return columnNames[columnIndex];
+		}
+
+		@Override
+		public Class<?> getColumnClass(int columnIndex) {
+			return columnClasses[columnIndex];
+		}
+
+		@Override
+		public Object getValueAt(int rowIndex, int columnIndex) {
+			if (listModel == null || rowIndex > listModel.getSize())
+				return null;
+			Integer i = listModel.getElementAt(rowIndex);
+			AddrPair ap;
+			ConnectionData cd;
+			switch (columnIndex) {
+			case 0:
+				return i;
+			case 1:
+				ap = connAddrMap.get(i);
+				return ap.src;
+			case 2:
+				ap = connAddrMap.get(i);
+				return ap.dst;
+			case 3:
+				cd = channelEventMap.get(i);
+				return cd.getPendingEventCount() + "/" + cd.getEventCount();
+			case 4:
+				cd = channelEventMap.get(i);
+				return new Date(cd.getEvents().getElementAt(0).getEventTime());
+			case 5:
+				cd = channelEventMap.get(i);
+				return cd.isClosed() ? new Date(cd.getEvents().getElementAt(cd.getEventCount()-1).getExecutionTime()) : null;
+			}
+			return null;
+		}
+
+		@Override
+		public void intervalAdded(ListDataEvent e) {
+			fireTableRowsInserted(e.getIndex0(), e.getIndex1());
+		}
+
+		@Override
+		public void intervalRemoved(ListDataEvent e) {
+			fireTableRowsDeleted(e.getIndex0(), e.getIndex1());
+		}
+
+		@Override
+		public void contentsChanged(ListDataEvent e) {
+			fireTableDataChanged();
+		}
+
+	}
 }
