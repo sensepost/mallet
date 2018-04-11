@@ -93,6 +93,7 @@ public class WebsocketServerUpgradeHandler extends ChannelDuplexHandler {
 							HttpObjectAggregator agg = (HttpObjectAggregator) p.context(HttpObjectAggregator.class).handler();
 							http.upgradeFrom(ctx);
 							ctx.pipeline().remove(agg);
+
 							if (decoder != null && encoder != null) {
 								ctx.pipeline().addAfter(ctx.name(), null,
 										decoder);

@@ -27,6 +27,17 @@ public class WebsocketClientUpgradeHandler extends ChannelDuplexHandler {
 	private CharSequence reqVersion = null;
 
 	@Override
+	public void write(ChannelHandlerContext ctx, Object msg,
+			ChannelPromise promise) throws Exception {
+		if (msg instanceof HttpRequest) {
+			HttpRequest req = (HttpRequest) msg;
+			reqVersion = req.headers().get(
+					HttpHeaderNames.SEC_WEBSOCKET_VERSION);
+		}
+		super.write(ctx, msg, promise);
+	}
+	
+	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
 		if (msg instanceof FullHttpResponse) {
@@ -67,7 +78,6 @@ public class WebsocketClientUpgradeHandler extends ChannelDuplexHandler {
 					encoder = new WebSocket00FrameEncoder();
 		        }
 
-
 				ChannelPipeline p = ctx.pipeline();
 				ChannelHandlerContext httpCtx = p.context(HttpClientCodec.class);
 				HttpClientCodec http = (HttpClientCodec) httpCtx.handler();
@@ -92,17 +102,4 @@ public class WebsocketClientUpgradeHandler extends ChannelDuplexHandler {
 		super.channelRead(ctx, msg);
 	}
 
-
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg,
-			ChannelPromise promise) throws Exception {
-		if (msg instanceof HttpRequest) {
-			HttpRequest req = (HttpRequest) msg;
-			reqVersion = req.headers().get(
-					HttpHeaderNames.SEC_WEBSOCKET_VERSION);
-		}
-		super.write(ctx, msg, promise);
-	}
-
-	
 }
