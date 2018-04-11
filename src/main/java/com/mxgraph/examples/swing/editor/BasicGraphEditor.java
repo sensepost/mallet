@@ -42,6 +42,7 @@ import com.mxgraph.layout.mxParallelEdgeLayout;
 import com.mxgraph.layout.mxPartitionLayout;
 import com.mxgraph.layout.mxStackLayout;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
+import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.swing.handler.mxKeyboardHandler;
@@ -139,7 +140,13 @@ public class BasicGraphEditor extends JPanel {
 	 */
 	protected mxIEventListener changeTracker = new mxIEventListener() {
 		public void invoke(Object source, mxEventObject evt) {
-			setModified(true);
+			mxUndoableEdit edit = (mxUndoableEdit) evt.getProperty("edit");
+			List<mxUndoableChange> changes = edit.getChanges();
+			for (mxUndoableChange change : changes) {
+				if (!(change instanceof mxGeometryChange)) {
+					setModified(true);
+				}
+			}
 		}
 	};
 
@@ -181,23 +188,10 @@ public class BasicGraphEditor extends JPanel {
 
 			mxIGraphLayout layout = new mxHierarchicalLayout(graph, SwingConstants.NORTH);
 
-		    // layout using morphing
-		    graph.getModel().beginUpdate();
 		    try {
 		        layout.execute(graph.getDefaultParent());
 		    } finally {
 		        mxMorphing morph = new mxMorphing(graphComponent, 20, 1.2, 20);
-
-		        morph.addListener(mxEvent.DONE, new mxIEventListener() {
-
-		            @Override
-		            public void invoke(Object arg0, mxEventObject arg1) {
-		                graph.getModel().endUpdate();
-		                // fitViewport();
-		            }
-
-		        });
-
 		        morph.startAnimation();
 		    }
 		} finally {
