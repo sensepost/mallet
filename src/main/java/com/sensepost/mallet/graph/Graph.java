@@ -1,6 +1,8 @@
 package com.sensepost.mallet.graph;
 
+import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.AbstractChannel;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -12,11 +14,9 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 import io.netty.util.concurrent.GlobalEventExecutor;
@@ -176,19 +176,28 @@ public class Graph implements GraphLookup {
 	}
 
 	private ChannelFuture startServerFromSourceVertex(Object vertex) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-		ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
-				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
-				.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 		Object serverValue = graph.getModel().getValue(vertex);
 
 		// parse getValue() for vertex to
 		// determine what sort of EventLoopGroup we need, etc
-		Class<? extends ServerChannel> channelClass = getServerClass(getClassName(serverValue));
-		b.channel(channelClass);
+		Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
-		b.childHandler(new GraphChannelInitializer(vertex));
-		b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
-		return b.bind(address);
+		if (ServerChannel.class.isAssignableFrom(channelClass)) {
+			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
+			ServerBootstrap b = new ServerBootstrap()
+				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
+				.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
+			b.channel(serverClass);
+			b.childHandler(new GraphChannelInitializer(vertex));
+			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
+			b.attr(ChannelAttributes.GRAPH, this);
+			return b.bind(address);			
+		} else {
+			Bootstrap b = new Bootstrap().channel(channelClass)
+					.group(getEventGroup(workerGroups, channelClass, 0))
+					.handler(new GraphChannelInitializer(vertex));
+			return b.bind(address);
+		}
 	}
 	
 	private ChannelFuture stopServerFromSourceValue(Object serverValue) throws ClassNotFoundException {
@@ -197,17 +206,14 @@ public class Graph implements GraphLookup {
 		
 		// parse getValue() for each of sourceVertices to
 		// determine what sort of EventLoopGroup we need, etc
-		Class<? extends ServerChannel> channelClass = getServerClass(getClassName(serverValue));
+		Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
 		Iterator<Channel> it = channels.iterator();
 		while (it.hasNext()) {
 			Channel channel = it.next();
-			if (channel instanceof ServerChannel) {
-				ServerChannel serverChannel = (ServerChannel) channel;
-				if (address.equals(serverChannel.localAddress())) {
-					it.remove();
-					return serverChannel.close();
-				}
+			if (address.equals(channel.localAddress())) {
+				it.remove();
+				return channel.close();
 			}
 		}
 		return null;
@@ -218,7 +224,7 @@ public class Graph implements GraphLookup {
 		EventLoopGroup group = cache.get(channelClass);
 		if (group != null)
 			return group;
-		if (channelClass == NioServerSocketChannel.class) {
+		if (AbstractNioChannel.class.isAssignableFrom(channelClass)) {
 			group = new NioEventLoopGroup(threads);
 			cache.put(channelClass, group);
 			return group;
@@ -236,19 +242,24 @@ public class Graph implements GraphLookup {
 	 * @return the SocketAddress specified
 	 */
 	private SocketAddress parseSocketAddress(Class<? extends Channel> channelClass, Object o) {
-		if (NioServerSocketChannel.class.isAssignableFrom(channelClass)) {
-			// parse as an InetSocketAddress
-			if (o instanceof String) {
-				String sa = (String) o;
-				if (sa.indexOf('\n') > -1) {
-					sa = sa.substring(sa.indexOf('\n') + 1);
+		try {
+			Method remoteAddress = channelClass.getMethod("remoteAddress", new Class<?>[0]);
+			Class<?> ra = remoteAddress.getReturnType();
+			if (InetSocketAddress.class.isAssignableFrom(ra)) {
+				if (o instanceof String) {
+					String sa = (String) o;
+					if (sa.indexOf('\n') > -1) {
+						sa = sa.substring(sa.indexOf('\n') + 1);
+						return parseInetSocketAddress(sa);
+					}
+				} else if (o instanceof Element) {
+					Element e = (Element) o;
+					String sa = e.getAttribute("address");
 					return parseInetSocketAddress(sa);
 				}
-			} else if (o instanceof Element) {
-				Element e = (Element) o;
-				String sa = e.getAttribute("address");
-				return parseInetSocketAddress(sa);
 			}
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Could not parse the socket address from: '" + o + "'", e);
 		}
 		throw new IllegalArgumentException("Could not parse the socket address from: '" + o + "'");
 	}
@@ -266,11 +277,11 @@ public class Graph implements GraphLookup {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Class<? extends ServerChannel> getServerClass(String className) throws ClassNotFoundException {
+	private Class<? extends AbstractChannel> getServerClass(String className) throws ClassNotFoundException {
 		Class<?> clazz = Class.forName(className);
-		if (ServerChannel.class.isAssignableFrom(clazz))
-			return (Class<? extends ServerChannel>) clazz;
-		throw new ClassCastException(className + " does not implement ServerChannel");
+		if (AbstractChannel.class.isAssignableFrom(clazz))
+			return (Class<? extends AbstractChannel>) clazz;
+		throw new ClassCastException(className + " does not extend AbstractChannel");
 	}
 
 	private boolean isSink(Object v) {
@@ -404,7 +415,7 @@ public class Graph implements GraphLookup {
 							return c.newInstance(args);
 						}
 					} catch (Exception e) {
-						System.out.println("Can't instatiate " + description + "(" + Arrays.toString(args) + ") using " + c + ": " + e.getMessage());
+						System.out.println("Can't instantiate " + description + "(" + Arrays.toString(args) + ") using " + c + ": " + e.getMessage());
 					}
 				}
 			} else
@@ -519,9 +530,11 @@ public class Graph implements GraphLookup {
 	}
 
 	private void shutdownEventLoop(Map<Class<? extends Channel>, EventLoopGroup> cache) {
-		for (Entry<Class<? extends Channel>, EventLoopGroup> e : cache.entrySet()) {
+		Iterator<Entry<Class<? extends Channel>, EventLoopGroup>> it = cache.entrySet().iterator();
+		while (it.hasNext()) {
+			Entry<Class<? extends Channel>, EventLoopGroup> e = it.next();
 			e.getValue().shutdownGracefully();
-			cache.remove(e.getKey());
+			it.remove();
 		}
 	}
 
@@ -555,7 +568,7 @@ public class Graph implements GraphLookup {
 		}
 	}
 	
-	private class GraphChannelInitializer extends ChannelInitializer<SocketChannel> {
+	private class GraphChannelInitializer extends ChannelInitializer<Channel> {
 
 		private Object serverVertex;
 
@@ -564,7 +577,7 @@ public class Graph implements GraphLookup {
 		}
 
 		@Override
-		protected void initChannel(SocketChannel ch) throws Exception {
+		protected void initChannel(Channel ch) throws Exception {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
 			p.addAfter(me, null, new ExceptionCatcher(graphComponent, serverVertex));
@@ -576,8 +589,10 @@ public class Graph implements GraphLookup {
 				throw new IllegalStateException("Too many outbound edges for Server Vertex: " + serverVertex);
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
-			GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
-			ch.attr(ChannelAttributes.GRAPH).set(gl);
+			if (ch.parent() != null) {
+				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
+				ch.attr(ChannelAttributes.GRAPH).set(gl);
+			}
 			p.addAfter(me, null, new ConnectionNumberChannelHandler());
 			p.addLast(handlers);
 		}
