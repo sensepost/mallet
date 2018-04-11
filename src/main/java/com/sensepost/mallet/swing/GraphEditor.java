@@ -4,6 +4,10 @@ package com.sensepost.mallet.swing;
 
 import java.awt.Color;
 import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.util.EventObject;
@@ -23,7 +27,6 @@ import com.mxgraph.io.mxCodec;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.model.mxICell;
-import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxGraphTransferable;
 import com.mxgraph.swing.util.mxSwingConstants;
@@ -471,7 +474,20 @@ public class GraphEditor extends BasicGraphEditor {
 		protocolPalette.addTemplate("HttpMessageAggregator",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "10240"));
-
+		InputStream upsideDownStream = GraphEditor.class.getResourceAsStream("/com/sensepost/mallet/script.groovy");
+		if (upsideDownStream != null) {
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(upsideDownStream))) {
+				String line;
+				StringBuffer buff = new StringBuffer();
+				while ((line = br.readLine()) != null)
+					buff.append(line).append("\n");
+				Element upsidedown = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
+						buff.toString(), "groovy");
+				protocolPalette.addTemplate("UpsideDown-ternet",
+						new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+						"rounded=1", 160, 120, upsidedown);
+			} catch (IOException ioe) {}
+		}
 	}
 
 	/**

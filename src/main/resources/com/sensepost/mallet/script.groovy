@@ -12,7 +12,12 @@ return new ChannelDuplexHandler() {
 			msg.headers().set("if-modified-since", "-1");
 			msg.headers().get("if-range");
 			msg.headers().get("range");
-		} else if (FullHttpResponse.class.isAssignableFrom(object.getClass())) {
+		}
+		ctx.fireChannelRead(msg);
+	}
+	
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+	    if (FullHttpResponse.class.isAssignableFrom(msg.getClass())) {
 			ct = msg.headers().get(HttpHeaderNames.CONTENT_TYPE);
 			if ("image/jpeg".equals(ct)) {
 				msg = msg.copy();
@@ -37,9 +42,15 @@ return new ChannelDuplexHandler() {
 					newcontent = Unpooled.wrappedBuffer(baos.toByteArray());
 					msg.replace(newcontent);
 					msg.headers().setHeader("Content-Length", newContent.readableBytes());
+					System.out.println("Flipped an image!");
+				} else {
+					System.out.println("No content!");
 				}
+			} else {
+				System.out.println("Not a jpg: " + ct);
 			}
 		}
-		ctx.fireChannelRead(msg);
-	}
+        ctx.write(msg, promise);
+    }
 };
+
