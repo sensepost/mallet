@@ -126,9 +126,9 @@ public class Main {
 		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
 		InterceptFrame ui = new InterceptFrame(graphComponent);
 		InterceptController ic = ui.getInterceptController();
-		ObjectMapper om = new ObjectMapper();
-		MessageDAO dao = new MessageDAO(null, om);
-		ic.setMessageDAO(dao);
+//		ObjectMapper om = new ObjectMapper();
+//		MessageDAO dao = new MessageDAO(null, om);
+//		ic.setMessageDAO(dao);
 		
 		ui.setSize(800, 600);
 
