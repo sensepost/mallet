@@ -149,9 +149,9 @@ public interface InterceptController {
 				return dao.readObject(messageId);
 			}
 			if (msg instanceof ByteBuf) { // FIXME: Check if this actually makes a difference
-				return ((ByteBuf) msg).duplicate();
+				return ((ByteBuf) msg).copy();
 			} else if (msg instanceof ByteBufHolder) {
-				return ((ByteBufHolder) msg).duplicate();
+				return ((ByteBufHolder) msg).copy();
 			}
 			return msg;
 		}
