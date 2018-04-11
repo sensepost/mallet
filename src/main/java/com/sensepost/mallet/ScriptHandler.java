@@ -37,7 +37,7 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 			StringBuilder b = new StringBuilder();
 			String line;
 			while ((line = r.readLine()) != null) {
-				b.append(line);
+				b.append(line).append("\n");
 			}
 			SCRIPT = b.toString();
 		} catch (IOException ioe) {
