@@ -42,8 +42,12 @@ public class DateRenderer extends DefaultTableCellRenderer {
 				} while (textWidth > targetWidth && i < formats.length);
 			} else {
 				Date base = (Date) table.getValueAt(0, column);
-				float r = date.getTime() - base.getTime();
-				text = String.format("+%.3f", r/1000) + "s";
+				if (date != null && base != null) {
+					float r = date.getTime() - base.getTime();
+					text = String.format("+%.3f", r/1000) + "s";
+				} else {
+					text = "";
+				}
 			}
 			setText(text);
 		}
