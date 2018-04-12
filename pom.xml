@@ -88,12 +88,12 @@
             <artifactId>groovy-all</artifactId>
             <version>2.4.10</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.luaj/luaj-jse -->
-        <dependency>
-            <groupId>org.luaj</groupId>
-            <artifactId>luaj-jse</artifactId>
-            <version>3.0.1</version>
-        </dependency>
+		<!-- https://mvnrepository.com/artifact/org.python/jython -->
+		<dependency>
+		    <groupId>org.python</groupId>
+		    <artifactId>jython</artifactId>
+		    <version>2.7.0</version>
+		</dependency>
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -106,12 +106,6 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
         </dependency>
-        <dependency>
-            <groupId>com.jolira</groupId>
-            <artifactId>onejar-maven-plugin</artifactId>
-            <version>1.4.4</version>
-        </dependency>
-
     </dependencies>
     <build>
     <plugins>
@@ -149,18 +143,20 @@
 	</executions>
   </plugin>
   <plugin>
-    <groupId>com.jolira</groupId>
-    <artifactId>onejar-maven-plugin</artifactId>
-    <version>1.4.4</version>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
     <executions>
-      <execution>
-        <configuration>
-          <onejarVersion>0.97</onejarVersion>
-        </configuration>
-        <goals>
-          <goal>one-jar</goal>
-        </goals>
-      </execution>
+        <execution>
+            <goals>
+                <goal>repackage</goal>
+            </goals>
+            <configuration>
+                <classifier>spring-boot</classifier>
+                <mainClass>
+                  com.sensepost.mallet.Main
+                </mainClass>
+            </configuration>
+        </execution>
     </executions>
   </plugin>
   </plugins>
