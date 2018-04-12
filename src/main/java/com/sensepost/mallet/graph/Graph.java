@@ -16,11 +16,12 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -61,11 +62,13 @@ import com.mxgraph.analysis.mxGraphStructure;
 import com.mxgraph.io.mxCodec;
 import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
+import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGraphModel.mxChildChange;
 import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.model.mxGraphModel.mxRootChange;
 import com.mxgraph.model.mxGraphModel.mxValueChange;
 import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.swing.util.mxCellOverlay;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
@@ -196,6 +199,7 @@ public class Graph implements GraphLookup {
 			Bootstrap b = new Bootstrap().channel(channelClass)
 					.group(getEventGroup(workerGroups, channelClass, 0))
 					.handler(new GraphChannelInitializer(vertex));
+			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
 		}
 	}
@@ -206,15 +210,19 @@ public class Graph implements GraphLookup {
 		
 		// parse getValue() for each of sourceVertices to
 		// determine what sort of EventLoopGroup we need, etc
-		Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
-		SocketAddress address = parseSocketAddress(channelClass, serverValue);
-		Iterator<Channel> it = channels.iterator();
-		while (it.hasNext()) {
-			Channel channel = it.next();
-			if (address.equals(channel.localAddress())) {
-				it.remove();
-				return channel.close();
+		try {
+			Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
+			SocketAddress address = parseSocketAddress(channelClass, serverValue);
+			Iterator<Channel> it = channels.iterator();
+			while (it.hasNext()) {
+				Channel channel = it.next();
+				if (address.equals(channel.localAddress())) {
+					it.remove();
+					return channel.close();
+				}
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -314,7 +322,7 @@ public class Graph implements GraphLookup {
 				break;
 			ChannelHandler h = getChannelHandler(v);
 			handlers.add(h);
-			handlers.add(new ExceptionCatcher(graphComponent, o));
+			handlers.add(new ExceptionCatcher(this, o));
 			Object[] outgoing = graph.getOutgoingEdges(o);
 			if (h instanceof IndeterminateChannelHandler) {
 				IndeterminateChannelHandler ich = (IndeterminateChannelHandler) h;
@@ -401,6 +409,16 @@ public class Graph implements GraphLookup {
 			return description;
 		} else if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
 			return Integer.parseInt(description);
+		} else if (type.equals(InetSocketAddress.class)) {
+			int c = description.indexOf(':');
+			if (c > 0) {
+				String host = description.substring(0, c);
+				try {
+					int port = Integer.parseInt(description.substring(c+1));
+					if (port > 0 && port < 65536)
+						return InetSocketAddress.createUnresolved(host, port);
+				} catch (NumberFormatException e) {}
+			}
 		}
 		// Try to do a naive instantiation
 		try {
@@ -416,6 +434,7 @@ public class Graph implements GraphLookup {
 						}
 					} catch (Exception e) {
 						System.out.println("Can't instantiate " + description + "(" + Arrays.toString(args) + ") using " + c + ": " + e.getMessage());
+						e.printStackTrace();
 					}
 				}
 			} else
@@ -544,6 +563,12 @@ public class Graph implements GraphLookup {
 			Object[] incomingPrevious = graph.getIncomingEdges(previous);
 			if (incomingPrevious == null || incomingPrevious.length == 0) {
 				try {
+					if (previous instanceof mxCell) {
+						previous = ((mxCell) previous).getValue();
+					}
+					if (previous == null)
+						return;
+					
 					stopFuture = stopServerFromSourceValue(previous);
 				} catch (ClassNotFoundException e) {
 					// It wasn't really a listener! No worries!
@@ -552,20 +577,40 @@ public class Graph implements GraphLookup {
 		}
 		if (cell != null) {
 			try {
-				ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
-				if (stopFuture == null) {
-					try {
-						cfl.operationComplete(null);
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				} else
-					stopFuture.addListener(cfl);
+				Object[] incomingNow = graph.getIncomingEdges(cell);
+				if (incomingNow.length > 0) {
+					ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
+					if (stopFuture == null) {
+						try {
+							cfl.operationComplete(null);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					} else
+						stopFuture.addListener(cfl);
+				}
 			} catch (ClassCastException e) {
 				// not a ServerChannel class, ignore
 			}
 		}
+	}
+	
+	public void addGraphException(Object node, final Throwable cause) {
+		String warning = cause.getLocalizedMessage();
+		if (warning == null) {
+			warning = cause.toString();
+		}
+		mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, warning);
+		if (overlay != null)
+			overlay.addMouseListener(new MouseAdapter() {
+				/**
+				 * Selects the associated cell in the graph
+				 */
+				public void mousePressed(MouseEvent e) {
+					cause.printStackTrace();
+				}
+			});
 	}
 	
 	private class GraphChannelInitializer extends ChannelInitializer<Channel> {
@@ -580,7 +625,7 @@ public class Graph implements GraphLookup {
 		protected void initChannel(Channel ch) throws Exception {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
-			p.addAfter(me, null, new ExceptionCatcher(graphComponent, serverVertex));
+			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 			
 			Object[] edges = graph.getEdges(serverVertex);
 			if (edges == null || edges.length == 0)

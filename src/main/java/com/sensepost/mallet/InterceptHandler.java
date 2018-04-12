@@ -13,7 +13,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.SocketAddress;
@@ -32,7 +34,6 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	private InterceptController controller;
 
-	private Bootstrap bootstrap;
 	private ChannelPromise upstreamPromise = null;
 	private boolean connectInProgress = false;
 
@@ -40,8 +41,6 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		if (controller == null)
 			throw new NullPointerException("controller");
 		this.controller = controller;
-		bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-				.option(ChannelOption.SO_KEEPALIVE, true);
 	}
 
 	synchronized private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
@@ -57,9 +56,9 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		final ChannelHandler[] handlers = gl.getClientChannelInitializer(this);
 
-		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
+		ChannelInitializer<Channel> initializer = new ChannelInitializer<Channel>() {
 			@Override
-			protected void initChannel(SocketChannel ch) throws Exception {
+			protected void initChannel(Channel ch) throws Exception {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
@@ -74,20 +73,41 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			}
 		};
 
-		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
-		cf.addListener(new ChannelFutureListener() {
+		Bootstrap bootstrap = null;
+		if (ctx.channel() instanceof NioSocketChannel) {
+			bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+					.option(ChannelOption.SO_KEEPALIVE, true);
+			ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
+			cf.addListener(new ChannelFutureListener() {
 
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					upstreamPromise.setSuccess();
-				} else {
-					upstreamPromise.setFailure(future.cause());
-					exceptionCaught(ctx, future.cause());
-					ctx.close();
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						upstreamPromise.setSuccess();
+					} else {
+						upstreamPromise.setFailure(future.cause());
+						exceptionCaught(ctx, future.cause());
+						ctx.close();
+					}
 				}
-			}
-		});
+			});
+		} else if (ctx.channel() instanceof NioDatagramChannel) {
+			bootstrap = new Bootstrap().channel(NioDatagramChannel.class);
+			ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).bind(9999); // FIXME 9999
+			cf.addListener(new ChannelFutureListener() {
+
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						upstreamPromise.setSuccess();
+					} else {
+						upstreamPromise.setFailure(future.cause());
+						exceptionCaught(ctx, future.cause());
+						ctx.close();
+					}
+				}
+			});
+		}
 	}
 
 	@Override
@@ -145,9 +165,8 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected void ensureUpstreamConnectedAndFire(ChannelHandlerContext ctx, final ChannelEvent evt) throws Exception {
-		// Assumes that the downstream channel is a ServerChannel, and has a
-		// parent!
-		if (ctx.channel().parent() != null)
+		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		if (channel == null)
 			setupOutboundChannel(ctx);
 
 		upstreamPromise.addListener(new ChannelFutureListener() {
@@ -179,8 +198,8 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			connection = ctx.channel().attr(ChannelAttributes.CHANNEL).get().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		remote = ctx.channel().remoteAddress();
 		local = ctx.channel().localAddress();
-		if (remote == null)
-			throw new NullPointerException("remote");
+//		if (remote == null)
+//			throw new NullPointerException("remote");
 		if (local == null)
 			throw new NullPointerException("local");
 		return new ChannelActiveEvent(connection, direction, remote, local) {
@@ -257,20 +276,28 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			System.out.println("Connection: " + ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get());
 			throw new NullPointerException("Channel is null!");
 		}
-		ChannelFuture cf = channel.writeAndFlush(msg);
-		cf.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) {
-				if (future.isSuccess()) {
-					ctx.channel().read();
-				} else {
-					try {
-						exceptionCaught(ctx, future.cause());
-					} catch (Exception e) {}
-					future.channel().close();
+		ChannelFuture cf;
+		if (channel instanceof NioSocketChannel) {
+			cf = channel.writeAndFlush(msg);
+			cf.addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) {
+					if (future.isSuccess()) {
+						ctx.channel().read();
+					} else {
+						try {
+							exceptionCaught(ctx, future.cause());
+						} catch (Exception e) {}
+						future.channel().close();
+					}
 				}
-			}
-		});
+			});
+		} else if (channel instanceof NioDatagramChannel) {
+			ConnectRequest cr = ctx.channel().attr(ChannelAttributes.TARGET).get();
+			SocketAddress target = cr.getTarget();
+			cf = channel.writeAndFlush(msg);
+		} else 
+			throw new RuntimeException("Unsupported channel type");
 	}
 
 	@Override

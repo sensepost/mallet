@@ -5,23 +5,19 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.Attribute;
 
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 
-import com.mxgraph.swing.mxGraphComponent;
-import com.mxgraph.swing.util.mxCellOverlay;
 import com.sensepost.mallet.ChannelAttributes;
 
 public class ExceptionCatcher extends ChannelDuplexHandler {
 	
 	private Object node;
-	private mxGraphComponent graphComponent;
+	private Graph graph;
 	
-	public ExceptionCatcher(mxGraphComponent graphComponent, Object node) {
-		this.graphComponent = graphComponent;
+	public ExceptionCatcher(Graph graph, Object node) {
+		this.graph = graph;
 		this.node = node;
 	}
 	
@@ -39,20 +35,7 @@ public class ExceptionCatcher extends ChannelDuplexHandler {
 			attr.set(cause);
 			if (cause instanceof ClosedChannelException)
 				return;
-			String warning = cause.getLocalizedMessage();
-			if (warning == null) {
-				warning = cause.toString();
-			}
-			mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, warning);
-			if (overlay != null)
-				overlay.addMouseListener(new MouseAdapter() {
-					/**
-					 * Selects the associated cell in the graph
-					 */
-					public void mousePressed(MouseEvent e) {
-						cause.printStackTrace();
-					}
-				});
+			graph.addGraphException(node, cause);
 		}
 	}
 	
