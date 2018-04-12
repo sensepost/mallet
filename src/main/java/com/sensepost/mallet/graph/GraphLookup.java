@@ -12,8 +12,12 @@ public interface GraphLookup {
 	
 	ChannelHandler[] getClientChannelInitializer(ChannelHandler handler);
 	
+	ChannelHandler[] getClientChannelInitializer(ChannelHandler handler,
+			boolean retain);
+	
 	ChannelHandler[] getProxyInitializer(ChannelHandler handler, SocketAddress target);
 	
 	void shutdownServers() throws Exception;
+
 	
 }

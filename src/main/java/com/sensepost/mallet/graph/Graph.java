@@ -78,6 +78,7 @@ import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
+import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.InterceptHandler;
 import com.sensepost.mallet.RelayHandler;
 
@@ -331,7 +332,7 @@ public class Graph implements GraphLookup {
 					options[i] = (String) graph.getModel().getValue(outgoing[i]);
 				ich.setOutboundOptions(options);
 			}
-			if ((h instanceof InterceptHandler) || (h instanceof RelayHandler)
+			if ((h instanceof InterceptHandler) || (h instanceof RelayHandler || (h instanceof DatagramRelayHandler))
 					|| (h instanceof IndeterminateChannelHandler)) {
 				handlerVertexMap.put(h, o);
 				break;
@@ -508,7 +509,12 @@ public class Graph implements GraphLookup {
 
 	@Override
 	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler) {
-		Object vertex = handlerVertexMap.remove(handler);
+		return getClientChannelInitializer(handler, false);
+	}
+
+	@Override
+	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler, boolean retain) {
+		Object vertex = retain ? handlerVertexMap.get(handler) : handlerVertexMap.remove(handler);
 		try {
 			Object[] outgoing = graph.getOutgoingEdges(vertex);
 			if (outgoing == null || outgoing.length != 1)
