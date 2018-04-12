@@ -106,6 +106,9 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 
 		final JButton moveParameterUpButton = new JButton(new AbstractAction("^") {
 			public void actionPerformed(ActionEvent e) {
+				TableCellEditor editor = table.getCellEditor();
+				if (editor != null)
+					editor.stopCellEditing();
 				int row = table.getSelectedRow();
 				if (row < 1)
 					return;
@@ -115,6 +118,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 					data[i] = tableModel.getValueAt(row, i);
 				tableModel.removeRow(row);
 				tableModel.insertRow(row - 1, data);
+				System.out.println(tableModel.getDataVector());
 			}
 		});
 		panel_1.add(moveParameterUpButton);
@@ -122,23 +126,34 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 		final JButton addParamButton = new JButton(new AbstractAction("+") {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				tableModel.addRow(new String[tableModel.getColumnCount()]);
+				TableCellEditor editor = table.getCellEditor();
+				if (editor != null)
+					editor.stopCellEditing();
+				tableModel.addRow(new String[tableModel.getRowCount()]);
+				System.out.println(tableModel.getDataVector());
 			}
 		});
 		panel_1.add(addParamButton);
 
 		final JButton removeParamButton = new JButton(new AbstractAction("-") {
 			public void actionPerformed(ActionEvent e) {
+				TableCellEditor editor = table.getCellEditor();
+				if (editor != null)
+					editor.stopCellEditing();
 				int row = table.getSelectedRow();
 				if (row == -1)
 					return;
 				tableModel.removeRow(row);
+				System.out.println(tableModel.getDataVector());
 			}
 		});
 		panel_1.add(removeParamButton);
 
 		final JButton moveParameterDownButton = new JButton(new AbstractAction("v") {
 			public void actionPerformed(ActionEvent e) {
+				TableCellEditor editor = table.getCellEditor();
+				if (editor != null)
+					editor.stopCellEditing();
 				int row = table.getSelectedRow();
 				if (row == -1 || row == table.getRowCount() - 1)
 					return;
@@ -148,6 +163,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 					data[i] = tableModel.getValueAt(row, i);
 				tableModel.removeRow(row);
 				tableModel.insertRow(row + 1, data);
+				System.out.println(tableModel.getDataVector());
 			}
 		});
 		panel_1.add(moveParameterDownButton);
