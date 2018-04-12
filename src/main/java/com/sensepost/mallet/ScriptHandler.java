@@ -1,24 +1,23 @@
 package com.sensepost.mallet;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-
-import javax.script.Bindings;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelInitializer;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 
 @Sharable
 public class ScriptHandler extends ChannelInitializer<Channel> {
@@ -62,9 +61,27 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 	}
 
 	public ScriptHandler(String filename) throws FileNotFoundException, ScriptException {
-		String extension = filename.substring(filename.lastIndexOf('.'));
-		this.engine = sem.getEngineByExtension(extension);
-		handler = getScriptHandler(engine, engine.eval(new FileReader(filename)));
+		InputStream is = null;
+		try {
+			File f = new File(filename);
+			if (f.exists())
+				is = new FileInputStream(f);
+			else
+				is = getClass().getClassLoader().getResourceAsStream(filename);
+			if (is == null)
+				throw new FileNotFoundException(filename);
+			
+			String extension = filename.substring(filename.lastIndexOf('.'));
+			this.engine = sem.getEngineByExtension(extension);
+			handler = getScriptHandler(engine, engine.eval(new InputStreamReader(is)));
+		} catch (IOException ioe) {
+			throw new ScriptException(ioe);
+		} finally {
+			if (is != null)
+				try {
+					is.close();
+				} catch (IOException e) {}
+		}
 	}
 
 	private ChannelHandler getScriptHandler(ScriptEngine engine, Object script) {
