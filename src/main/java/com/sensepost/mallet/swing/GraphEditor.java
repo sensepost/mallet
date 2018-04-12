@@ -94,6 +94,9 @@ public class GraphEditor extends BasicGraphEditor {
 		Element socks = createElement(xmlDocument, "ChannelHandler", 
 				"com.sensepost.mallet.SocksInitializer");
 
+		Element fixedHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.FixedTargetHandler", 
+				"0.0.0.0:0");
+
 		Element handler = createElement(xmlDocument, "ChannelHandler", 
 				"io.netty.channel.ChannelDuplexHandler");
 
@@ -163,6 +166,9 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("Socks",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, socks);
+		basicPalette.addTemplate("Target",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, fixedHandler);
 		basicPalette.addTemplate("Handler",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, handler);
@@ -488,6 +494,24 @@ public class GraphEditor extends BasicGraphEditor {
 						"rounded=1", 160, 120, upsidedown);
 			} catch (IOException ioe) {}
 		}
+		
+		protocolPalette.addTemplate("StringDecoder",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.string.StringDecoder", "io.netty.util.CharsetUtil.UTF_8"));
+		
+		protocolPalette.addTemplate("StringEncoder",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.string.StringEncoder", "io.netty.util.CharsetUtil.UTF_8"));
+		
+
+		protocolPalette.addTemplate("JsonFrameDecoder",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
+		
+		protocolPalette.addTemplate("JsonObjectCodec",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", "import com.fasterxml.jackson.databind.*;\nimport com.fasterxml.jackson.databind.node.*;\n\nimport io.netty.buffer.*;\nimport io.netty.channel.*;\nimport io.netty.handler.codec.*;\n\nimport java.util.List;\n\nreturn new ByteToMessageCodec<JsonNode>(JsonNode.class) {\n    private final ObjectMapper objectMapper = new ObjectMapper();\n\n    protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {\n        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);\n        objectMapper.writeValue(byteBufOutputStream, msg);\n    }\n\n    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<JsonNode> out) throws Exception {\n        ByteBufInputStream byteBufInputStream = new ByteBufInputStream(buf);\n        out.add(objectMapper.readTree(byteBufInputStream));\n    }\n\n};\n\n", "groovy"));
+		
 	}
 
 	/**
