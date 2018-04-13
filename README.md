@@ -8,6 +8,8 @@ By following the careful separation of Codecs from Handlers that actually manipu
 
 Of course, while the messages are within Mallet, they can easily be tampered with, either with custom Handlers written in Java or a JSR-223 compliant scripting language, or manually, using one of the provided editors.
 
+You can get an idea of the available codecs by looking at the Netty source at [GitHub](https://github.com/netty/netty/), under the ```codec*``` directories. 
+
 # Building Mallet
 
 Mallet makes use of Maven, so compiling the code is a matter of
