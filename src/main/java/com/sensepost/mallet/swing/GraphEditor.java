@@ -466,10 +466,10 @@ public class GraphEditor extends BasicGraphEditor {
 		
 		protocolPalette.addTemplate("SSL Server",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.ssl.SniHandler", "{SSLServerCertificateMap}"));
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler", "{SSLServerCertificateMap}"));
 		protocolPalette.addTemplate("SSL Client",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "{SSLClientContext}.newHandler", "io.netty.buffer.PooledByteBufAllocator.DEFAULT"));
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler"));
 
 		protocolPalette.addTemplate("HttpServerCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
