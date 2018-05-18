@@ -218,15 +218,10 @@ public class Graph implements GraphLookup {
 		if (channels == null || channels.size() == 0)
 			return null;
 		
-		do {
-			Channel channel = channels.remove(serverValue);
-			if (channel != null) {
-				return channel.close();
-			}
-			if (serverValue instanceof mxCell) {
-				serverValue = ((mxCell) serverValue).getValue();
-			}
-		} while (serverValue != null);
+		Channel channel = channels.remove(serverValue);
+		if (channel != null) {
+			return channel.close();
+		}
 		return null;
 	}
 	
