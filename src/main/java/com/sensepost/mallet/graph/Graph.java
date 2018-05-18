@@ -12,7 +12,6 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
-import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -25,11 +24,7 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
@@ -37,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -92,8 +88,8 @@ public class Graph implements GraphLookup {
 	private Map<Class<? extends Channel>, EventLoopGroup> bossGroups = new HashMap<>();
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
 
-	private ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
-
+	private Map<Object, Channel> channels = new HashMap<>();
+	
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	private Bindings scriptContext;
@@ -122,16 +118,14 @@ public class Graph implements GraphLookup {
 					} else if (change instanceof mxValueChange) {
 						mxValueChange vc = (mxValueChange) change;
 						if (graph.getModel().isVertex(vc.getCell())) {
-							Object[] incoming = graph.getIncomingEdges(vc.getCell());
-							if (incoming == null || incoming.length == 0)
-								restartServerFromChange(vc.getPrevious(), vc.getCell());
+							stopStartServerFromChange(vc.getPrevious(), vc.getCell());
 						}
 					} else if (change instanceof mxChildChange) {
 						mxChildChange cc = (mxChildChange) change;
 						if (graph.getModel().isVertex(cc.getChild())) {
 							Object[] incoming = graph.getIncomingEdges(cc.getChild());
 							if (incoming == null || incoming.length == 0)
-								restartServerFromChange(cc.getPrevious(), cc.getChild());
+								stopStartServerFromChange(cc.getPrevious(), cc.getChild());
 						}
 					} else if (!(change instanceof mxGeometryChange)) {
 						System.out.println("Change: " + change.getClass());
@@ -168,26 +162,38 @@ public class Graph implements GraphLookup {
 		}
 	}
 
-	private void startServersFromGraph()
-			throws StructuralException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+	private void startServersFromGraph() {
 		mxAnalysisGraph aGraph = new mxAnalysisGraph();
 		aGraph.setGraph(graph);
 
 		mxGraphProperties.setDirected(aGraph.getProperties(), true);
 
-		Object[] sourceVertices = mxGraphStructure.getSourceVertices(aGraph);
+		Object[] sourceVertices;
+		try {
+			sourceVertices = mxGraphStructure.getSourceVertices(aGraph);
+		} catch (StructuralException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
 
 		for (int i = 0; i < sourceVertices.length; i++) {
-			startServerFromSourceVertex(sourceVertices[i]).addListener(new AddServerChannelListener());
+			startServerFromSourceVertex(sourceVertices[i]).addListener(new AddServerChannelListener(sourceVertices[i]));
 		}
 	}
 
-	private ChannelFuture startServerFromSourceVertex(Object vertex) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+	private ChannelFuture startServerFromSourceVertex(Object vertex) {
 		Object serverValue = graph.getModel().getValue(vertex);
 
 		// parse getValue() for vertex to
 		// determine what sort of EventLoopGroup we need, etc
-		Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
+		Class<? extends AbstractChannel> channelClass;
+		try {
+			channelClass = getChannelClass(getClassName(serverValue));
+		} catch (ClassNotFoundException e) {
+			addGraphException(vertex, e);
+			return null;
+		}
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
@@ -212,22 +218,15 @@ public class Graph implements GraphLookup {
 		if (channels == null || channels.size() == 0)
 			return null;
 		
-		// parse getValue() for each of sourceVertices to
-		// determine what sort of EventLoopGroup we need, etc
-		try {
-			Class<? extends AbstractChannel> channelClass = getServerClass(getClassName(serverValue));
-			SocketAddress address = parseSocketAddress(channelClass, serverValue);
-			Iterator<Channel> it = channels.iterator();
-			while (it.hasNext()) {
-				Channel channel = it.next();
-				if (address.equals(channel.localAddress())) {
-					it.remove();
-					return channel.close();
-				}
+		do {
+			Channel channel = channels.remove(serverValue);
+			if (channel != null) {
+				return channel.close();
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+			if (serverValue instanceof mxCell) {
+				serverValue = ((mxCell) serverValue).getValue();
+			}
+		} while (serverValue != null);
 		return null;
 	}
 	
@@ -289,7 +288,7 @@ public class Graph implements GraphLookup {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Class<? extends AbstractChannel> getServerClass(String className) throws ClassNotFoundException {
+	private Class<? extends AbstractChannel> getChannelClass(String className) throws ClassNotFoundException {
 		Class<?> clazz = Class.forName(className);
 		if (AbstractChannel.class.isAssignableFrom(clazz))
 			return (Class<? extends AbstractChannel>) clazz;
@@ -386,7 +385,7 @@ public class Graph implements GraphLookup {
 	}
 
 	@Override
-	public void startServers() throws Exception {
+	public void startServers() {
 		shutdownServers();
 		startServersFromGraph();
 	}
@@ -444,15 +443,17 @@ public class Graph implements GraphLookup {
 	}
 
 	@Override
-	public void shutdownServers() throws Exception {
-		if (channels != null)
-			try {
-				channels.close();
-			} finally {
-				shutdownEventLoop(bossGroups);
-				shutdownEventLoop(workerGroups);
-			}
-		channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
+	public void shutdownServers() {
+		List<ChannelFuture> closeFutures = new LinkedList<>();
+		Iterator<Entry<Object, Channel>> it = channels.entrySet().iterator();
+		while (it.hasNext()) {
+			Entry<Object, Channel> e = it.next();
+			closeFutures.add(e.getValue().close());
+			it.remove();
+		}
+		
+		shutdownEventLoop(bossGroups);
+		shutdownEventLoop(workerGroups);
 	}
 
 	private void shutdownEventLoop(Map<Class<? extends Channel>, EventLoopGroup> cache) {
@@ -464,18 +465,13 @@ public class Graph implements GraphLookup {
 		}
 	}
 
-	private void restartServerFromChange(Object previous, Object cell) {
+	private void stopStartServerFromChange(Object previous, Object cell) {
 		ChannelFuture stopFuture = null;
 		if (previous != null) {
+			// a Listener must have no incoming edges
 			Object[] incomingPrevious = graph.getIncomingEdges(previous);
 			if (incomingPrevious == null || incomingPrevious.length == 0) {
 				try {
-					if (previous instanceof mxCell) {
-						previous = ((mxCell) previous).getValue();
-					}
-					if (previous == null)
-						return;
-					
 					stopFuture = stopServerFromSourceValue(previous);
 				} catch (ClassNotFoundException e) {
 					// It wasn't really a listener! No worries!
@@ -483,22 +479,17 @@ public class Graph implements GraphLookup {
 			}
 		}
 		if (cell != null) {
-			try {
-				Object[] incomingNow = graph.getIncomingEdges(cell);
-				if (incomingNow.length == 0) {
-					ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
-					if (stopFuture == null) {
-						try {
-							cfl.operationComplete(null);
-						} catch (Exception e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					} else
-						stopFuture.addListener(cfl);
-				}
-			} catch (ClassCastException e) {
-				// not a ServerChannel class, ignore
+			Object[] incomingNow = graph.getIncomingEdges(cell);
+			if (incomingNow.length == 0) {
+				ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
+				if (stopFuture == null) {
+					try {
+						cfl.operationComplete(null);
+					} catch (Exception e) {
+						addGraphException(cell, e);
+					}
+				} else
+					stopFuture.addListener(cfl);
 			}
 		}
 	}
@@ -530,15 +521,22 @@ public class Graph implements GraphLookup {
 
 		@Override
 		protected void initChannel(Channel ch) throws Exception {
+			Object[] edges = graph.getEdges(serverVertex);
+			if (edges == null || edges.length == 0) {
+				addGraphException(serverVertex, new IllegalStateException("No outbound edge"));
+				ch.close();
+				return;
+			}
+			if (edges.length > 1) {
+				addGraphException(serverVertex, new IllegalStateException("Too many outbound edges"));
+				ch.close();
+				return;
+			}
+
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
 			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 			
-			Object[] edges = graph.getEdges(serverVertex);
-			if (edges == null || edges.length == 0)
-				throw new IllegalStateException("No outbound edge for Server Vertex: " + serverVertex);
-			if (edges.length > 1)
-				throw new IllegalStateException("Too many outbound edges for Server Vertex: " + serverVertex);
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
 			if (ch.parent() != null) {
@@ -551,14 +549,19 @@ public class Graph implements GraphLookup {
 	}
 	
 	private class AddServerChannelListener implements ChannelFutureListener {
-
+		private Object node;
+		
+		AddServerChannelListener(Object node) {
+			this.node = node;
+		}
+		
 		@Override
 		public void operationComplete(ChannelFuture future)
 				throws Exception {
 			if (future.isSuccess()) {
-				channels.add(future.channel());
+				channels.put(node, future.channel());
 			} else {
-				future.cause().printStackTrace();
+				addGraphException(node, future.cause());
 			}
 		}
 		
@@ -575,9 +578,9 @@ public class Graph implements GraphLookup {
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			try {
-				startServerFromSourceVertex(vertex).addListener(new AddServerChannelListener());
+				startServerFromSourceVertex(vertex).addListener(new AddServerChannelListener(vertex));
 			} catch (Exception e) {
-				e.printStackTrace();
+				addGraphException(vertex,  e);
 			}
 		}
 		
