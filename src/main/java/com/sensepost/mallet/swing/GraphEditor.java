@@ -512,6 +512,14 @@ public class GraphEditor extends BasicGraphEditor {
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", "import com.fasterxml.jackson.databind.*;\nimport com.fasterxml.jackson.databind.node.*;\n\nimport io.netty.buffer.*;\nimport io.netty.channel.*;\nimport io.netty.handler.codec.*;\n\nimport java.util.List;\n\nreturn new ByteToMessageCodec<JsonNode>(JsonNode.class) {\n    private final ObjectMapper objectMapper = new ObjectMapper();\n\n    protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {\n        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);\n        objectMapper.writeValue(byteBufOutputStream, msg);\n    }\n\n    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<JsonNode> out) throws Exception {\n        ByteBufInputStream byteBufInputStream = new ByteBufInputStream(buf);\n        out.add(objectMapper.readTree(byteBufInputStream));\n    }\n\n};\n\n", "groovy"));
 		
+		protocolPalette.addTemplate("SimpleBinaryModification",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.SimpleBinaryModificationHandler", "abcdef", "ABCDEF"));
+		
+		protocolPalette.addTemplate("ComplexBinaryModification",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.ComplexBinaryModificationHandler", "abcdef", "ABCDEF"));
+				
 	}
 
 	/**
