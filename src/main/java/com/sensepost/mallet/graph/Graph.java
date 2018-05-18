@@ -485,7 +485,7 @@ public class Graph implements GraphLookup {
 		if (cell != null) {
 			try {
 				Object[] incomingNow = graph.getIncomingEdges(cell);
-				if (incomingNow.length > 0) {
+				if (incomingNow.length == 0) {
 					ChannelFutureListener cfl = new StopAndStartChannelListener(cell);
 					if (stopFuture == null) {
 						try {
