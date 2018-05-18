@@ -12,6 +12,13 @@ public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 
 	private boolean modifyRead = false, modifyWrite = false;
 
+	public SimpleBinaryModificationHandler() {}
+	
+	public SimpleBinaryModificationHandler(String match, String replace) {
+		this.match = match.getBytes();
+		this.replace = replace.getBytes();
+	}
+	
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {

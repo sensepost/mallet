@@ -18,6 +18,13 @@ public class ComplexBinaryModificationHandler extends ChannelDuplexHandler {
 	private Status readStatus = new Status(match), writeStatus = new Status(
 			match);
 
+	public ComplexBinaryModificationHandler() {}
+	
+	public ComplexBinaryModificationHandler(String match, String replace) {
+		this.match = match.getBytes();
+		this.replace = match.getBytes();
+	}
+	
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {
@@ -69,7 +76,7 @@ public class ComplexBinaryModificationHandler extends ChannelDuplexHandler {
 	}
 
 	boolean find(Status status) {
-		do {
+		while (true) {
 			// Find the ByteBuffer we should be looking in
 			int bufIndex = bufIndex(status);
 			if (bufIndex < 0)
@@ -106,7 +113,9 @@ public class ComplexBinaryModificationHandler extends ChannelDuplexHandler {
 						return true;
 				}
 			}
-		} while (status.completeBufs < status.bufs.size() && status.matched == 0);
+			if (status.completeBufs == status.bufs.size() || status.matched > 0)
+				break;
+		}
 		return false;
 	}
 
