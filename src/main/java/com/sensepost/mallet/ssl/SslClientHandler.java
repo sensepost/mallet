@@ -17,31 +17,18 @@ import javax.net.ssl.X509KeyManager;
 
 public class SslClientHandler extends ChannelOutboundHandlerAdapter {
 
-	private X509KeyManager km = null;
-	private String alias = null;
-	private String provider = null;
-
+	private SslContextBuilder builder = null;
+	
 	public SslClientHandler() {
+		this(null, null, null);
 	}
 
 	public SslClientHandler(X509KeyManager km, String alias) {
-		this.km = km;
-		this.alias = alias;
+		this(null, km, alias);
 	}
 
 	public SslClientHandler(String provider, X509KeyManager km, String alias) {
-		this.provider = provider;
-		this.km = km;
-		this.alias = alias;
-	}
-
-	@Override
-	public void connect(ChannelHandlerContext ctx, final SocketAddress remoteAddress,
-			SocketAddress localAddress, ChannelPromise promise)
-			throws Exception {
-		ChannelPipeline p = ctx.channel().pipeline();
-		String me = ctx.name();
-		SslContextBuilder builder = SslContextBuilder.forClient().trustManager(
+		builder = SslContextBuilder.forClient().trustManager(
 				InsecureTrustManagerFactory.INSTANCE);
 		if (km != null && alias != null)
 			builder.keyManager(km.getPrivateKey(alias),
@@ -49,6 +36,18 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
 		if (provider != null)
 			builder.sslContextProvider(Security.getProvider(provider));
 		builder.protocols(new String[] { "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2"});
+	}
+
+	public SslClientHandler(SslContextBuilder builder) {
+		this.builder = builder;
+	}
+	
+	@Override
+	public void connect(ChannelHandlerContext ctx, final SocketAddress remoteAddress,
+			SocketAddress localAddress, ChannelPromise promise)
+			throws Exception {
+		ChannelPipeline p = ctx.channel().pipeline();
+		String me = ctx.name();
 		SslContext clientContext = builder.build();
 		final SslHandler s;
 		if (remoteAddress instanceof InetSocketAddress) {
