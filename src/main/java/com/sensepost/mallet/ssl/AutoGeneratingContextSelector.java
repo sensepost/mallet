@@ -21,38 +21,50 @@
 
 package com.sensepost.mallet.ssl;
 
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.util.Mapping;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.net.Socket;
 import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.KeyManagerFactorySpi;
+import javax.net.ssl.ManagerFactoryParameters;
 import javax.net.ssl.X509KeyManager;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.util.encoders.Base64;
 
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.util.Mapping;
-
-public class AutoGeneratingContextSelector implements Mapping<String, SslContext> {
+public class AutoGeneratingContextSelector implements
+		Mapping<String, SslContext> {
 
 	public final static String CA_ALIAS = "ca";
 
@@ -60,19 +72,22 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 
 	private char[] keyPassword;
 
-	private static final long DEFAULT_VALIDITY = 10L * 365L * 24L * 60L * 60L * 1000L;
+	private static final long DEFAULT_VALIDITY = 10L * 365L * 24L * 60L * 60L
+			* 1000L;
 
-	private static Logger logger = Logger.getLogger(AutoGeneratingContextSelector.class.getName());
+	private static Logger logger = Logger
+			.getLogger(AutoGeneratingContextSelector.class.getName());
 
 	private boolean reuseKeys = false;
-
-	private Map<String, SslContext> contextCache = new HashMap<String, SslContext>();
 
 	private PrivateKey caKey;
 
 	private X509Certificate[] caCerts;
 
 	private Set<BigInteger> serials = new HashSet<BigInteger>();
+
+	private final SslContextMapper DEFAULT_MAPPER = new SslContextMapper(
+			getContextBuilderForServerTemplate());
 
 	/**
 	 * creates a {@link AutoGeneratingContextSelector} that will create a RSA
@@ -86,8 +101,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	 * @throws IOException
 	 * @throws OperatorCreationException
 	 */
-	public AutoGeneratingContextSelector(X500Principal ca, KeyStore keyStore, char[] keyPassword)
-			throws GeneralSecurityException, IOException {
+	public AutoGeneratingContextSelector(X500Principal ca, KeyStore keyStore,
+			char[] keyPassword) throws GeneralSecurityException, IOException {
 		this.keyStore = keyStore;
 		this.keyPassword = keyPassword;
 		create(ca);
@@ -118,7 +133,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 		initFromKeyStore();
 	}
 
-	private void initFromKeyStore() throws GeneralSecurityException, IOException {
+	private void initFromKeyStore() throws GeneralSecurityException,
+			IOException {
 		caKey = (PrivateKey) keyStore.getKey(CA_ALIAS, keyPassword);
 		Certificate[] certChain = keyStore.getCertificateChain(CA_ALIAS);
 		caCerts = new X509Certificate[certChain.length];
@@ -126,7 +142,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 		// FIXME: Should initialise the serials cache from the keystore
 	}
 
-	private void create(X500Principal caName) throws GeneralSecurityException, IOException {
+	private void create(X500Principal caName) throws GeneralSecurityException,
+			IOException {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 		keyGen.initialize(1024);
 		KeyPair caPair = keyGen.generateKeyPair();
@@ -136,8 +153,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 		Date ends = new Date(begin.getTime() + DEFAULT_VALIDITY);
 
 		try {
-			X509Certificate cert = CertificateUtils.sign(caName, caPubKey, caName, caPubKey, caKey, begin, ends,
-					BigInteger.ONE, null);
+			X509Certificate cert = CertificateUtils.sign(caName, caPubKey,
+					caName, caPubKey, caKey, begin, ends, BigInteger.ONE, null);
 			caCerts = new X509Certificate[] { cert };
 		} catch (OperatorCreationException oce) {
 			throw new GeneralSecurityException(oce);
@@ -146,7 +163,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	}
 
 	public String getCACert() throws CertificateEncodingException {
-		return "-----BEGIN CERTIFICATE-----\n" + Base64.toBase64String(caCerts[0].getEncoded())
+		return "-----BEGIN CERTIFICATE-----\n"
+				+ Base64.toBase64String(caCerts[0].getEncoded())
 				+ "\n-----END CERTIFICATE-----\n";
 
 	}
@@ -161,7 +179,8 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	 * @throws GeneralSecurityException
 	 * @throws IOException
 	 */
-	public void save(File file, char[] password) throws GeneralSecurityException, IOException {
+	public void save(File file, char[] password)
+			throws GeneralSecurityException, IOException {
 		OutputStream out = new FileOutputStream(file);
 		try {
 			keyStore.store(out, password);
@@ -194,28 +213,7 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	 * .String, int)
 	 */
 	public synchronized SslContext map(String target) {
-		if (target == null)
-			throw new NullPointerException("target");
-		
-		SslContext sslContext = contextCache.get(target);
-		if (sslContext == null) {
-			try {
-				X509KeyManager km = createKeyMaterial(target);
-				sslContext = SslContextBuilder.forServer(km.getPrivateKey(target), km.getCertificateChain(target))
-						.build();
-				contextCache.put(target, sslContext);
-			} catch (GeneralSecurityException gse) {
-				logger.warning("Error obtaining the SSLContext: " + gse.getLocalizedMessage());
-				gse.printStackTrace();
-			} catch (OperatorCreationException e) {
-				logger.warning("Error obtaining the SSLContext: " + e.getLocalizedMessage());
-				e.printStackTrace();
-			} catch (IOException e) {
-				logger.warning("Error obtaining the SSLContext: " + e.getLocalizedMessage());
-				e.printStackTrace();
-			}
-		}
-		return sslContext;
+		return DEFAULT_MAPPER.map(target);
 	}
 
 	protected X500Principal getSubjectPrincipal(String target) {
@@ -223,9 +221,11 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 	}
 
 	private X509KeyManager createKeyMaterial(String target)
-			throws GeneralSecurityException, IOException, OperatorCreationException {
+			throws GeneralSecurityException, IOException,
+			OperatorCreationException {
 		if (keyStore.containsAlias(target))
-			return KeystoreUtils.getKeyManagerForAlias(keyStore, target, keyPassword);
+			return KeystoreUtils.getKeyManagerForAlias(keyStore, target,
+					keyPassword);
 
 		KeyPair keyPair;
 		if (reuseKeys) {
@@ -240,8 +240,10 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 		Date begin = new Date();
 		Date ends = new Date(begin.getTime() + DEFAULT_VALIDITY);
 
-		X509Certificate cert = CertificateUtils.sign(subject, keyPair.getPublic(), caCerts[0].getSubjectX500Principal(),
-				caCerts[0].getPublicKey(), caKey, begin, ends, getNextSerialNo(), null);
+		X509Certificate cert = CertificateUtils.sign(subject,
+				keyPair.getPublic(), caCerts[0].getSubjectX500Principal(),
+				caCerts[0].getPublicKey(), caKey, begin, ends,
+				getNextSerialNo(), null);
 
 		X509Certificate[] chain = new X509Certificate[caCerts.length + 1];
 		System.arraycopy(caCerts, 0, chain, 1, caCerts.length);
@@ -260,4 +262,136 @@ public class AutoGeneratingContextSelector implements Mapping<String, SslContext
 		return serial;
 	}
 
+	public Mapping<String, SslContext> getCustomSslContextMapper(
+			SslContextBuilder builder) {
+		return new SslContextMapper(builder);
+	}
+
+	public SslContextBuilder getContextBuilderForServerTemplate() {
+		return SslContextBuilder.forServer(new AutoGeneratingKeyManagerFactory());
+	}
+	
+	private class SslContextMapper implements Mapping<String, SslContext> {
+
+		private SslContextBuilder builder;
+
+		private LinkedHashMap<String, SslContext> cache = new LinkedHashMap<String, SslContext>() {
+			protected boolean removeEldestEntry(Map.Entry eldest) {
+				return size() > 100;
+			}
+		};
+
+		public SslContextMapper(SslContextBuilder builder) {
+			this.builder = builder;
+		}
+
+		@Override
+		public SslContext map(String target) {
+			if (target == null)
+				throw new NullPointerException("target");
+
+			synchronized (cache) {
+				if (cache.containsKey(target))
+					return cache.get(target);
+				try {
+					X509KeyManager km = createKeyMaterial(target);
+					SslContext sslContext = builder.keyManager(
+							km.getPrivateKey(target),
+							km.getCertificateChain(target)).build();
+					cache.put(target, sslContext);
+					return sslContext;
+				} catch (GeneralSecurityException | OperatorCreationException
+						| IOException e) {
+					logger.warning("Error obtaining the SSLContext: "
+							+ e.getLocalizedMessage());
+					e.printStackTrace();
+					return null;
+				}
+			}
+		}
+
+	}
+	
+	private class AutoGeneratingKeyManagerFactory extends KeyManagerFactory {
+
+		public AutoGeneratingKeyManagerFactory() {
+			super(new AutoGeneratingKeyManagerFactorySpi(), null, null);
+		}
+		
+	}
+	
+	private class AutoGeneratingKeyManagerFactorySpi extends KeyManagerFactorySpi {
+
+		@Override
+		protected void engineInit(KeyStore ks, char[] password)
+				throws KeyStoreException, NoSuchAlgorithmException,
+				UnrecoverableKeyException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		protected void engineInit(ManagerFactoryParameters spec)
+				throws InvalidAlgorithmParameterException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		protected KeyManager[] engineGetKeyManagers() {
+			return new KeyManager[] { new AutoGeneratingKeyManager() };
+		}
+		
+	}
+	
+	private class AutoGeneratingKeyManager implements X509KeyManager {
+
+		@Override
+		public String[] getClientAliases(String keyType, Principal[] issuers) {
+			return null;
+		}
+
+		@Override
+		public String chooseClientAlias(String[] keyType, Principal[] issuers,
+				Socket socket) {
+			return null;
+		}
+
+		@Override
+		public String[] getServerAliases(String keyType, Principal[] issuers) {
+			try {
+				Set<String> aliases = KeystoreUtils.getAliases(keyStore).keySet();
+				return aliases.toArray(new String[aliases.size()]);
+			} catch (KeyStoreException e) {
+			}
+			return null;
+		}
+
+		@Override
+		public String chooseServerAlias(String keyType, Principal[] issuers,
+				Socket socket) {
+			return null;
+		}
+
+		@Override
+		public X509Certificate[] getCertificateChain(String alias) {
+			try {
+				return createKeyMaterial(alias).getCertificateChain(alias);
+			} catch (OperatorCreationException | GeneralSecurityException
+					| IOException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+
+		@Override
+		public PrivateKey getPrivateKey(String alias) {
+			try {
+				return createKeyMaterial(alias).getPrivateKey(alias);
+			} catch (OperatorCreationException | GeneralSecurityException
+					| IOException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+		
+	}
 }
