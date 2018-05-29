@@ -62,14 +62,14 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
-				if (!target.getConnectPromise().isDone())
-					target.getConnectPromise().setSuccess(ch);
 
 				try {
 					ch.pipeline().addLast(handlers);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+				if (!target.getConnectPromise().isDone())
+					target.getConnectPromise().setSuccess(ch);
 			}
 		};
 
