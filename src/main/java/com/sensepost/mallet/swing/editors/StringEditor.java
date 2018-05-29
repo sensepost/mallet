@@ -1,5 +1,7 @@
 package com.sensepost.mallet.swing.editors;
 
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+
 import java.awt.BorderLayout;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -19,11 +21,12 @@ public class StringEditor extends JPanel implements ObjectEditor {
 
 	private boolean updating = false;
 
+	private Class<?> objectClass = null;
+	
 	private PropertyChangeListener listener = new PropertyChangeListener() {
 
 		@Override
 		public void propertyChange(PropertyChangeEvent evt) {
-			System.out.println(evt);
 			if (evt.getSource().equals(controller) && (EditorController.OBJECT.equals(evt.getPropertyName())
 					|| EditorController.READ_ONLY.equals(evt.getPropertyName()))) {
 				updateEditor();
@@ -53,8 +56,15 @@ public class StringEditor extends JPanel implements ObjectEditor {
 			if (updating)
 				return;
 			updating = true;
-			String o = textArea.getText();
-			if (controller != null)
+			Object o;
+			String text = textArea.getText();
+			if (objectClass == String.class) {
+				o = text;
+			} else if (objectClass == TextWebSocketFrame.class) {
+				o = new TextWebSocketFrame(text);
+			} else 
+				o = null;
+			if (controller != null && o != null)
 				controller.setObject(o);
 			updating = false;
 		}
@@ -76,15 +86,22 @@ public class StringEditor extends JPanel implements ObjectEditor {
 			return;
 		updating = true;
 		Object o = controller != null ? controller.getObject() : null;
+		objectClass = o == null ? null : o.getClass();
+
+		String text;
+		boolean editable = !controller.isReadOnly();
 		if (o instanceof String) {
-			textArea.setText((String) o);
-			textArea.setCaretPosition(0);
-			textArea.setEditable(!controller.isReadOnly());
+			text = (String) o;
+		} else if (o instanceof TextWebSocketFrame) {
+			text = ((TextWebSocketFrame)o).text();
 		} else {
-			textArea.setText("");
-			textArea.setToolTipText("");
-			textArea.setEditable(false);
+			text = "";
+			editable = false;
 		}
+
+		textArea.setText(text);
+		textArea.setCaretPosition(0);
+		textArea.setEditable(editable);
 		updating = false;
 	}
 
@@ -95,7 +112,7 @@ public class StringEditor extends JPanel implements ObjectEditor {
 
 	@Override
 	public Class<?>[] getSupportedClasses() {
-		return new Class<?>[] { String.class };
+		return new Class<?>[] { String.class, TextWebSocketFrame.class };
 	}
 
 	@Override
