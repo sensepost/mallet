@@ -540,6 +540,8 @@ public class Graph implements GraphLookup {
 			}
 			p.addAfter(me, null, new ConnectionNumberChannelHandler());
 			p.addLast(handlers);
+			
+			ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 		}
 	}
 	
