@@ -11,6 +11,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
+import javax.swing.CellEditor;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -284,9 +285,17 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 	}
 
 	public Element getGraphNode() {
+		if (table.isEditing()) {
+			CellEditor editor = table.getCellEditor();
+			if (editor != null)
+				editor.stopCellEditing();
+		}
 		Node newNode = node.cloneNode(true);
+		Element node;
 		if (newNode instanceof Element) {
 			node = (Element) newNode;
+		} else {
+			throw new RuntimeException("Node is not an Element, but rather " + newNode.getClass());
 		}
 		String className = classField.getText();
 		int r = tableModel.getRowCount();
@@ -299,7 +308,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 			node.setAttribute("address", addressTextField.getText());
 		}
 		NodeList nl = node.getElementsByTagName("Parameter");
-		for (int i = 0; i < nl.getLength(); i++)
+		for (int i = nl.getLength()-1; i >= 0; i--)
 			node.removeChild(nl.item(i));
 		Document doc = node.getOwnerDocument();
 		for (int i = 0; i < args.length; i++)
