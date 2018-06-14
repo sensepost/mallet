@@ -75,7 +75,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="13">
-      <Parameter><![CDATA[1024000]]></Parameter>
+      <Parameter><![CDATA[1048576]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="38.0" y="852.171875"/>
       </mxCell>
@@ -91,7 +91,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="15">
-      <Parameter><![CDATA[1024000]]></Parameter>
+      <Parameter><![CDATA[1048576]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="3.0" y="427.328125"/>
       </mxCell>
@@ -179,7 +179,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="33">
-      <Parameter><![CDATA[1024000]]></Parameter>
+      <Parameter><![CDATA[1048576]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="240.0" y="767.203125"/>
       </mxCell>
@@ -195,7 +195,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="35">
-      <Parameter><![CDATA[1024000]]></Parameter>
+      <Parameter><![CDATA[1048576]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="168.0" y="342.359375"/>
       </mxCell>
@@ -353,7 +353,7 @@ return new ChannelDuplexHandler() {
         throws Exception {
         if (msg instanceof TextWebSocketFrame) {
             String text = ((TextWebSocketFrame) msg).text();
-            msg = new TextWebSocketFrame(text.toUpperCase());
+            // msg = new TextWebSocketFrame(text.toUpperCase());
         }
         super.channelRead(ctx, msg);
     }
@@ -386,7 +386,7 @@ return new ChannelDuplexHandler() {
         throws Exception {
         if (msg instanceof TextWebSocketFrame) {
             String text = ((TextWebSocketFrame) msg).text();
-            msg = new TextWebSocketFrame(text.toUpperCase());
+            // msg = new TextWebSocketFrame(text.toUpperCase());
         }
         super.channelRead(ctx, msg);
     }
