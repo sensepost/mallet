@@ -30,11 +30,11 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
 	public SslClientHandler(String provider, X509KeyManager km, String alias) {
 		builder = SslContextBuilder.forClient().trustManager(
 				InsecureTrustManagerFactory.INSTANCE);
+		if (provider != null)
+			builder.sslContextProvider(Security.getProvider(provider));
 		if (km != null && alias != null)
 			builder.keyManager(km.getPrivateKey(alias),
 					km.getCertificateChain(alias));
-		if (provider != null)
-			builder.sslContextProvider(Security.getProvider(provider));
 		builder.protocols(new String[] { "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2"});
 	}
 
