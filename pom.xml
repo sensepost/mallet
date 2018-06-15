@@ -27,7 +27,7 @@
     	<dependency>
     		<groupId>io.netty</groupId>
     		<artifactId>netty-all</artifactId>
-    		<version>4.1.23.Final</version>
+    		<version>4.1.25.Final</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
@@ -142,7 +142,7 @@
 	    </execution>
 	</executions>
   </plugin>
-  <plugin>
+  <!-- <plugin>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-maven-plugin</artifactId>
     <executions>
@@ -158,6 +158,16 @@
             </configuration>
         </execution>
     </executions>
+  </plugin> -->
+  <plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.7.0</version>
+    <configuration>
+      <compilerArgs>
+        <arg>-parameters</arg>
+      </compilerArgs>
+    </configuration>
   </plugin>
   </plugins>
   </build>
