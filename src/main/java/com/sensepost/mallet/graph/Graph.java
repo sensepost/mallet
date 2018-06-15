@@ -190,8 +190,8 @@ public class Graph implements GraphLookup {
 		Class<? extends AbstractChannel> channelClass;
 		try {
 			channelClass = getChannelClass(getClassName(serverValue));
-		} catch (ClassNotFoundException e) {
-			addGraphException(vertex, e);
+		} catch (ClassNotFoundException | ClassCastException e) {
+			// addGraphException(vertex, e);
 			return null;
 		}
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
@@ -214,7 +214,7 @@ public class Graph implements GraphLookup {
 		}
 	}
 	
-	private ChannelFuture stopServerFromSourceValue(Object serverValue) throws ClassNotFoundException {
+	private ChannelFuture stopServerFromSourceValue(Object serverValue) {
 		if (channels == null || channels.size() == 0)
 			return null;
 		
@@ -466,11 +466,7 @@ public class Graph implements GraphLookup {
 			// a Listener must have no incoming edges
 			Object[] incomingPrevious = graph.getIncomingEdges(previous);
 			if (incomingPrevious == null || incomingPrevious.length == 0) {
-				try {
-					stopFuture = stopServerFromSourceValue(previous);
-				} catch (ClassNotFoundException e) {
-					// It wasn't really a listener! No worries!
-				}
+				stopFuture = stopServerFromSourceValue(previous);
 			}
 		}
 		if (cell != null) {
@@ -489,7 +485,7 @@ public class Graph implements GraphLookup {
 		}
 	}
 	
-	public void addGraphException(Object node, final Throwable cause) {
+	public void addGraphException(final Object node, final Throwable cause) {
 		String warning = cause.getLocalizedMessage();
 		if (warning == null) {
 			warning = cause.toString();
@@ -501,6 +497,7 @@ public class Graph implements GraphLookup {
 				 * Selects the associated cell in the graph
 				 */
 				public void mousePressed(MouseEvent e) {
+					graphComponent.setCellWarning(node, null);
 					cause.printStackTrace();
 				}
 			});
@@ -575,7 +572,9 @@ public class Graph implements GraphLookup {
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			try {
-				startServerFromSourceVertex(vertex).addListener(new AddServerChannelListener(vertex));
+				ChannelFuture cf = startServerFromSourceVertex(vertex);
+				if (cf != null)
+					cf.addListener(new AddServerChannelListener(vertex));
 			} catch (Exception e) {
 				addGraphException(vertex,  e);
 			}
@@ -583,23 +582,4 @@ public class Graph implements GraphLookup {
 		
 	}
 	
-	private String elementAsString(Object o) {
-		if (o instanceof Element) {
-			Element e = (Element) o;
-			try {
-				TransformerFactory transFactory = TransformerFactory.newInstance();
-				Transformer transformer = transFactory.newTransformer();
-				StringWriter buffer = new StringWriter();
-				transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-				transformer.transform(new DOMSource(e),
-						new StreamResult(buffer));
-				return buffer.toString();
-			} catch (TransformerException e1) {
-				e1.printStackTrace();
-				return null;
-			}
-		} else {
-			return String.valueOf(o);
-		}
-	}
 }

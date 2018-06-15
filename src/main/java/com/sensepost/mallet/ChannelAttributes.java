@@ -5,6 +5,8 @@ import io.netty.util.AttributeKey;
 
 import java.net.SocketAddress;
 
+import javax.script.Bindings;
+
 import com.sensepost.mallet.graph.GraphLookup;
 
 public class ChannelAttributes {
@@ -22,5 +24,8 @@ public class ChannelAttributes {
 	public static final AttributeKey<Integer> CONNECTION_IDENTIFIER = AttributeKey.valueOf("connection_identifier");
 	
 	public static final AttributeKey<SocketAddress> REMOTE_ADDRESS = AttributeKey.valueOf("remote_address");
+	
+	public static final AttributeKey<Bindings> SCRIPT_CONTEXT = AttributeKey.valueOf("script_context");
+	
 	
 }
