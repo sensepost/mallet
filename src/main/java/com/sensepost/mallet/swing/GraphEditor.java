@@ -38,9 +38,9 @@ import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import com.mxgraph.util.mxResources;
-import com.mxgraph.util.mxUtils;
 import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
+import com.sensepost.mallet.util.XmlUtil;
 
 public class GraphEditor extends BasicGraphEditor {
 	/**
@@ -103,6 +103,9 @@ public class GraphEditor extends BasicGraphEditor {
 		Element scriptHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
 				"import io.netty.channel.*;\r\n\r\nreturn new ChannelDuplexHandler();\r\n", 
 				"groovy");
+
+		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
+				"io.netty.handler.logging.LoggingHandler", "io.netty.handler.logging.LogLevel.INFO");
 
 		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.InterceptHandler", 
 				"{InterceptController}");
@@ -175,6 +178,9 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("Script",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, scriptHandler);
+		basicPalette.addTemplate("Logger",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, logHandler);
 		basicPalette.addTemplate("Relay",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
 				"rectangle;shape=doubleRectangle", 160, 120, relay);
@@ -469,17 +475,24 @@ public class GraphEditor extends BasicGraphEditor {
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler", "{SSLServerCertificateMap}"));
 		protocolPalette.addTemplate("SSL Client",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler"));
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslClientHandler"));
 
+		protocolPalette.addTemplate("Http2 SSL Server",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslServerHandler", "{SSLServerCertificateMap}"));
+		protocolPalette.addTemplate("Http2SSL Client",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslClientHandler"));
+		
 		protocolPalette.addTemplate("HttpServerCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));
 		protocolPalette.addTemplate("HttpClientCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpClientCodec"));
-		protocolPalette.addTemplate("HttpMessageAggregator",
+		protocolPalette.addTemplate("HttpObjectAggregator",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "10240"));
+				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "1048576"));
 		InputStream upsideDownStream = GraphEditor.class.getResourceAsStream("/com/sensepost/mallet/script.groovy");
 		if (upsideDownStream != null) {
 			try (BufferedReader br = new BufferedReader(new InputStreamReader(upsideDownStream))) {
@@ -549,10 +562,14 @@ public class GraphEditor extends BasicGraphEditor {
 
 			// Loads the default stylesheet from an external file
 			mxCodec codec = new mxCodec();
-			Document doc = mxUtils.loadDocument(GraphEditor.class
-					.getResource("/com/mxgraph/examples/swing/resources/default-style.xml").toString());
-			codec.decode(doc.getDocumentElement(), graph.getStylesheet());
-
+			try {
+				Document doc = XmlUtil.loadDocument(GraphEditor.class
+						.getResource("/com/mxgraph/examples/swing/resources/default-style.xml").toString());
+				codec.decode(doc.getDocumentElement(), graph.getStylesheet());
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
 			// Sets the background to white
 			getViewport().setOpaque(true);
 			getViewport().setBackground(Color.WHITE);
