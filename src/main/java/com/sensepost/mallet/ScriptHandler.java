@@ -6,7 +6,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelInitializer;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -22,68 +21,69 @@ import javax.script.ScriptException;
 @Sharable
 public class ScriptHandler extends ChannelInitializer<Channel> {
 
-	private ScriptEngineManager sem = new ScriptEngineManager();
-	private ScriptEngine engine;
-
-	private ChannelHandler handler;
-
-	private static String SCRIPT = null;
-
-	static {
-		try {
-			InputStream is = ScriptHandler.class.getResourceAsStream("script.groovy");
-			BufferedReader r = new BufferedReader(new InputStreamReader(is));
-			StringBuilder b = new StringBuilder();
-			String line;
-			while ((line = r.readLine()) != null) {
-				b.append(line).append("\n");
-			}
-			SCRIPT = b.toString();
-		} catch (IOException ioe) {
-			ioe.printStackTrace();
-			SCRIPT = null;
-		}
-	}
-
-	public ScriptHandler() throws Exception {
-		this(SCRIPT, "groovy");
-	}
+	private String script = null, language = null, fileName = null;
 
 	public ScriptHandler(String script, String language) throws Exception {
-		this.engine = sem.getEngineByName(language);
-		try {
-			Object scriptResult = engine.eval(script);
-			handler = getScriptHandler(engine, scriptResult);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw e;
-		}
+		this.script = script;
+		this.language = language;
 	}
 
-	public ScriptHandler(String filename) throws FileNotFoundException, ScriptException {
-		InputStream is = null;
-		try {
-			File f = new File(filename);
-			if (f.exists())
-				is = new FileInputStream(f);
-			else
-				is = getClass().getClassLoader().getResourceAsStream(filename);
-			if (is == null)
-				throw new FileNotFoundException(filename);
-			
-			String extension = filename.substring(filename.lastIndexOf('.'));
-			this.engine = sem.getEngineByExtension(extension);
-			handler = getScriptHandler(engine, engine.eval(new InputStreamReader(is)));
-		} catch (IOException ioe) {
-			throw new ScriptException(ioe);
-		} finally {
-			if (is != null)
-				try {
-					is.close();
-				} catch (IOException e) {}
-		}
+	public ScriptHandler(String filename) throws FileNotFoundException,
+			ScriptException {
+		this.fileName = filename;
 	}
 
+	private ChannelHandler getChannelHandler() throws ScriptException {
+		ScriptEngineManager sem = new ScriptEngineManager();
+		ScriptEngine engine;
+
+		Object scriptResult;
+
+		if (fileName != null) {
+			InputStream is = null;
+			try {
+				File f = new File(fileName);
+				if (f.exists())
+					is = new FileInputStream(f);
+				else
+					is = getClass().getClassLoader().getResourceAsStream(fileName);
+				if (is == null)
+					throw new FileNotFoundException(fileName);
+
+				String extension = fileName.substring(fileName.lastIndexOf('.'));
+				engine = sem.getEngineByExtension(extension);
+				scriptResult = engine.eval(new InputStreamReader(is));
+			} catch (ScriptException e) {
+				System.out.println("Script Exception: " + e.getLocalizedMessage()
+						+ " at " + e.getLineNumber() + ":" + e.getColumnNumber());
+				throw e;
+			} catch (IOException ioe) {
+				throw new ScriptException(ioe);
+			} finally {
+				if (is != null)
+					try {
+						is.close();
+					} catch (IOException e) {
+					}
+			}
+		} else if (script != null && language != null) {
+			engine = sem.getEngineByName(language);
+			try {
+				scriptResult = engine.eval(script);
+			} catch (ScriptException e) {
+				System.out.println("Script Exception: " + e.getLocalizedMessage()
+						+ " at " + e.getLineNumber() + ":" + e.getColumnNumber());
+				throw e;
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw e;
+			}
+		} else {
+			throw new NullPointerException("filename or script and language were null");
+		}
+		return getScriptHandler(engine, scriptResult);
+	}
+	
 	private ChannelHandler getScriptHandler(ScriptEngine engine, Object script) {
 		if (script == null)
 			throw new NullPointerException("script result is null");
@@ -96,13 +96,14 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 		if (script instanceof ChannelHandler) {
 			return (ChannelHandler) script;
 		} else
-			throw new ClassCastException("Script does not implement ChannelHandler");
+			throw new ClassCastException(
+					"Script does not implement ChannelHandler");
 	}
 
 	@Override
 	protected void initChannel(Channel ch) throws Exception {
 		String name = ch.pipeline().context(this).name();
-		ch.pipeline().addAfter(name, null, handler);
+		ch.pipeline().addAfter(name, null, getChannelHandler());
 	}
 
 }
