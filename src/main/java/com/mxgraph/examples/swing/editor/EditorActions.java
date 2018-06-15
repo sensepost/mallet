@@ -17,6 +17,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -37,6 +38,7 @@ import javax.swing.filechooser.FileFilter;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
+import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 
@@ -57,6 +59,7 @@ import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.util.png.mxPngTextDecoder;
 import com.mxgraph.view.mxGraph;
+import com.sensepost.mallet.util.XmlUtil;
 
 /**
  *
@@ -548,10 +551,14 @@ public class EditorActions {
 					if (ext.equalsIgnoreCase("mxe")
 							|| ext.equalsIgnoreCase("xml")) {
 						mxCodec codec = new mxCodec();
-						String xml = mxXmlUtils.getXml(codec.encode(graph
-								.getModel()));
-
-						mxUtils.writeFile(xml, filename);
+						
+						FileOutputStream fos = new FileOutputStream(filename);
+						StreamResult result = new StreamResult(fos);
+						XmlUtil.pretty(codec.encode(graph.getModel()), result, 2);
+//						String xml = mxXmlUtils.getXml(codec.encode(graph
+//								.getModel()));
+//
+//						mxUtils.writeFile(xml, filename);
 
 						editor.setModified(false);
 						editor.setCurrentFile(new File(filename));
