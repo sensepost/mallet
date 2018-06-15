@@ -81,8 +81,8 @@ public class Main {
 					keyStore.load(null, PASSWORD);
 					System.err.println("Generating a new CA");
 					X500Principal ca = new X500Principal(
-							"cn=OWASP Custom CA for " + java.net.InetAddress.getLocalHost().getHostName()
-									+ ",ou=OWASP Custom CA,o=OWASP,l=OWASP,st=OWASP,c=OWASP");
+							"cn=Mallet Custom CA for " + java.net.InetAddress.getLocalHost().getHostName()
+									+ ",ou=Mallet Custom CA,o=Mallet,l=Mallet,st=Mallet,c=Mallet");
 					selector = new AutoGeneratingContextSelector(ca, keyStore, PASSWORD);
 				}
 				OutputStream out = new FileOutputStream(ks);
