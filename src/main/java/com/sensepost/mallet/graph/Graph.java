@@ -12,18 +12,15 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
-import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -39,13 +36,9 @@ import java.util.Map.Entry;
 import java.util.WeakHashMap;
 
 import javax.script.Bindings;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
+import org.w3c.dom.CDATASection;
+import org.w3c.dom.CharacterData;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -58,7 +51,6 @@ import com.mxgraph.analysis.mxGraphStructure;
 import com.mxgraph.io.mxCodec;
 import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
-import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGraphModel.mxChildChange;
 import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.model.mxGraphModel.mxRootChange;
@@ -372,7 +364,17 @@ public class Graph implements GraphLookup {
 			String[] p = new String[parameters.getLength()];
 			for (int i = 0; i < parameters.getLength(); i++) {
 				Node n = parameters.item(i);
-				p[i] = n.getTextContent();
+				NodeList children = n.getChildNodes();
+				if (children.getLength() == 1) {
+					p[i] = children.item(0).getTextContent();
+				} else { // find the CDATA node
+					for (int j=0; i<children.getLength(); j++) {
+						if (children.item(j) instanceof CDATASection) {
+							p[i] = ((CharacterData)children.item(j)).getData();
+							break;
+						}
+					}
+				}
 			}
 			return p;
 		}
