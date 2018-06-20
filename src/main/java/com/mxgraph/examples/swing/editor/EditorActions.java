@@ -555,10 +555,6 @@ public class EditorActions {
 						FileOutputStream fos = new FileOutputStream(filename);
 						StreamResult result = new StreamResult(fos);
 						XmlUtil.pretty(codec.encode(graph.getModel()), result, 2);
-//						String xml = mxXmlUtils.getXml(codec.encode(graph
-//								.getModel()));
-//
-//						mxUtils.writeFile(xml, filename);
 
 						editor.setModified(false);
 						editor.setCurrentFile(new File(filename));
