@@ -121,10 +121,8 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected boolean ignoreException(Throwable cause) {
-		if (cause.getMessage().equals("Connection reset by peer")) {
-			return true;
-		}
-		return false;
+		return (cause != null && cause.getMessage() != null &&
+				cause.getMessage().equals("Connection reset by peer"));
 	}
 
 	@Override
