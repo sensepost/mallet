@@ -60,12 +60,18 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 				int connection = listModel.getElementAt(row);
 				ConnectionData cd = channelEventMap.get(connection);
-				if (cd.isException()) {
+				if (table.getSelectedRow() == row) {
+					c.setBackground(getSelectionBackground());
+					c.setForeground(getSelectionForeground());
+				} else if (cd.isException()) {
 					c.setBackground(Color.PINK);
+					c.setForeground(getForeground());
 				} else if (cd.isClosed()) {
 					c.setBackground(Color.LIGHT_GRAY);
+					c.setForeground(getForeground());
 				} else {
 					c.setBackground(getBackground());
+					c.setForeground(getForeground());
 				}
 				return c;
 			}
@@ -242,6 +248,8 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		}
 
 		public void setListModel(ListModel<Integer> listModel) {
+			if (this.listModel == listModel)
+				return;
 			if (this.listModel != null)
 				this.listModel.removeListDataListener(this);
 			this.listModel = listModel;
@@ -311,7 +319,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 		@Override
 		public void contentsChanged(ListDataEvent e) {
-			fireTableDataChanged();
+			fireTableRowsUpdated(e.getIndex0(), e.getIndex1());
 		}
 
 	}

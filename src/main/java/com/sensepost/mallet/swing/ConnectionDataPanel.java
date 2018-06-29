@@ -305,7 +305,7 @@ public class ConnectionDataPanel extends JPanel {
 
 		@Override
 		public void contentsChanged(ListDataEvent e) {
-			fireTableDataChanged();
+			fireTableRowsUpdated(e.getIndex0(), e.getIndex1());
 		}
 
 	}
