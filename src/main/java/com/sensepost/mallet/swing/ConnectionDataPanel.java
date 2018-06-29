@@ -155,6 +155,7 @@ public class ConnectionDataPanel extends JPanel {
 		table.setDefaultRenderer(Date.class, dateRenderer);
 		table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
 		table.setDefaultRenderer(Direction.class, directionRenderer);
+		table.setAutoCreateRowSorter(true);
 	}
 
 	public void setConnectionData(ConnectionData connectionData) {

@@ -93,6 +93,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 			}
 		});
 		table.setDefaultRenderer(Date.class, new DateRenderer(false));
+		table.setAutoCreateRowSorter(true);
 		scrollPane.setViewportView(table);
 
 		cdp = new ConnectionDataPanel();
