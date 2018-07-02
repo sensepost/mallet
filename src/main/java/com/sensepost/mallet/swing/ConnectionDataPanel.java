@@ -2,6 +2,7 @@ package com.sensepost.mallet.swing;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
+import io.netty.util.ReferenceCountUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -128,8 +129,10 @@ public class ConnectionDataPanel extends JPanel {
 			public void valueChanged(ListSelectionEvent e) {
 				if (e.getValueIsAdjusting())
 					return;
-				if (editing != null) {
-					editing.setMessage(editorController.getObject());
+				if (editing != null && !editorController.isReadOnly()) {
+					Object o = editorController.getObject();
+					ReferenceCountUtil.retain(o);
+					editing.setMessage(o);
 				}
 				int selectedRow = table.getSelectedRow();
 				ChannelEvent evt;
@@ -139,7 +142,9 @@ public class ConnectionDataPanel extends JPanel {
 					evt = connectionData.getEvents().getElementAt(selectedRow);
 				if (evt instanceof ChannelReadEvent) {
 					editing = (ChannelReadEvent) evt;
-					editorController.setObject(editing.getMessage());
+					Object o = editing.getMessage();
+					editorController.setObject(o);
+					ReferenceCountUtil.release(o);
 					editorController.setReadOnly(evt.isExecuted());
 				} else if (evt instanceof ChannelExceptionEvent) {
 					editing = null;
@@ -189,6 +194,7 @@ public class ConnectionDataPanel extends JPanel {
 							value += " (" + ((byte[]) o).length + " bytes)";
 						}
 					}
+					ReferenceCountUtil.release(o);
 				} else if (evt instanceof ChannelUserEvent) {
 					Object uevt = ((ChannelUserEvent) evt).getUserEvent();
 					if (uevt != null) {

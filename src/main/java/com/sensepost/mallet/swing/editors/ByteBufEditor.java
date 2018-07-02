@@ -74,7 +74,6 @@ public class ByteBufEditor implements ObjectEditor {
 		updating = true;
 		if (o != null && ByteBuf.class.isAssignableFrom(o.getClass())) {
 			ByteBuf bb = (ByteBuf) o;
-			bb.retain();
 			byte[] data = new byte[bb.readableBytes()];
 			bb.getBytes(bb.readerIndex(), data);
 			adapter.setObject(data);

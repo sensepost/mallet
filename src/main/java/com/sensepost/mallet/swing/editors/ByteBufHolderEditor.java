@@ -82,7 +82,6 @@ public class ByteBufHolderEditor implements ObjectEditor {
 		if (o != null && ByteBufHolder.class.isAssignableFrom(o.getClass())) {
 			bbh = (ByteBufHolder) o;
 			ByteBuf bb = bbh.content();
-			bb.retain();
 			byte[] data = new byte[bb.readableBytes()];
 			bb.getBytes(bb.readerIndex(), data);
 			adapter.setObject(data);

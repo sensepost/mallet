@@ -1,5 +1,7 @@
 package com.sensepost.mallet.swing.editors;
 
+import io.netty.util.ReferenceCounted;
+
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 
@@ -36,6 +38,10 @@ public class EditorController {
 		Object old = this.getObject();
 		this.object = object;
 		pcs.firePropertyChange(OBJECT, old, this.object);
+		if (old instanceof ReferenceCounted)
+			((ReferenceCounted)old).release();
+		if (this.object instanceof ReferenceCounted)
+			((ReferenceCounted) this.object).retain();
 	}
 	
 	public boolean isReadOnly() {

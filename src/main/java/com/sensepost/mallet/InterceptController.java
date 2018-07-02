@@ -2,6 +2,8 @@ package com.sensepost.mallet;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -151,6 +153,8 @@ public interface InterceptController {
 				return ((ByteBuf) msg).copy();
 			} else if (msg instanceof ByteBufHolder) {
 				return ((ByteBufHolder) msg).copy();
+			} else if (msg instanceof ReferenceCounted) {
+				((ReferenceCounted) msg).retain();
 			}
 			return msg;
 		}
