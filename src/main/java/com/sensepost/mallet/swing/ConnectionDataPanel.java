@@ -96,8 +96,10 @@ public class ConnectionDataPanel extends JPanel {
 			public void actionPerformed(ActionEvent e) {
 				int n = table.getSelectedRow();
 				if (n >= 0) {
-					if (editing != null) {
-						editing.setMessage(editorController.getObject());
+					if (editing != null && !editorController.isReadOnly()) {
+						Object o = editorController.getObject();
+						ReferenceCountUtil.retain(o);
+						editing.setMessage(o);
 						editing = null;
 						editorController.setObject(null);
 					}
