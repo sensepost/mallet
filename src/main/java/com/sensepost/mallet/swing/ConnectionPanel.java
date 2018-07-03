@@ -84,9 +84,11 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 				if (e.getValueIsAdjusting())
 					return;
 				ConnectionData cd = null;
-				if (e.getFirstIndex() != -1) {
+				int selected = table.getSelectedRow();
+				if (selected != -1) {
+					selected = table.convertRowIndexToModel(selected);
 					synchronized (channelEventMap) {
-						cd = channelEventMap.get(listModel.getElementAt(e.getFirstIndex()));
+						cd = channelEventMap.get(listModel.getElementAt(selected));
 					}
 				}
 				cdp.setConnectionData(cd);

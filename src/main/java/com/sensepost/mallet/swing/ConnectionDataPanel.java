@@ -137,6 +137,8 @@ public class ConnectionDataPanel extends JPanel {
 					editing.setMessage(o);
 				}
 				int selectedRow = table.getSelectedRow();
+				if (selectedRow != -1)
+					selectedRow = table.convertRowIndexToModel(selectedRow);
 				ChannelEvent evt;
 				if (selectedRow < 0)
 					evt = null;
