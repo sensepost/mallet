@@ -36,10 +36,10 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private ConnectionDataPanel cdp;
 
 	private JTable table;
-	private DefaultListModel<Integer> listModel = new DefaultListModel<>();
+	private DefaultListModel<String> listModel = new DefaultListModel<>();
 
-	private Map<Integer, AddrPair> connAddrMap = new HashMap<>();
-	private Map<Integer, ConnectionData> channelEventMap = new LinkedHashMap<>();
+	private Map<String, AddrPair> connAddrMap = new HashMap<>();
+	private Map<String, ConnectionData> channelEventMap = new LinkedHashMap<>();
 
 	private boolean intercept = false;
 	private MessageDAO dao = null;
@@ -58,7 +58,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 					int row, int column) {
 				Component c = super.prepareRenderer(renderer, row, column);
 
-				int connection = listModel.getElementAt(row);
+				String connection = listModel.getElementAt(row);
 				ConnectionData cd = channelEventMap.get(connection);
 				if (table.getSelectedRow() == row) {
 					c.setBackground(getSelectionBackground());
@@ -137,7 +137,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	}
 	
 	private void addChannelEventEDT(ChannelEvent evt) throws Exception {
-		Integer cp = evt.getConnectionIdentifier();
+		String cp = evt.getConnectionIdentifier();
 
 		if (evt instanceof ChannelActiveEvent) {
 			ChannelActiveEvent cae = (ChannelActiveEvent) evt;
@@ -180,7 +180,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 	private void sendAllPendingEvents() {
 		synchronized (channelEventMap) {
-			for (Integer conn : channelEventMap.keySet()) {
+			for (String conn : channelEventMap.keySet()) {
 				try {
 					channelEventMap.get(conn).executeAllEvents();
 				} catch (Exception e) {
@@ -242,15 +242,15 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
 
-		private ListModel<Integer> listModel = null;
+		private ListModel<String> listModel = null;
 		private String[] columnNames = new String[] { "#", "Src", "Dst", "Events", "Opened", "Closed" };
 		private Class<?>[] columnClasses = new Class<?>[] { Integer.class, SocketAddress.class, SocketAddress.class, String.class, Date.class, Date.class};
 
-		public ListTableModelAdapter(ListModel<Integer> listModel) {
+		public ListTableModelAdapter(ListModel<String> listModel) {
 			setListModel(listModel);
 		}
 
-		public void setListModel(ListModel<Integer> listModel) {
+		public void setListModel(ListModel<String> listModel) {
 			if (this.listModel == listModel)
 				return;
 			if (this.listModel != null)
@@ -285,7 +285,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			if (listModel == null || rowIndex > listModel.getSize())
 				return null;
-			Integer i = listModel.getElementAt(rowIndex);
+			String i = listModel.getElementAt(rowIndex);
 			AddrPair ap;
 			ConnectionData cd;
 			switch (columnIndex) {

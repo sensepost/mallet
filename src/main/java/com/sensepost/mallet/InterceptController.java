@@ -2,8 +2,8 @@ package com.sensepost.mallet;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -23,26 +23,32 @@ public interface InterceptController {
 
 	public class ChannelEvent {
 
+		private ChannelHandlerContext ctx = null;
 		private long eventTime, executionTime = -1;
-		private int connectionNumber;
+		private String connection;
 		private Direction direction;
 		private Throwable previousExecution = null;
 
-		public ChannelEvent(int connection, Direction direction, long eventTime, long executionTime) {
-			this.connectionNumber = connection;
+		public ChannelEvent(String connection, Direction direction, long eventTime, long executionTime) {
+			this.connection = connection;
 			this.direction = direction;
 			this.eventTime = eventTime;
 			this.executionTime = executionTime;
 		}
 		
-		public ChannelEvent(int connection, Direction direction) {
-			this.connectionNumber = connection;
+		public ChannelEvent(ChannelHandlerContext ctx, String connection, Direction direction) {
+			this.ctx = ctx;
+			this.connection = connection;
 			this.direction = direction;
 			this.eventTime = System.currentTimeMillis();
 		}
 
-		public int getConnectionIdentifier() {
-			return connectionNumber;
+		public ChannelHandlerContext getChannelHandlerContext() {
+			return ctx;
+		}
+
+		public String getConnectionIdentifier() {
+			return connection;
 		}
 
 		public long getEventTime() {
@@ -75,14 +81,14 @@ public interface InterceptController {
 
 		private SocketAddress remote, local;
 
-		public ChannelActiveEvent(int connection, Direction direction, long eventTime, long executionTime, SocketAddress remote, SocketAddress local) {
+		public ChannelActiveEvent(String connection, Direction direction, long eventTime, long executionTime, SocketAddress remote, SocketAddress local) {
 			super(connection, direction, eventTime, executionTime);
 			this.remote = remote;
 			this.local = local;
 		}
 		
-		public ChannelActiveEvent(int connection, Direction direction, SocketAddress remote, SocketAddress local) {
-			super(connection, direction);
+		public ChannelActiveEvent(ChannelHandlerContext ctx, String connection, Direction direction, SocketAddress remote, SocketAddress local) {
+			super(ctx, connection, direction);
 			this.remote = remote;
 			this.local = local;
 		}
@@ -97,12 +103,12 @@ public interface InterceptController {
 	}
 
 	public abstract class ChannelInactiveEvent extends ChannelEvent {
-		public ChannelInactiveEvent(int connection, Direction direction, long eventTime, long executionTime) {
+		public ChannelInactiveEvent(String connection, Direction direction, long eventTime, long executionTime) {
 			super(connection, direction, eventTime, executionTime);
 		}
 		
-		public ChannelInactiveEvent(int connection, Direction direction) {
-			super(connection, direction);
+		public ChannelInactiveEvent(ChannelHandlerContext ctx, String connection, Direction direction) {
+			super(ctx, connection, direction);
 		}
 	}
 
@@ -110,13 +116,13 @@ public interface InterceptController {
 
 		private String cause;
 
-		public ChannelExceptionEvent(int connection, Direction direction, long eventTime, long executionTime, String cause) {
+		public ChannelExceptionEvent(String connection, Direction direction, long eventTime, long executionTime, String cause) {
 			super(connection, direction, eventTime, executionTime);
 			this.cause = cause;
 		}
 		
-		public ChannelExceptionEvent(int connection, Direction direction, Throwable cause) {
-			super(connection, direction);
+		public ChannelExceptionEvent(ChannelHandlerContext ctx, String connection, Direction direction, Throwable cause) {
+			super(ctx, connection, direction);
 			StringWriter sw = new StringWriter();
 			cause.printStackTrace(new PrintWriter(sw));
 			this.cause = sw.toString();
@@ -134,14 +140,14 @@ public interface InterceptController {
 		private MessageDAO dao = null;
 		private String messageId = null;
 		
-		public ChannelReadEvent(int connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
+		public ChannelReadEvent(String connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
 			super(connection, direction, eventTime, executionTime);
 			this.dao = dao;
 			this.messageId = messageId;
 		}
 		
-		public ChannelReadEvent(int connection, Direction direction, Object msg) {
-			super(connection, direction);
+		public ChannelReadEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object msg) {
+			super(ctx, connection, direction);
 			setMessage(msg);
 		}
 		
@@ -149,14 +155,13 @@ public interface InterceptController {
 			if (msg == null && dao != null && messageId != null) {
 				return dao.readObject(messageId);
 			}
-			if (msg instanceof ByteBuf) { // FIXME: Check if this actually makes a difference
+			if (msg instanceof ByteBuf) {
 				return ((ByteBuf) msg).copy();
 			} else if (msg instanceof ByteBufHolder) {
 				return ((ByteBufHolder) msg).copy();
-			} else if (msg instanceof ReferenceCounted) {
-				((ReferenceCounted) msg).retain();
+			} else {
+				return ReferenceCountUtil.retain(msg);
 			}
-			return msg;
 		}
 		
 		public void setMessage(Object msg) {
@@ -185,13 +190,13 @@ public interface InterceptController {
 
 		private Object evt;
 
-		public ChannelUserEvent(int connection, Direction direction, long eventTime, long executionTime, Object evt) {
+		public ChannelUserEvent(String connection, Direction direction, long eventTime, long executionTime, Object evt) {
 			super(connection, direction, eventTime, executionTime);
 			this.evt = evt;
 		}
 		
-		public ChannelUserEvent(int connection, Direction direction, Object evt) {
-			super(connection, direction);
+		public ChannelUserEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object evt) {
+			super(ctx, connection, direction);
 			this.evt = evt;
 		}
 

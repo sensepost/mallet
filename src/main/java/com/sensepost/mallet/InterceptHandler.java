@@ -140,18 +140,18 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, final Throwable cause) {
-		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		Direction direction = Direction.Client_Server;
 		if (connection == null) {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;
 		}
-		return new ChannelExceptionEvent(connection, direction, cause) {
+		return new ChannelExceptionEvent(ctx, connection, direction, cause) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doExceptionCaught(ctx, cause);
+				doExceptionCaught(getChannelHandlerContext(), cause);
 			}
 		};
 	}
@@ -190,7 +190,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			throw new NullPointerException("ctx.channel()");
 		if (ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER) == null)
 			throw new NullPointerException("ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER)");
-		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Direction direction = connection != null ? Direction.Client_Server : Direction.Server_Client;
 		if (connection == null)
 			connection = ctx.channel().attr(ChannelAttributes.CHANNEL).get().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
@@ -200,11 +200,11 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 //			throw new NullPointerException("remote");
 		if (local == null)
 			throw new NullPointerException("local");
-		return new ChannelActiveEvent(connection, direction, remote, local) {
+		return new ChannelActiveEvent(ctx, connection, direction, remote, local) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelActive(ctx);
+				doChannelActive(getChannelHandlerContext());
 			}
 		};
 	}
@@ -219,18 +219,18 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
-		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		Direction direction = Direction.Client_Server;
 		if (connection == null) {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;
 		}
-		return new ChannelInactiveEvent(connection, direction) {
+		return new ChannelInactiveEvent(ctx, connection, direction) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelInactive(ctx);
+				doChannelInactive(getChannelHandlerContext());
 			}
 		};
 	}
@@ -249,18 +249,18 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelReadEvent(final ChannelHandlerContext ctx, Object msg) {
-		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		Direction direction = Direction.Client_Server;
 		if (connection == null) {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;
 		}
-		return new ChannelReadEvent(connection, direction, msg) {
+		return new ChannelReadEvent(ctx, connection, direction, msg) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelRead(ctx, getMessage());
+				doChannelRead(getChannelHandlerContext(), getMessage());
 			}
 		};
 	}
@@ -309,18 +309,18 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelUserEvent(final ChannelHandlerContext ctx, Object evt) {
-		Integer connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 		Direction direction = Direction.Client_Server;
 		if (connection == null) {
 			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
 			direction = Direction.Server_Client;
 		}
-		return new ChannelUserEvent(connection, direction, evt) {
+		return new ChannelUserEvent(ctx, connection, direction, evt) {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doUserEventTriggered(ctx, getUserEvent());
+				doUserEventTriggered(getChannelHandlerContext(), getUserEvent());
 			}
 		};
 	}
