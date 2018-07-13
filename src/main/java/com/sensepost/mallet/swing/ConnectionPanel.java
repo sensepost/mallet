@@ -243,8 +243,8 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
 
 		private ListModel<String> listModel = null;
-		private String[] columnNames = new String[] { "#", "Src", "Dst", "Events", "Opened", "Closed" };
-		private Class<?>[] columnClasses = new Class<?>[] { Integer.class, SocketAddress.class, SocketAddress.class, String.class, Date.class, Date.class};
+		private String[] columnNames = new String[] { "Src", "Dst", "Events", "Opened", "Closed" };
+		private Class<?>[] columnClasses = new Class<?>[] { SocketAddress.class, SocketAddress.class, String.class, Date.class, Date.class};
 
 		public ListTableModelAdapter(ListModel<String> listModel) {
 			setListModel(listModel);
@@ -290,20 +290,18 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 			ConnectionData cd;
 			switch (columnIndex) {
 			case 0:
-				return i;
-			case 1:
 				ap = connAddrMap.get(i);
 				return ap.src;
-			case 2:
+			case 1:
 				ap = connAddrMap.get(i);
 				return ap.dst;
-			case 3:
+			case 2:
 				cd = channelEventMap.get(i);
 				return cd.getPendingEventCount() + "/" + cd.getEventCount();
-			case 4:
+			case 3:
 				cd = channelEventMap.get(i);
 				return new Date(cd.getEvents().getElementAt(0).getEventTime());
-			case 5:
+			case 4:
 				cd = channelEventMap.get(i);
 				return cd.isClosed() ? new Date(cd.getEvents().getElementAt(cd.getEventCount()-1).getExecutionTime()) : null;
 			}
