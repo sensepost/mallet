@@ -105,7 +105,7 @@ public class GraphEditor extends BasicGraphEditor {
 				"groovy");
 
 		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
-				"io.netty.handler.logging.LoggingHandler", "io.netty.handler.logging.LogLevel.INFO");
+				"io.netty.handler.logging.LoggingHandler");
 
 		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.InterceptHandler", 
 				"{InterceptController}");

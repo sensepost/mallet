@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.logging.Handler;
 
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
@@ -21,6 +22,8 @@ public class InterceptFrame extends JFrame {
 
 	private JCheckBoxMenuItem interceptMenuItem;
 	private ConnectionPanel connectionPanel;
+	private LogPanel logPanel;
+
 	private JTabbedPane tabbedPane;
 
 	private GraphEditor editor;
@@ -42,6 +45,9 @@ public class InterceptFrame extends JFrame {
 		
 		connectionPanel = new ConnectionPanel();
 		tabbedPane.addTab("Connections", connectionPanel);
+
+		logPanel = new LogPanel();
+		tabbedPane.addTab("Log", logPanel);
 
 		JMenuBar menuBar = new EditorMenuBar(editor);
 		setJMenuBar(menuBar);
@@ -76,4 +82,7 @@ public class InterceptFrame extends JFrame {
 		return interceptMenuItem;
 	}
 
+	public Handler getLogHandler() {
+		return logPanel.getHandler();
+	}
 }

@@ -14,6 +14,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 
@@ -189,7 +190,7 @@ public class Graph implements GraphLookup {
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
-			ServerBootstrap b = new ServerBootstrap()
+			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler())
 				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
 				.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);

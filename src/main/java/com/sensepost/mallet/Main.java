@@ -1,5 +1,6 @@
 package com.sensepost.mallet;
 
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
@@ -18,6 +19,9 @@ import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.net.ssl.X509KeyManager;
 import javax.script.Bindings;
@@ -26,8 +30,6 @@ import javax.security.auth.x500.X500Principal;
 
 import com.mxgraph.swing.mxGraphComponent;
 import com.sensepost.mallet.graph.Graph;
-import com.sensepost.mallet.persistence.MessageDAO;
-import com.sensepost.mallet.persistence.ObjectMapper;
 import com.sensepost.mallet.ssl.AutoGeneratingContextSelector;
 import com.sensepost.mallet.ssl.KeyStoreX509KeyManager;
 import com.sensepost.mallet.swing.GraphEditor.CustomGraph;
@@ -125,11 +127,18 @@ public class Main {
 
 		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
 		InterceptFrame ui = new InterceptFrame(graphComponent);
+
+		// set up LoggingHandler logging
+		Handler handler = ui.getLogHandler();
+		Logger logger = Logger.getLogger(LoggingHandler.class.getCanonicalName());
+		logger.setLevel(Level.FINEST);
+		logger.addHandler(handler);
+
 		InterceptController ic = ui.getInterceptController();
 //		ObjectMapper om = new ObjectMapper();
 //		MessageDAO dao = new MessageDAO(null, om);
 //		ic.setMessageDAO(dao);
-		
+
 		ui.setSize(800, 600);
 
 		ui.addWindowStateListener(new WindowStateListener() {
