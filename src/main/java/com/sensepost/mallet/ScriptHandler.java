@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -53,10 +52,6 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 				String extension = fileName.substring(fileName.lastIndexOf('.'));
 				engine = sem.getEngineByExtension(extension);
 				scriptResult = engine.eval(new InputStreamReader(is));
-			} catch (ScriptException e) {
-				System.out.println("Script Exception: " + e.getLocalizedMessage()
-						+ " at " + e.getLineNumber() + ":" + e.getColumnNumber());
-				throw e;
 			} catch (IOException ioe) {
 				throw new ScriptException(ioe);
 			} finally {
@@ -70,10 +65,6 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 			engine = sem.getEngineByName(language);
 			try {
 				scriptResult = engine.eval(script);
-			} catch (ScriptException e) {
-				System.out.println("Script Exception: " + e.getLocalizedMessage()
-						+ " at " + e.getLineNumber() + ":" + e.getColumnNumber());
-				throw e;
 			} catch (Exception e) {
 				e.printStackTrace();
 				throw e;
@@ -85,12 +76,6 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 	}
 	
 	private ChannelHandler getScriptHandler(ScriptEngine engine, Object script) {
-		if (script == null)
-			throw new NullPointerException("script result is null");
-
-		if (!Invocable.class.isAssignableFrom(engine.getClass()))
-			throw new RuntimeException("Script engine cannot implement objects");
-
 		if (script instanceof ChannelDuplexHandler)
 			return (ChannelDuplexHandler) script;
 		if (script instanceof ChannelHandler) {
