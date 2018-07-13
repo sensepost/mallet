@@ -134,23 +134,23 @@ public interface InterceptController {
 
 	}
 
-	public abstract class ChannelReadEvent extends ChannelEvent {
+	public abstract class ChannelMessageEvent extends ChannelEvent {
 
 		private Object msg;
 		private MessageDAO dao = null;
 		private String messageId = null;
-		
-		public ChannelReadEvent(String connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
+
+		public ChannelMessageEvent(String connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
 			super(connection, direction, eventTime, executionTime);
 			this.dao = dao;
 			this.messageId = messageId;
 		}
-		
-		public ChannelReadEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object msg) {
+
+		public ChannelMessageEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object msg) {
 			super(ctx, connection, direction);
 			setMessage(msg);
 		}
-		
+
 		public Object getMessage() {
 			if (msg == null && dao != null && messageId != null) {
 				return dao.readObject(messageId);
@@ -163,27 +163,51 @@ public interface InterceptController {
 				return ReferenceCountUtil.retain(msg);
 			}
 		}
-		
+
 		public void setMessage(Object msg) {
 			if (dao != null && msg != null)
 				this.messageId = dao.writeObject(msg);
 			this.msg = msg;
 		}
-		
+
 		public void setDao(MessageDAO dao) {
 			messageId = dao.writeObject(getMessage());
 			this.dao = dao;
 		}
-		
+
 		public String getMessageId() {
 			return messageId;
 		}
-		
+
 		public void execute() throws Exception {
 			super.execute();
 			if (messageId != null)
 				msg = null;
 		}
+	}
+
+	public abstract class ChannelReadEvent extends ChannelMessageEvent {
+
+		public ChannelReadEvent(String connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
+			super(connection, direction, eventTime, executionTime, dao, messageId);
+		}
+
+		public ChannelReadEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object msg) {
+			super(ctx, connection, direction, msg);
+		}
+
+	}
+
+	public abstract class ChannelWriteEvent extends ChannelMessageEvent {
+
+		public ChannelWriteEvent(String connection, Direction direction, long eventTime, long executionTime, MessageDAO dao, String messageId) {
+			super(connection, direction, eventTime, executionTime, dao, messageId);
+		}
+
+		public ChannelWriteEvent(ChannelHandlerContext ctx, String connection, Direction direction, Object msg) {
+			super(ctx, connection, direction, msg);
+		}
+
 	}
 
 	public abstract class ChannelUserEvent extends ChannelEvent {
