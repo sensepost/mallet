@@ -156,6 +156,10 @@ public class ConnectionDataPanel extends JPanel {
 					editing = null;
 					editorController.setObject(((ChannelExceptionEvent) evt).getCause());
 					editorController.setReadOnly(true);
+				} else if (evt instanceof ChannelUserEvent) {
+					editing = null;
+					editorController.setObject(((ChannelUserEvent) evt).getUserEvent());
+					editorController.setReadOnly(true);
 				} else {
 					editing = null;
 					editorController.setObject(null);
