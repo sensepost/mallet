@@ -30,8 +30,10 @@ import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelEvent;
 import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
 import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
+import com.sensepost.mallet.InterceptController.ChannelMessageEvent;
 import com.sensepost.mallet.InterceptController.ChannelReadEvent;
 import com.sensepost.mallet.InterceptController.ChannelUserEvent;
+import com.sensepost.mallet.InterceptController.ChannelWriteEvent;
 import com.sensepost.mallet.InterceptController.Direction;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
@@ -47,7 +49,7 @@ public class ConnectionDataPanel extends JPanel {
 	private DateRenderer dateRenderer = new DateRenderer();
 	private DirectionRenderer directionRenderer = new DirectionRenderer();
 
-	private ChannelReadEvent editing = null;
+	private ChannelMessageEvent editing = null;
 	private JTable table;
 
 	public ConnectionDataPanel() {
@@ -144,8 +146,8 @@ public class ConnectionDataPanel extends JPanel {
 					evt = null;
 				else
 					evt = connectionData.getEvents().getElementAt(selectedRow);
-				if (evt instanceof ChannelReadEvent) {
-					editing = (ChannelReadEvent) evt;
+				if (evt instanceof ChannelMessageEvent) {
+					editing = (ChannelMessageEvent) evt;
 					Object o = editing.getMessage();
 					editorController.setObject(o);
 					ReferenceCountUtil.release(o);
@@ -188,8 +190,8 @@ public class ConnectionDataPanel extends JPanel {
 			if (value instanceof ChannelEvent) {
 				ChannelEvent evt = (ChannelEvent) value;
 				value = "";
-				if (evt instanceof ChannelReadEvent) {
-					Object o = ((ChannelReadEvent) evt).getMessage();
+				if (evt instanceof ChannelMessageEvent) {
+					Object o = ((ChannelMessageEvent) evt).getMessage();
 					if (o != null) {
 						value = o.getClass().getName();
 						if (o instanceof ByteBuf)
@@ -293,6 +295,8 @@ public class ConnectionDataPanel extends JPanel {
 					return "Close";
 				else if (e instanceof ChannelReadEvent)
 					return "Read";
+				else if (e instanceof ChannelWriteEvent)
+					return "Write";
 				else if (e instanceof ChannelExceptionEvent)
 					return "Exception";
 				else if (e instanceof ChannelUserEvent)
