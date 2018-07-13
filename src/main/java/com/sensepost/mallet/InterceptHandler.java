@@ -13,9 +13,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
-import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.SocketAddress;
@@ -73,41 +71,22 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			}
 		};
 
-		Bootstrap bootstrap = null;
-		if (ctx.channel() instanceof NioSocketChannel) {
-			bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-					.option(ChannelOption.SO_KEEPALIVE, true);
-			ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
-			cf.addListener(new ChannelFutureListener() {
+		Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+				.option(ChannelOption.SO_KEEPALIVE, true);
+		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
+		cf.addListener(new ChannelFutureListener() {
 
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						upstreamPromise.setSuccess();
-					} else {
-						upstreamPromise.setFailure(future.cause());
-						exceptionCaught(ctx, future.cause());
-						ctx.close();
-					}
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if (future.isSuccess()) {
+					upstreamPromise.setSuccess();
+				} else {
+					upstreamPromise.setFailure(future.cause());
+					exceptionCaught(ctx, future.cause());
+					ctx.close();
 				}
-			});
-		} else if (ctx.channel() instanceof NioDatagramChannel) {
-			bootstrap = new Bootstrap().channel(NioDatagramChannel.class);
-			ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).bind(9999); // FIXME 9999
-			cf.addListener(new ChannelFutureListener() {
-
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						upstreamPromise.setSuccess();
-					} else {
-						upstreamPromise.setFailure(future.cause());
-						exceptionCaught(ctx, future.cause());
-						ctx.close();
-					}
-				}
-			});
-		}
+			}
+		});
 	}
 
 	@Override
@@ -274,35 +253,26 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			System.out.println("Connection: " + ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get());
 			throw new NullPointerException("Channel is null!");
 		}
-		ChannelFuture cf;
-		if (channel instanceof NioSocketChannel) {
-			cf = channel.writeAndFlush(msg);
-			cf.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) {
-					if (future.isSuccess()) {
-						ctx.channel().read();
-					} else {
-						try {
-							exceptionCaught(ctx, future.cause());
-						} catch (Exception e) {}
-						future.channel().close();
-					}
+		ChannelFuture cf = channel.writeAndFlush(msg);
+		cf.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) {
+				if (future.isSuccess()) {
+					ctx.channel().read();
+				} else {
+					try {
+						exceptionCaught(ctx, future.cause());
+					} catch (Exception e) {}
+					future.channel().close();
 				}
-			});
-		} else if (channel instanceof NioDatagramChannel) {
-			ConnectRequest cr = ctx.channel().attr(ChannelAttributes.TARGET).get();
-			SocketAddress target = cr.getTarget();
-			cf = channel.writeAndFlush(msg);
-		} else 
-			throw new RuntimeException("Unsupported channel type");
+			}
+		});
 	}
 
 	@Override
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
 		if (evt == ChannelInputShutdownReadComplete.INSTANCE) {
 			ctx.channel().config().setAutoRead(false);
-			System.out.print(".");
 			// ignore
 		} else
 			ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
