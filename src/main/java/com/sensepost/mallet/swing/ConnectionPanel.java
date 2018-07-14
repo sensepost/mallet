@@ -36,9 +36,9 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private ConnectionDataPanel cdp;
 
 	private JTable table;
-	private DefaultListModel<String> listModel = new DefaultListModel<>();
+	private DefaultListModel<ConnectionData> listModel = new DefaultListModel<>();
 
-	private Map<String, AddrPair> connAddrMap = new HashMap<>();
+	private Map<ConnectionData, AddrPair> connAddrMap = new HashMap<>();
 	private Map<String, ConnectionData> channelEventMap = new LinkedHashMap<>();
 
 	private boolean intercept = false;
@@ -58,8 +58,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 					int row, int column) {
 				Component c = super.prepareRenderer(renderer, row, column);
 
-				String connection = listModel.getElementAt(row);
-				ConnectionData cd = channelEventMap.get(connection);
+				ConnectionData cd = listModel.getElementAt(row);
 				if (table.getSelectedRow() == row) {
 					c.setBackground(getSelectionBackground());
 					c.setForeground(getSelectionForeground());
@@ -88,7 +87,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 				if (selected != -1) {
 					selected = table.convertRowIndexToModel(selected);
 					synchronized (channelEventMap) {
-						cd = channelEventMap.get(listModel.getElementAt(selected));
+						cd = listModel.getElementAt(selected);
 					}
 				}
 				cdp.setConnectionData(cd);
@@ -120,6 +119,33 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	}
 	
 	@Override
+	public void linkChannels(final String channel1, final String channel2) {
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				synchronized(channelEventMap) {
+					ConnectionData event1 = channelEventMap.get(channel1);
+					ConnectionData event2 = channelEventMap.get(channel2);
+					if (event1 == event2 && event1 != null) {
+						return; // already linked?
+					} else if (event1 != null && event2 != null) {
+						// whoa!
+						throw new RuntimeException("Trying to link two channels with existing events - not yet supported!");
+					} else if (event1 != null) {
+						channelEventMap.put(channel2, event1);
+					} else if (event2 != null) {
+						channelEventMap.put(channel1, event2);
+					} else {
+						ConnectionData eventList = new ConnectionData();
+						channelEventMap.put(channel1, eventList);
+						channelEventMap.put(channel2, eventList);
+						listModel.addElement(eventList);
+					}
+				}
+			}
+		});
+	}
+
+	@Override
 	public void addChannelEvent(final ChannelEvent evt) throws Exception {
 		if (evt instanceof ChannelReadEvent && dao != null) {
 			((ChannelReadEvent) evt).setDao(dao);
@@ -138,42 +164,40 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	
 	private void addChannelEventEDT(ChannelEvent evt) throws Exception {
 		String cp = evt.getConnectionIdentifier();
+		ConnectionData connectionData;
+		synchronized(channelEventMap) {
+			connectionData = channelEventMap.get(cp);
+			if (connectionData == null) {
+				connectionData = new ConnectionData();
+				channelEventMap.put(cp, connectionData);
+				listModel.addElement(connectionData);
+			}
+			connectionData.addChannelEvent(evt);
+		}
 
 		if (evt instanceof ChannelActiveEvent) {
 			ChannelActiveEvent cae = (ChannelActiveEvent) evt;
 			SocketAddress remote = cae.getRemoteAddress();
 			SocketAddress local = cae.getLocalAddress();
 			synchronized (connAddrMap) {
-				if (connAddrMap.get(cp) == null) {
+				if (connAddrMap.get(connectionData) == null) {
 					AddrPair ap = new AddrPair(remote, local);
-					connAddrMap.put(cp, ap);
+					connAddrMap.put(connectionData, ap);
 				} else {
-					connAddrMap.get(cp).dst = remote;
+					connAddrMap.get(connectionData).dst = remote;
 				}
 			}	
 		}
-		
-		synchronized (channelEventMap) {
-			ConnectionData eventList;
-			if (!channelEventMap.containsKey(cp)) {
-				eventList = new ConnectionData();
-				channelEventMap.put(cp, eventList);
-				listModel.addElement(cp);
-			} else {
-				eventList = channelEventMap.get(cp);
-			}
-			eventList.addChannelEvent(evt);
 
-			// force redraw of the element in the list
-			int index = listModel.indexOf(cp);
-			listModel.setElementAt(listModel.getElementAt(index), index);
+		// force redraw of the element in the list
+		int index = listModel.indexOf(connectionData);
+		listModel.setElementAt(listModel.getElementAt(index), index);
 
-			if (!intercept) {
-				try {
-					eventList.executeAllEvents();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+		if (!intercept) {
+			try {
+				connectionData.executeAllEvents();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -242,15 +266,15 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
 
-		private ListModel<String> listModel = null;
+		private ListModel<ConnectionData> listModel = null;
 		private String[] columnNames = new String[] { "Src", "Dst", "Events", "Opened", "Closed" };
 		private Class<?>[] columnClasses = new Class<?>[] { SocketAddress.class, SocketAddress.class, String.class, Date.class, Date.class};
 
-		public ListTableModelAdapter(ListModel<String> listModel) {
+		public ListTableModelAdapter(ListModel<ConnectionData> listModel) {
 			setListModel(listModel);
 		}
 
-		public void setListModel(ListModel<String> listModel) {
+		public void setListModel(ListModel<ConnectionData> listModel) {
 			if (this.listModel == listModel)
 				return;
 			if (this.listModel != null)
@@ -285,24 +309,20 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			if (listModel == null || rowIndex > listModel.getSize())
 				return null;
-			String i = listModel.getElementAt(rowIndex);
+			ConnectionData cd = listModel.getElementAt(rowIndex);
 			AddrPair ap;
-			ConnectionData cd;
 			switch (columnIndex) {
 			case 0:
-				ap = connAddrMap.get(i);
+				ap = connAddrMap.get(cd);
 				return ap.src;
 			case 1:
-				ap = connAddrMap.get(i);
+				ap = connAddrMap.get(cd);
 				return ap.dst;
 			case 2:
-				cd = channelEventMap.get(i);
 				return cd.getPendingEventCount() + "/" + cd.getEventCount();
 			case 3:
-				cd = channelEventMap.get(i);
 				return new Date(cd.getEvents().getElementAt(0).getEventTime());
 			case 4:
-				cd = channelEventMap.get(i);
 				return cd.isClosed() ? new Date(cd.getEvents().getElementAt(cd.getEventCount()-1).getExecutionTime()) : null;
 			}
 			return null;

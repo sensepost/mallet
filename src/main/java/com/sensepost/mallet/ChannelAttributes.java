@@ -21,8 +21,6 @@ public class ChannelAttributes {
 
 	public static final AttributeKey<GraphLookup> GRAPH = AttributeKey.valueOf("graph");
 
-	public static final AttributeKey<String> CONNECTION_IDENTIFIER = AttributeKey.valueOf("connection_identifier");
-	
 	public static final AttributeKey<SocketAddress> REMOTE_ADDRESS = AttributeKey.valueOf("remote_address");
 	
 	public static final AttributeKey<Bindings> SCRIPT_CONTEXT = AttributeKey.valueOf("script_context");

@@ -57,6 +57,7 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		ChannelInitializer<Channel> initializer = new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
+				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText());
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
@@ -119,13 +120,10 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, final Throwable cause) {
-		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		String connection = ctx.channel().id().asLongText();
 		Direction direction = Direction.Client_Server;
-		if (connection == null) {
-			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		if (ctx.channel().parent() == null)
 			direction = Direction.Server_Client;
-		}
 		return new ChannelExceptionEvent(ctx, connection, direction, cause) {
 			@Override
 			public void execute() throws Exception {
@@ -162,23 +160,13 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelActiveEvent(final ChannelHandlerContext ctx) {
-		SocketAddress remote, local;
-		if (ctx == null)
-			throw new NullPointerException("ctx");
-		if (ctx.channel() == null)
-			throw new NullPointerException("ctx.channel()");
-		if (ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER) == null)
-			throw new NullPointerException("ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER)");
-		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Direction direction = connection != null ? Direction.Client_Server : Direction.Server_Client;
-		if (connection == null)
-			connection = ctx.channel().attr(ChannelAttributes.CHANNEL).get().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		remote = ctx.channel().remoteAddress();
-		local = ctx.channel().localAddress();
-//		if (remote == null)
-//			throw new NullPointerException("remote");
-		if (local == null)
-			throw new NullPointerException("local");
+		String connection = ctx.channel().id().asLongText();
+		Direction direction = Direction.Client_Server;
+		if (ctx.channel().parent() == null)
+			direction = Direction.Server_Client;
+
+		SocketAddress remote = ctx.channel().remoteAddress();
+		SocketAddress local = ctx.channel().localAddress();
 		return new ChannelActiveEvent(ctx, connection, direction, remote, local) {
 			@Override
 			public void execute() throws Exception {
@@ -198,13 +186,11 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
-		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		String connection = ctx.channel().id().asLongText();
 		Direction direction = Direction.Client_Server;
-		if (connection == null) {
-			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		if (ctx.channel().parent() == null)
 			direction = Direction.Server_Client;
-		}
+
 		return new ChannelInactiveEvent(ctx, connection, direction) {
 			@Override
 			public void execute() throws Exception {
@@ -228,13 +214,11 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelReadEvent(final ChannelHandlerContext ctx, Object msg) {
-		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		String connection = ctx.channel().id().asLongText();
 		Direction direction = Direction.Client_Server;
-		if (connection == null) {
-			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		if (ctx.channel().parent() == null)
 			direction = Direction.Server_Client;
-		}
+
 		return new ChannelReadEvent(ctx, connection, direction, msg) {
 			@Override
 			public void execute() throws Exception {
@@ -246,13 +230,6 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	private void doChannelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
 		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (channel == null) {
-			System.out.println("Channel: " + ctx.channel().attr(ChannelAttributes.CHANNEL).get());
-			System.out.println("Target: " + ctx.channel().attr(ChannelAttributes.TARGET).get());
-			System.out.println("Graph: " + ctx.channel().attr(ChannelAttributes.GRAPH).get());
-			System.out.println("Connection: " + ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get());
-			throw new NullPointerException("Channel is null!");
-		}
 		ChannelFuture cf = channel.writeAndFlush(msg);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
@@ -279,13 +256,11 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	protected ChannelEvent createChannelUserEvent(final ChannelHandlerContext ctx, Object evt) {
-		String connection = ctx.channel().attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
-		Channel ch = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+		String connection = ctx.channel().id().asLongText();
 		Direction direction = Direction.Client_Server;
-		if (connection == null) {
-			connection = ch.attr(ChannelAttributes.CONNECTION_IDENTIFIER).get();
+		if (ctx.channel().parent() == null)
 			direction = Direction.Server_Client;
-		}
+
 		return new ChannelUserEvent(ctx, connection, direction, evt) {
 			@Override
 			public void execute() throws Exception {

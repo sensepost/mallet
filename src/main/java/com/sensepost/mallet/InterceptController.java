@@ -17,6 +17,8 @@ public interface InterceptController {
 	
 	void addChannelEvent(ChannelEvent evt) throws Exception;
 
+	void linkChannels(String channel1, String channel2);
+
 	public enum Direction {
 		Client_Server, Server_Client
 	}

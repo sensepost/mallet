@@ -538,7 +538,6 @@ public class Graph implements GraphLookup {
 				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 			}
-			p.addAfter(me, null, new ConnectionNumberChannelHandler());
 			p.addLast(handlers);
 			
 			ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
