@@ -238,32 +238,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		}
 	}
 
-	private class ChannelPairCellRenderer implements ListCellRenderer<Integer> {
-		protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
-
-		@Override
-		public Component getListCellRendererComponent(JList<? extends Integer> list, Integer value, int index,
-				boolean isSelected, boolean cellHasFocus) {
-
-			AddrPair ap = connAddrMap.get(value);
-			String text = value + " : " + ap.src + " -> " + ap.dst;
-			
-			ConnectionData cd = channelEventMap.get(value);
-			text += " (" + cd.getPendingEventCount() + "/" + cd.getEventCount() + ")";
-			if (cd.isClosed())
-				text += " CLOSED";
-			JLabel renderer = (JLabel) defaultRenderer.getListCellRendererComponent(list, text, index, isSelected,
-					cellHasFocus);
-			if (cd.isException())
-				renderer.setBackground(Color.PINK);
-			else if (cd.isClosed())
-				renderer.setBackground(Color.LIGHT_GRAY);
-
-			return renderer;
-		}
-
-	}
-
 	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
 
 		private ListModel<ConnectionData> listModel = null;
@@ -314,14 +288,18 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 			switch (columnIndex) {
 			case 0:
 				ap = connAddrMap.get(cd);
+				if (ap == null)
+					return null; // FIXME
 				return ap.src;
 			case 1:
 				ap = connAddrMap.get(cd);
+				if (ap == null)
+					return null; // FIXME
 				return ap.dst;
 			case 2:
 				return cd.getPendingEventCount() + "/" + cd.getEventCount();
 			case 3:
-				return new Date(cd.getEvents().getElementAt(0).getEventTime());
+				return cd.getEventCount() == 0 ? null : new Date(cd.getEvents().getElementAt(0).getEventTime());
 			case 4:
 				return cd.isClosed() ? new Date(cd.getEvents().getElementAt(cd.getEventCount()-1).getExecutionTime()) : null;
 			}
