@@ -55,6 +55,7 @@ import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.model.mxGraphModel.mxChildChange;
 import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.model.mxGraphModel.mxRootChange;
+import com.mxgraph.model.mxGraphModel.mxStyleChange;
 import com.mxgraph.model.mxGraphModel.mxValueChange;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxCellOverlay;
@@ -120,7 +121,7 @@ public class Graph implements GraphLookup {
 							if (incoming == null || incoming.length == 0)
 								stopStartServerFromChange(cc.getPrevious(), cc.getChild());
 						}
-					} else if (!(change instanceof mxGeometryChange)) {
+					} else if (!(change instanceof mxGeometryChange) && !(change instanceof mxStyleChange)) {
 						System.out.println("Change: " + change.getClass());
 					}
 				}

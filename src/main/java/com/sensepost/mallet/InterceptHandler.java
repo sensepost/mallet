@@ -107,7 +107,6 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		cause.printStackTrace();
 		if (!ignoreException(cause))
 			ensureUpstreamConnectedAndFire(ctx, createChannelExceptionEvent(ctx, cause));
 		else {
