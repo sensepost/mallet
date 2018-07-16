@@ -45,9 +45,10 @@ import org.jdesktop.swingx.JXTreeTable;
 import org.jdesktop.swingx.treetable.AbstractTreeTableModel;
 
 @SuppressWarnings("serial")
-public class ReflectionEditor extends JPanel implements ObjectEditor {
+public class ReflectionEditor extends JPanel {
 
 	private static WeakHashMap<Class<?>, Field[]> fieldCache = new WeakHashMap<Class<?>, Field[]>();
+	private JXTreeTable objectTree;
 	private ObjectTreeModel otm = new ObjectTreeModel();
 
 	private RevertAction revertAction = new RevertAction();
@@ -69,7 +70,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 		JScrollPane objectScrollPane = new JScrollPane();
 		editorSplitPane.setLeftComponent(objectScrollPane);
 
-		JXTreeTable objectTree = new JXTreeTable();
+		objectTree = new JXTreeTable();
 		objectScrollPane.setViewportView(objectTree);
 		objectTree.setRootVisible(true);
 		objectTree.setTreeTableModel(otm);
@@ -137,36 +138,7 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 
 	};
 
-	private EditorController controller = null;
 	private JTextArea scriptResultTextArea;
-
-	@Override
-	public JComponent getEditorComponent() {
-		return this;
-	}
-
-	@Override
-	public String getEditorName() {
-		return "Reflection";
-	}
-
-	@Override
-	public Class<?>[] getSupportedClasses() {
-		return new Class<?>[] { Object.class };
-	}
-
-	@Override
-	public void setEditorController(EditorController controller) {
-		if (this.controller != null)
-			controller.removePropertyChangeListener(listener);
-		this.controller = controller;
-		if (this.controller != null) {
-			controller.addPropertyChangeListener(listener);
-			otm.setObject(controller.getObject());
-		} else {
-			otm.setObject(null);
-		}
-	}
 
 	private void uiError(Exception e) {
 		JOptionPane.showMessageDialog(this, e.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -714,26 +686,6 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 
 	}
 
-	private class NullAction extends AbstractAction {
-		private TreePath path = null;
-
-		public NullAction() {
-			super("Null");
-			setToolTipText("Set the field to null");
-			setEnabled(false);
-		}
-
-		public void setPath(TreePath path) {
-			this.path = path;
-			setEnabled(path != null);
-		}
-
-		@Override
-		public void actionPerformed(ActionEvent ae) {
-			otm.valueForPathChanged(path, null);
-		}
-	}
-
 	private static class NodeRenderer extends DefaultTreeCellRenderer {
 
 		@Override
@@ -802,4 +754,16 @@ public class ReflectionEditor extends JPanel implements ObjectEditor {
 
 	}
 
+	public static class Editor extends EditorSupport<ReflectionEditor> {
+		
+		public Editor() {
+			super("Reflection", new Class<?>[] {Object.class}, new ReflectionEditor());
+		}
+
+		@Override
+		public void setEditObject(Object o, boolean editable) {
+			getEditorComponent().otm.setObject(o);
+			getEditorComponent().objectTree.setEditable(o != null && editable);
+		}
+	}
 }

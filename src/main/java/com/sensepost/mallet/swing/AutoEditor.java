@@ -11,14 +11,11 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
 import com.sensepost.mallet.swing.editors.ByteArrayEditor;
-import com.sensepost.mallet.swing.editors.ByteBufEditor;
-import com.sensepost.mallet.swing.editors.ByteBufHolderEditor;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.HttpMessageEditor;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
 import com.sensepost.mallet.swing.editors.ReflectionEditor;
 import com.sensepost.mallet.swing.editors.StringEditor;
-import com.sensepost.mallet.swing.editors.ToStringEditor;
 
 public class AutoEditor extends JPanel implements ObjectEditor {
 
@@ -40,13 +37,11 @@ public class AutoEditor extends JPanel implements ObjectEditor {
 	}
 
 	private void addEditors() {
-		addEditor(new StringEditor());
-		addEditor(new HttpMessageEditor());
-		addEditor(new ByteArrayEditor());
-		addEditor(new ByteBufEditor());
-		addEditor(new ByteBufHolderEditor());
-		addEditor(new ReflectionEditor());
-		addEditor(new ToStringEditor());
+		addEditor(new StringEditor.Editor());
+		addEditor(new HttpMessageEditor.Editor());
+		addEditor(new ByteArrayEditor.Editor());
+		addEditor(new ReflectionEditor.Editor());
+		addEditor(new StringEditor.ToStringEditor());
 	}
 
 	public void setEditorController(EditorController controller) {

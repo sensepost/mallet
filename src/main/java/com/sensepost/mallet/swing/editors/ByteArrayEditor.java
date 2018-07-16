@@ -1,11 +1,13 @@
 package com.sensepost.mallet.swing.editors;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
+import io.netty.buffer.Unpooled;
+
 import java.awt.BorderLayout;
 import java.awt.Event;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -13,7 +15,6 @@ import java.io.IOException;
 
 import javax.swing.AbstractAction;
 import javax.swing.InputMap;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -25,44 +26,7 @@ import javax.swing.event.TableModelListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-public class ByteArrayEditor extends JPanel implements ObjectEditor {
-
-	private EditorController controller = null;
-
-	private boolean tableUpdating = false;
-
-	private PropertyChangeListener listener = new PropertyChangeListener() {
-
-		@Override
-		public void propertyChange(PropertyChangeEvent evt) {
-			if (evt.getSource() != controller)
-				return;
-			if (EditorController.OBJECT.equals(evt.getPropertyName())) {
-				Object o = controller.getObject();
-				tableUpdating = true;
-				if (o instanceof byte[]) {
-					htm.setData((byte[]) o);
-				} else {
-					htm.setData(null);
-				}
-				tableUpdating = false;
-			} else if (EditorController.READ_ONLY.equals(evt.getPropertyName())) {
-				htm.setEditable(!controller.isReadOnly());
-			}
-		}
-
-	};
-
-	private TableModelListener tl = new TableModelListener() {
-
-		@Override
-		public void tableChanged(TableModelEvent e) {
-			if (tableUpdating)
-				return;
-			controller.setObject(htm.getData());
-		}
-
-	};
+public class ByteArrayEditor extends JPanel {
 
 	private HexTableModel htm = new HexTableModel(8);
 	private JTable table;
@@ -76,7 +40,6 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 		table = new JTable();
 		table.setModel(htm);
 		scrollPane.setViewportView(table);
-		htm.addTableModelListener(tl);
 		
         InputMap im = getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, Event.CTRL_MASK), "Save");
@@ -99,7 +62,7 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
         });
         getActionMap().put("Open", new AbstractAction() {
 			public void actionPerformed(ActionEvent evt) {
-                if (controller.isReadOnly()) 
+                if (!htm.editable) 
                 	return;
                 JFileChooser jfc = new JFileChooser();
                 jfc.setDialogTitle("Select a file to read the message content from");
@@ -128,40 +91,6 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
         renderer.putClientProperty("html.disable", Boolean.TRUE);
         table.setDefaultRenderer(Object.class, renderer);
 
-	}
-
-	@Override
-	public JComponent getEditorComponent() {
-		return this;
-	}
-
-	@Override
-	public Class<?>[] getSupportedClasses() {
-		return new Class<?>[] { byte[].class };
-	}
-
-	@Override
-	public void setEditorController(EditorController controller) {
-		if (this.controller != null)
-			controller.removePropertyChangeListener(listener);
-		this.controller = controller;
-		tableUpdating = true;
-		if (this.controller != null) {
-			controller.addPropertyChangeListener(listener);
-			Object o = controller.getObject();
-			if (o instanceof byte[]) {
-				htm.setData((byte[]) o);
-			} else {
-				htm.setData(null);
-			}
-		} else {
-			htm.setData(null);
-		}
-		tableUpdating = false;
-	}
-
-	public String getEditorName() {
-		return "Byte[]";
 	}
 
 	private class HexTableModel extends AbstractTableModel {
@@ -284,4 +213,61 @@ public class ByteArrayEditor extends JPanel implements ObjectEditor {
 		}
 	}
 
+	public static class Editor extends EditorSupport<ByteArrayEditor> {
+
+		private Class<?> editingClass = null;
+		private ByteBufHolder bbh;
+		
+		public Editor() {
+			super("Bytes", new Class<?>[] { byte[].class, ByteBuf.class, ByteBufHolder.class }, new ByteArrayEditor());
+			getEditorComponent().htm.addTableModelListener(new TableModelListener() {
+
+				@Override
+				public void tableChanged(TableModelEvent e) {
+					if (isUpdating())
+						return;
+					byte[] data = getEditorComponent().htm.getData();
+					if (byte[].class.isAssignableFrom(editingClass)) {
+						setUpdatedObject(data);
+					} else if (ByteBuf.class.isAssignableFrom(editingClass)) {
+						ByteBuf bb = Unpooled.wrappedBuffer(data);
+						setUpdatedObject(bb);
+					} else if (ByteBufHolder.class.isAssignableFrom(editingClass)) {
+						ByteBuf content = Unpooled.wrappedBuffer(data);
+						bbh = bbh.replace(content);
+						setUpdatedObject(bbh);
+					} else {
+						getEditorComponent().htm.setData(null);
+					}
+				}
+
+			});
+		}
+
+		@Override
+		public void setEditObject(Object o, boolean editable) {
+			editingClass = o == null ? null : o.getClass();
+			bbh = null;
+			if (editingClass == null) {
+				getEditorComponent().htm.setData(null);
+			} else if (byte[].class.isAssignableFrom(editingClass)) {
+				getEditorComponent().htm.setData((byte[]) o);
+			} else if (ByteBuf.class.isAssignableFrom(editingClass)) {
+				ByteBuf bb = (ByteBuf) o;
+				byte[] data = new byte[bb.readableBytes()];
+				bb.getBytes(bb.readerIndex(), data);
+				getEditorComponent().htm.setData(data);
+			} else if (ByteBufHolder.class.isAssignableFrom(editingClass)) {
+				bbh = (ByteBufHolder) o;
+				ByteBuf bb = bbh.content();
+				byte[] data = new byte[bb.readableBytes()];
+				bb.getBytes(bb.readerIndex(), data);
+				getEditorComponent().htm.setData(data);
+			} else {
+				getEditorComponent().htm.setData(null);
+			}
+			getEditorComponent().htm.setEditable(editingClass != null && editable);
+		}
+		
+	}
 }

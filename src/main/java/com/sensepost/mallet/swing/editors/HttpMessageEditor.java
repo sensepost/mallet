@@ -1,59 +1,49 @@
 package com.sensepost.mallet.swing.editors;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.DecoderResult;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.FullHttpMessage;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.AbstractTableModel;
 
-import io.netty.handler.codec.http.FullHttpMessage;
-import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpMessage;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.LastHttpContent;
+public class HttpMessageEditor extends JPanel {
 
-public class HttpMessageEditor extends JPanel implements ObjectEditor {
+	private JTextField methodField, urlField, versionField, statusField,
+			messageField;
 
-	private PropertyChangeListener listener = new PropertyChangeListener() {
-
-		@Override
-		public void propertyChange(PropertyChangeEvent evt) {
-			if (EditorController.OBJECT.equals(evt.getPropertyName())) {
-				Object o = evt.getNewValue();
-				if (o instanceof HttpMessage) {
-					updateMessage((HttpMessage) o);
-				} else {
-					updateMessage(null);
-				}
-			} else if (EditorController.READ_ONLY.equals(evt.getPropertyName())) {
-				boolean editable = Boolean.FALSE.equals(evt.getNewValue());
-				updateEditable(editable);
-			}
-		}
-
-	};
-
-	private EditorController controller = null;
-	private JTextField methodField, urlField, versionField, statusField, messageField;
-	private JPanel methodPanel, urlPanel, versionPanel, statusPanel, messagePanel;
+	private JPanel methodPanel, urlPanel, versionPanel, statusPanel,
+			messagePanel;
 	private HeaderTableModel headerModel = new HeaderTableModel();
-	private ByteBufEditor contentEditor;
+	private ByteArrayEditor.Editor contentEditor;
 	private EditorController contentController = new EditorController();
+
+	private HttpMessage message = null;
 
 	public HttpMessageEditor() {
 		setLayout(new BorderLayout(0, 0));
@@ -77,7 +67,6 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 		statusLinePanel.add(methodPanel);
 
 		urlField = new JTextField();
-		urlField.setColumns(10);
 		urlPanel = createPanel("URL", urlField);
 		statusLinePanel.add(urlPanel);
 
@@ -106,7 +95,7 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 		splitPane.setRightComponent(panel_1);
 		panel_1.setLayout(new BorderLayout(0, 0));
 
-		contentEditor = new ByteBufEditor();
+		contentEditor = new ByteArrayEditor.Editor();
 		contentEditor.setEditorController(contentController);
 		panel_1.add(contentEditor.getEditorComponent(), BorderLayout.CENTER);
 	}
@@ -121,17 +110,6 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 		return p;
 	}
 
-	@Override
-	public JComponent getEditorComponent() {
-		return this;
-	}
-
-	@Override
-	public Class<?>[] getSupportedClasses() {
-		return new Class<?>[] { HttpRequest.class, HttpResponse.class, HttpMessage.class, HttpContent.class,
-				LastHttpContent.class };
-	}
-
 	private void updateEditable(boolean editable) {
 		methodField.setEditable(editable);
 		urlField.setEditable(editable);
@@ -142,7 +120,16 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 		contentController.setReadOnly(!editable);
 	}
 
+	private void addTextUpdateListener(DocumentListener listener) {
+		methodField.getDocument().addDocumentListener(listener);
+		urlField.getDocument().addDocumentListener(listener);
+		versionField.getDocument().addDocumentListener(listener);
+		statusField.getDocument().addDocumentListener(listener);
+		messageField.getDocument().addDocumentListener(listener);
+	}
+	
 	private void updateMessage(HttpMessage message) {
+		this.message = message;
 		if (message == null) {
 			headerModel.setHeaders(null);
 			contentController.setObject(null);
@@ -153,7 +140,8 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 			urlPanel.setVisible(message instanceof HttpRequest);
 			if (message instanceof HttpRequest) {
 				HttpRequest req = (HttpRequest) message;
-				methodField.setText(req.method().name());
+				HttpMethod method = req.method();
+				methodField.setText(method.name());
 				urlField.setText(req.uri());
 			}
 			HttpVersion version = message.protocolVersion();
@@ -162,13 +150,14 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 			messagePanel.setVisible(message instanceof HttpResponse);
 			if (message instanceof HttpResponse) {
 				HttpResponse resp = (HttpResponse) message;
-				statusField.setText(resp.status().codeAsText().toString());
-				messageField.setText(resp.status().reasonPhrase());
+				HttpResponseStatus status = resp.status();
+				statusField.setText(status.codeAsText().toString());
+				messageField.setText(status.reasonPhrase());
 			}
 			headerModel.setHeaders(message.headers());
-			if (message instanceof HttpContent) {
-				HttpContent hc = (HttpContent) message;
-				contentController.setObject(hc.content());
+			if (message instanceof FullHttpMessage) {
+				FullHttpMessage fhm = (FullHttpMessage) message;
+				contentController.setObject(fhm.content());
 			} else {
 				contentController.setObject(null);
 			}
@@ -176,24 +165,68 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 
 	}
 
-	@Override
-	public void setEditorController(EditorController controller) {
-		if (this.controller != null)
-			controller.removePropertyChangeListener(listener);
-		this.controller = controller;
-		if (this.controller != null) {
-			controller.addPropertyChangeListener(listener);
-			updateMessage((HttpMessage) controller.getObject());
-			updateEditable(!controller.isReadOnly());
-		} else {
-			updateMessage(null);
-			updateEditable(false);
+	private void duplicateMessage() {
+		if (message instanceof FullHttpMessage) {
+			message = ((FullHttpMessage) message).duplicate();
+		} else if (message instanceof HttpRequest) {
+			HttpRequest orig = (HttpRequest) message;
+			HttpRequest req = new DefaultHttpRequest(orig.protocolVersion(),
+					orig.method(), orig.uri(), orig.headers().copy());
+			req.setDecoderResult(orig.decoderResult());
+			message = req;
+		} else if (message instanceof HttpResponse) {
+			HttpResponse orig = (HttpResponse) message;
+			HttpResponse response = new DefaultHttpResponse(
+					orig.protocolVersion(), orig.status(), orig.headers().copy());
+			response.setDecoderResult(orig.decoderResult());
+			message = response;
 		}
 	}
 
-	@Override
-	public String getEditorName() {
-		return "HTTP Message";
+	private HttpMessage getMessage() {
+		duplicateMessage();
+
+		if (message instanceof HttpRequest) {
+			HttpRequest req = (HttpRequest) message;
+			if (!methodField.getText().equals(req.method().name())) {
+				try {
+					req.setMethod(HttpMethod.valueOf(methodField.getText()));
+				} catch (IllegalArgumentException iae) {
+					req.setDecoderResult(DecoderResult.failure(iae));
+				}
+			}
+			req.setUri(urlField.getText());
+		}
+		if (!versionField.getText().equals(message.protocolVersion().text())) {
+			try {
+				message.setProtocolVersion(HttpVersion.valueOf(versionField
+						.getText()));
+			} catch (IllegalArgumentException e) {
+				message.setDecoderResult(DecoderResult.failure(e));
+			}
+		}
+		if (message instanceof HttpResponse) {
+			HttpResponse response = (HttpResponse) message;
+			if (!statusField.getText().equals(response.status().codeAsText())
+					|| !messageField.getText().equals(
+							response.status().reasonPhrase())) {
+				try {
+					response.setStatus(HttpResponseStatus.valueOf(
+							Integer.parseInt(statusField.getText()),
+							messageField.getText()));
+				} catch (Exception e) {
+					response.setDecoderResult(DecoderResult.failure(e));
+				}
+			}
+		}
+
+		message.headers().set(headerModel.getHeaders());
+
+		if (message instanceof FullHttpMessage) {
+			FullHttpMessage fhm = (FullHttpMessage) message;
+			message = fhm.replace((ByteBuf) contentController.getObject());
+		}
+		return message;
 	}
 
 	private static class HeaderTableModel extends AbstractTableModel {
@@ -209,8 +242,12 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 			if (headers != null)
 				this.entries = headers.entries();
 			else
-				this.entries = Collections.<Entry<String, String>>emptyList();
+				this.entries = Collections.<Entry<String, String>> emptyList();
 			fireTableDataChanged();
+		}
+
+		public HttpHeaders getHeaders() {
+			return headers;
 		}
 
 		public void setEditable(boolean editable) {
@@ -252,8 +289,67 @@ public class HttpMessageEditor extends JPanel implements ObjectEditor {
 
 		@Override
 		public boolean isCellEditable(int row, int column) {
-			return editable;
+			return false && editable; // FIXME: Figure out how to make the header table editable
 		}
 
+		@Override
+		public void setValueAt(Object value, int row, int column) {
+		}
+	}
+
+	public static class Editor extends EditorSupport<HttpMessageEditor> {
+		private Class<?> editingClass = null;
+		private HttpMessageEditor editor;
+
+		private DocumentListener textListener = new DocumentListener() {
+			public void changedUpdate(DocumentEvent e) {
+				update(e);
+			}
+
+			public void removeUpdate(DocumentEvent e) {
+				update(e);
+			}
+
+			public void insertUpdate(DocumentEvent e) {
+				update(e);
+			}
+
+			public void update(DocumentEvent e) {
+				if (isUpdating())
+					return;
+				setUpdatedObject(editor.getMessage());
+			}
+		};
+
+		private TableModelListener headerListener = new TableModelListener() {
+			
+			@Override
+			public void tableChanged(TableModelEvent e) {
+				if (isUpdating())
+					return;
+				setUpdatedObject(editor.getMessage());
+			}
+		};
+		
+		public Editor() {
+			super("Http Message", new Class<?>[] { HttpMessage.class },
+					new HttpMessageEditor());
+			editor = getEditorComponent();
+			editor.addTextUpdateListener(textListener);
+			editor.headerModel.addTableModelListener(headerListener);
+		}
+
+		@Override
+		public void setEditObject(Object o, boolean editable) {
+			editingClass = o == null ? null : o.getClass();
+			if (editingClass == null) {
+				editor.updateMessage(null);
+			} else if (HttpMessage.class.isAssignableFrom(editingClass)) {
+				editor.updateMessage((HttpMessage) o);
+			} else {
+				editor.updateMessage(null);
+			}
+			editor.updateEditable(editingClass != null && editable);
+		}
 	}
 }
