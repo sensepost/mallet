@@ -69,7 +69,6 @@ import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
-import com.sensepost.mallet.InterceptHandler;
 import com.sensepost.mallet.RelayHandler;
 
 public class Graph implements GraphLookup {
@@ -323,7 +322,7 @@ public class Graph implements GraphLookup {
 					options[i] = (String) graph.getModel().getValue(outgoing[i]);
 				ich.setOutboundOptions(options);
 			}
-			if ((h instanceof InterceptHandler) || (h instanceof RelayHandler || (h instanceof DatagramRelayHandler))
+			if ((h instanceof RelayHandler) || (h instanceof DatagramRelayHandler)
 					|| (h instanceof IndeterminateChannelHandler)) {
 				handlerVertexMap.put(h, o);
 				break;

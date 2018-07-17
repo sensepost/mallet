@@ -1,7 +1,5 @@
 package com.sensepost.mallet;
 
-import com.sensepost.mallet.graph.GraphLookup;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -13,10 +11,17 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
+import io.netty.channel.socket.ChannelInputShutdownReadComplete;
+import io.netty.channel.socket.ChannelOutputShutdownEvent;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+
+import java.util.LinkedList;
+import java.util.Queue;
+
+import com.sensepost.mallet.graph.GraphLookup;
 
 @Sharable
 public class RelayHandler extends ChannelInboundHandlerAdapter {
@@ -25,11 +30,14 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private volatile boolean added = false;
 
-	private Bootstrap bootstrap;
+	private InterceptController controller;
 
-	public RelayHandler() {
-		bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-				.option(ChannelOption.SO_KEEPALIVE, true);
+	private Queue<Object> queue = new LinkedList<>();
+	
+	private ChannelFuture connectFuture = null;
+	
+	public RelayHandler(InterceptController controller) {
+		this.controller = controller;
 	}
 
 	@Override
@@ -49,10 +57,13 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
+				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText());
+
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
-				target.getConnectPromise().setSuccess(ch);
+				if (!target.getConnectPromise().isDone())
+					target.getConnectPromise().setSuccess(ch);
 
 				ChannelHandler[] handlers = gl.getClientChannelInitializer(RelayHandler.this);
 				ch.pipeline().addLast(handlers);
@@ -60,8 +71,24 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		};
 
 		try {
-			bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget()).sync();
+			Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+					.option(ChannelOption.SO_KEEPALIVE, true).option(ChannelOption.ALLOW_HALF_CLOSURE, true);
+
+			connectFuture = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
+			connectFuture.addListener(new ChannelFutureListener() {
+				
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						while(!queue.isEmpty())
+							future.channel().writeAndFlush(queue.remove());
+					} else {
+						future.cause().printStackTrace();
+					}
+				}
+			});
 		} catch (Exception e) {
+			logger.error("Failed connecting to " + ctx.channel().remoteAddress() + " -> " + target, e);
 			ctx.close();
 		}
 	}
@@ -87,25 +114,50 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (channel == null) {
-			throw new NullPointerException("Channel is null!");
-		}
-		ChannelFuture cf = channel.writeAndFlush(msg);
-		cf.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) {
-				if (!future.isSuccess()) {
-					future.channel().close();
-				}
+		if (connectFuture != null && !connectFuture.isDone()) {
+			queue.add(msg);
+			return;
+		} else {
+			Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+			if (channel == null) {
+				throw new NullPointerException("Channel is null!");
 			}
-		});
+			ChannelFuture cf = channel.writeAndFlush(msg);
+			cf.addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) {
+					if (!future.isSuccess()) {
+						System.out.println("Write failed!");
+						if (future.channel().isOpen())
+							future.channel().close();
+						future.cause().printStackTrace();
+					}
+				}
+			});
+		}
 	}
 
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+
 		if (evt instanceof ChannelInputShutdownEvent) {
-			((SocketChannel) ctx.channel().attr(ChannelAttributes.CHANNEL).get()).shutdownOutput();
+			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+			if (other instanceof SocketChannel && !((SocketChannel)other).isOutputShutdown()) {
+				((SocketChannel) other).shutdownOutput();
+			} else {
+				ctx.channel().close();
+				other.close();
+			}
+		} else if (evt instanceof ChannelOutputShutdownEvent) {
+		} else if (evt instanceof ChannelInputShutdownReadComplete) {
+			ctx.channel().config().setAutoRead(false);
+			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+			if (((SocketChannel)other).isInputShutdown()) {
+				other.close();
+				ctx.channel().close();
+			}
+//			if (other.isOpen())
+//				other.close();
 		} else if (evt instanceof ConnectRequest) {
 			added = true;
 			setupOutboundChannel(ctx);

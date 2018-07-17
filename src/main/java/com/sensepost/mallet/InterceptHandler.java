@@ -1,20 +1,9 @@
 package com.sensepost.mallet;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPromise;
-import io.netty.channel.socket.ChannelInputShutdownEvent;
-import io.netty.channel.socket.ChannelInputShutdownReadComplete;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.net.SocketAddress;
 
@@ -24,16 +13,13 @@ import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
 import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelReadEvent;
 import com.sensepost.mallet.InterceptController.ChannelUserEvent;
+import com.sensepost.mallet.InterceptController.ChannelWriteEvent;
 import com.sensepost.mallet.InterceptController.Direction;
-import com.sensepost.mallet.graph.GraphLookup;
 
 @Sharable
-public class InterceptHandler extends ChannelInboundHandlerAdapter {
+public class InterceptHandler extends ChannelDuplexHandler {
 
 	private InterceptController controller;
-
-	private ChannelPromise upstreamPromise = null;
-	private boolean connectInProgress = false;
 
 	public InterceptHandler(InterceptController controller) {
 		if (controller == null)
@@ -41,81 +27,13 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 		this.controller = controller;
 	}
 
-	synchronized private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
-		if (connectInProgress)
-			return;
-
-		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
-		if (target == null)
-			return;
-
-		connectInProgress = true;
-
-		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-		final ChannelHandler[] handlers = gl.getClientChannelInitializer(this);
-
-		ChannelInitializer<Channel> initializer = new ChannelInitializer<Channel>() {
-			@Override
-			protected void initChannel(Channel ch) throws Exception {
-				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText());
-				ch.attr(ChannelAttributes.GRAPH).set(gl);
-				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
-				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
-
-				try {
-					ch.pipeline().addLast(handlers);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				if (!target.getConnectPromise().isDone())
-					target.getConnectPromise().setSuccess(ch);
-			}
-		};
-
-		Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-				.option(ChannelOption.SO_KEEPALIVE, true);
-		ChannelFuture cf = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
-		cf.addListener(new ChannelFutureListener() {
-
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					upstreamPromise.setSuccess();
-				} else {
-					upstreamPromise.setFailure(future.cause());
-					exceptionCaught(ctx, future.cause());
-					ctx.close();
-				}
-			}
-		});
-	}
-
-	@Override
-	public void handlerAdded(final ChannelHandlerContext ctx) throws Exception {
-		if (upstreamPromise == null) {
-			upstreamPromise = ctx.newPromise();
-		}
-
-		if (ctx.channel().isActive() && ctx.channel().attr(ChannelAttributes.TARGET).get() != null)
-			ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
-	}
-
-	protected boolean ignoreException(Throwable cause) {
-		return (cause != null && cause.getMessage() != null &&
-				cause.getMessage().equals("Connection reset by peer"));
+	private void submitEvent(ChannelHandlerContext ctx, final ChannelEvent evt) throws Exception {
+		controller.addChannelEvent(evt);
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if (!ignoreException(cause))
-			ensureUpstreamConnectedAndFire(ctx, createChannelExceptionEvent(ctx, cause));
-		else {
-			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other != null && other.isOpen()) {
-				other.close();
-			}
-			ctx.channel().close();
-		}
+		submitEvent(ctx, createChannelExceptionEvent(ctx, cause));
 	}
 
 	protected ChannelEvent createChannelExceptionEvent(final ChannelHandlerContext ctx, final Throwable cause) {
@@ -127,35 +45,14 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doExceptionCaught(getChannelHandlerContext(), cause);
+				getChannelHandlerContext().fireExceptionCaught(cause);
 			}
 		};
 	}
 
-	public void doExceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		ctx.close();
-		channel.close();
-	}
-
-	protected void ensureUpstreamConnectedAndFire(ChannelHandlerContext ctx, final ChannelEvent evt) throws Exception {
-		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (channel == null)
-			setupOutboundChannel(ctx);
-
-		upstreamPromise.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					controller.addChannelEvent(evt);
-				}
-			}
-		});
-	}
-
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx, createChannelActiveEvent(ctx));
+		submitEvent(ctx, createChannelActiveEvent(ctx));
 	}
 
 	protected ChannelEvent createChannelActiveEvent(final ChannelHandlerContext ctx) {
@@ -170,18 +67,14 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelActive(getChannelHandlerContext());
+				getChannelHandlerContext().fireChannelActive();
 			}
 		};
 	}
 
-	protected void doChannelActive(ChannelHandlerContext ctx) throws Exception {
-		super.channelActive(ctx);
-	}
-
 	@Override
 	public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx, createChannelInactiveEvent(ctx));
+		submitEvent(ctx, createChannelInactiveEvent(ctx));
 	}
 
 	protected ChannelEvent createChannelInactiveEvent(final ChannelHandlerContext ctx) {
@@ -194,22 +87,14 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelInactive(getChannelHandlerContext());
+				getChannelHandlerContext().fireChannelInactive();
 			}
 		};
 	}
 
-	protected void doChannelInactive(ChannelHandlerContext ctx) throws Exception {
-		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (channel.isOpen()) {
-			channel.close();
-		}
-		super.channelInactive(ctx);
-	}
-
 	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		ensureUpstreamConnectedAndFire(ctx, createChannelReadEvent(ctx, msg));
+		submitEvent(ctx, createChannelReadEvent(ctx, msg));
 	}
 
 	protected ChannelEvent createChannelReadEvent(final ChannelHandlerContext ctx, Object msg) {
@@ -222,36 +107,14 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doChannelRead(getChannelHandlerContext(), getMessage());
+				getChannelHandlerContext().fireChannelRead(getMessage());
 			}
 		};
 	}
 
-	private void doChannelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		ChannelFuture cf = channel.writeAndFlush(msg);
-		cf.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) {
-				if (future.isSuccess()) {
-					ctx.channel().read();
-				} else {
-					try {
-						exceptionCaught(ctx, future.cause());
-					} catch (Exception e) {}
-					future.channel().close();
-				}
-			}
-		});
-	}
-
 	@Override
 	public void userEventTriggered(final ChannelHandlerContext ctx, final Object evt) throws Exception {
-		if (evt == ChannelInputShutdownReadComplete.INSTANCE) {
-			ctx.channel().config().setAutoRead(false);
-			// ignore
-		} else
-			ensureUpstreamConnectedAndFire(ctx, createChannelUserEvent(ctx, evt));
+		submitEvent(ctx, createChannelUserEvent(ctx, evt));
 	}
 
 	protected ChannelEvent createChannelUserEvent(final ChannelHandlerContext ctx, Object evt) {
@@ -264,23 +127,9 @@ public class InterceptHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			public void execute() throws Exception {
 				super.execute();
-				doUserEventTriggered(getChannelHandlerContext(), getUserEvent());
+				getChannelHandlerContext().fireUserEventTriggered(getUserEvent());
 			}
 		};
-	}
-
-	public void doUserEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-		if (evt == ChannelInputShutdownEvent.INSTANCE) {
-			Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (channel instanceof SocketChannel) {
-				SocketChannel sch = (SocketChannel) channel;
-				if (!sch.isOutputShutdown())
-					((SocketChannel) channel).shutdownOutput();
-			} else {
-				channel.pipeline().fireUserEventTriggered(evt);
-			}
-		} else
-			super.userEventTriggered(ctx, evt);
 	}
 
 }

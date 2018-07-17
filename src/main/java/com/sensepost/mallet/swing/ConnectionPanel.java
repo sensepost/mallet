@@ -138,7 +138,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 						ConnectionData eventList = new ConnectionData();
 						channelEventMap.put(channel1, eventList);
 						channelEventMap.put(channel2, eventList);
-						listModel.addElement(eventList);
 					}
 				}
 			}
@@ -170,7 +169,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 			if (connectionData == null) {
 				connectionData = new ConnectionData();
 				channelEventMap.put(cp, connectionData);
-				listModel.addElement(connectionData);
 			}
 			connectionData.addChannelEvent(evt);
 		}
@@ -183,6 +181,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 				if (connAddrMap.get(connectionData) == null) {
 					AddrPair ap = new AddrPair(remote, local);
 					connAddrMap.put(connectionData, ap);
+					listModel.addElement(connectionData);
 				} else {
 					connAddrMap.get(connectionData).dst = remote;
 				}

@@ -107,7 +107,10 @@ public class GraphEditor extends BasicGraphEditor {
 		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
 				"io.netty.handler.logging.LoggingHandler");
 
-		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.InterceptHandler", 
+		Element intercept = createElement(xmlDocument, "Intercept", "com.sensepost.mallet.InterceptHandler", 
+				"{InterceptController}");
+
+		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.RelayHandler", 
 				"{InterceptController}");
 
 		Element targetHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
@@ -181,6 +184,9 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("Logger",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, logHandler);
+		basicPalette.addTemplate("Intercept",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
+				"rectangle;shape=doubleRectangle", 160, 120, intercept);
 		basicPalette.addTemplate("Relay",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
 				"rectangle;shape=doubleRectangle", 160, 120, relay);
