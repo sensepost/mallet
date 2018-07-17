@@ -114,6 +114,10 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
+		if (!added && ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
+			added = true;
+			setupOutboundChannel(ctx);
+		}
 		if (connectFuture != null && !connectFuture.isDone()) {
 			queue.add(msg);
 			return;
