@@ -413,10 +413,12 @@ public class Graph implements GraphLookup {
 	@Override
 	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler, boolean retain) {
 		Object vertex = retain ? handlerVertexMap.get(handler) : handlerVertexMap.remove(handler);
+		if (vertex == null)
+			throw new IllegalStateException("Handler " + handler + " not found in handlerVertexMap: " + handlerVertexMap);
 		try {
 			Object[] outgoing = graph.getOutgoingEdges(vertex);
 			if (outgoing == null || outgoing.length != 1)
-				throw new IllegalStateException("Exactly one outgoing edge allowed!");
+				throw new IllegalStateException("Exactly one outgoing edge allowed! Currently " + (outgoing == null ? "null" : outgoing.length));
 			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(
 					Arrays.asList(getChannelHandlers(outgoing[0])));
 			handlers.add(0, handler);
