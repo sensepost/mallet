@@ -156,9 +156,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				other.close();
 				ctx.channel().close();
 			}
-//			if (other.isOpen())
-//				other.close();
-		} else if (evt instanceof ConnectRequest) {
+		} else if (evt instanceof ConnectRequest && !added) {
 			added = true;
 			setupOutboundChannel(ctx);
 		}
