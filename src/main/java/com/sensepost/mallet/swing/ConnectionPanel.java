@@ -190,7 +190,8 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 		// force redraw of the element in the list
 		int index = listModel.indexOf(connectionData);
-		listModel.setElementAt(listModel.getElementAt(index), index);
+		if (index > -1)
+			listModel.setElementAt(listModel.getElementAt(index), index);
 
 		if (!intercept) {
 			try {
