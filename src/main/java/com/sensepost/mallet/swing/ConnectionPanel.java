@@ -218,8 +218,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		private SocketAddress src, dst;
 
 		public AddrPair(SocketAddress src, SocketAddress dst) {
-			if (src == null)
-				throw new NullPointerException("src");
 			if (dst == null)
 				throw new NullPointerException("dst");
 			this.src = src;
