@@ -20,6 +20,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.util.Map;
@@ -83,6 +84,16 @@ public class EditorActions {
 		}
 
 		return null;
+	}
+
+	/**
+	 *
+	 */
+	private static void resetEditor(BasicGraphEditor editor) {
+		editor.setModified(false);
+		editor.setCurrentFile(null);
+		editor.getUndoManager().clear();
+		editor.getGraphComponent().zoomAndCenter();
 	}
 
 	/**
@@ -229,7 +240,7 @@ public class EditorActions {
 
 				editor.exit();
 			}
-			for (Window w: Window.getWindows()) {
+			for (Window w : Window.getWindows()) {
 				w.dispose();
 			}
 		}
@@ -551,10 +562,11 @@ public class EditorActions {
 					if (ext.equalsIgnoreCase("mxe")
 							|| ext.equalsIgnoreCase("xml")) {
 						mxCodec codec = new mxCodec();
-						
+
 						FileOutputStream fos = new FileOutputStream(filename);
 						StreamResult result = new StreamResult(fos);
-						XmlUtil.pretty(codec.encode(graph.getModel()), result, 2);
+						XmlUtil.pretty(codec.encode(graph.getModel()), result,
+								2);
 
 						editor.setModified(false);
 						editor.setCurrentFile(new File(filename));
@@ -913,6 +925,9 @@ public class EditorActions {
 	 */
 	@SuppressWarnings("serial")
 	public static class NewAction extends AbstractAction {
+
+		private static final String TEMPLATE = "/com/mxgraph/examples/swing/resources/basic_relay.mxe";
+
 		/**
 		 * 
 		 */
@@ -926,13 +941,32 @@ public class EditorActions {
 					mxGraph graph = editor.getGraphComponent().getGraph();
 
 					// Check modified flag and display save dialog
-					mxCell root = new mxCell();
-					root.insert(new mxCell());
-					graph.getModel().setRoot(root);
+					// load the default template graph
 
-					editor.setModified(false);
-					editor.setCurrentFile(null);
-					editor.getGraphComponent().zoomAndCenter();
+					try {
+						InputStream template = EditorActions.class
+								.getResourceAsStream(TEMPLATE);
+						if (template == null)
+							throw new NullPointerException("template");
+						Document document = mxXmlUtils.parseXml(mxUtils
+								.readInputStream(template));
+
+						mxCodec codec = new mxCodec(document);
+						codec.decode(document.getDocumentElement(),
+								graph.getModel());
+					} catch (Exception ex) {
+						mxCell root = new mxCell();
+						root.insert(new mxCell());
+						graph.getModel().setRoot(root);
+
+						ex.printStackTrace();
+						JOptionPane.showMessageDialog(
+								editor.getGraphComponent(), ex.toString(),
+								mxResources.get("error"),
+								JOptionPane.ERROR_MESSAGE);
+					}
+
+					resetEditor(editor);
 				}
 			}
 		}
@@ -1066,15 +1100,6 @@ public class EditorActions {
 		protected String lastDir;
 
 		/**
-		 * 
-		 */
-		protected void resetEditor(BasicGraphEditor editor) {
-			editor.setModified(false);
-			editor.getUndoManager().clear();
-			editor.getGraphComponent().zoomAndCenter();
-		}
-
-		/**
 		 * Reads XML+PNG format.
 		 */
 		protected void openXmlPng(BasicGraphEditor editor, File file)
@@ -1091,8 +1116,8 @@ public class EditorActions {
 					mxCodec codec = new mxCodec(document);
 					codec.decode(document.getDocumentElement(), editor
 							.getGraphComponent().getGraph().getModel());
-					editor.setCurrentFile(file);
 					resetEditor(editor);
+					editor.setCurrentFile(file);
 
 					return;
 				}
@@ -1144,9 +1169,9 @@ public class EditorActions {
 						JFileChooser fc = new JFileChooser(wd);
 
 						// Adds file filter for supported file format
-						DefaultFileFilter defaultFilter = new DefaultFileFilter(".mxe",
-								"mxGraph Editor " + mxResources.get("file")
-										+ " (.mxe)");
+						DefaultFileFilter defaultFilter = new DefaultFileFilter(
+								".mxe", "mxGraph Editor "
+										+ mxResources.get("file") + " (.mxe)");
 						fc.addChoosableFileFilter(defaultFilter);
 						fc.setFileFilter(defaultFilter);
 
@@ -1157,17 +1182,16 @@ public class EditorActions {
 							lastDir = fc.getSelectedFile().getParent();
 
 							try {
-								Document document = mxXmlUtils
-										.parseXml(mxUtils.readFile(fc
-												.getSelectedFile()
+								Document document = mxXmlUtils.parseXml(mxUtils
+										.readFile(fc.getSelectedFile()
 												.getAbsolutePath()));
 
 								mxCodec codec = new mxCodec(document);
 								codec.decode(document.getDocumentElement(),
 										graph.getModel());
-								editor.setCurrentFile(fc.getSelectedFile());
 
 								resetEditor(editor);
+								editor.setCurrentFile(fc.getSelectedFile());
 							} catch (IOException ex) {
 								ex.printStackTrace();
 								JOptionPane.showMessageDialog(

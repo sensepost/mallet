@@ -29,7 +29,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -186,7 +185,7 @@ public class BasicGraphEditor extends JPanel {
 				graph.updateCellSize(cells[i]);
 			}
 
-			mxIGraphLayout layout = new mxHierarchicalLayout(graph, SwingConstants.NORTH);
+			mxIGraphLayout layout = new mxCompactTreeLayout(graph, false);
 
 		    try {
 		        layout.execute(graph.getDefaultParent());
@@ -289,6 +288,10 @@ public class BasicGraphEditor extends JPanel {
 		installHandlers();
 		installListeners();
 		updateTitle();
+
+		Action newAction = getActionMap().get("New");
+		if (newAction != null)
+			newAction.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, ""));
 	}
 
 	/**
@@ -645,6 +648,7 @@ public class BasicGraphEditor extends JPanel {
 
 		newAction.putValue(Action.SHORT_DESCRIPTION, action.getValue(Action.SHORT_DESCRIPTION));
 
+		getActionMap().put(name, newAction);
 		return newAction;
 	}
 
