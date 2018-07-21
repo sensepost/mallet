@@ -13,7 +13,7 @@
         <mxGeometry as="geometry" height="30.0" width="130.0" x="15.0" y="87.453125"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="4" parent="1" source="2" style="noEdgeStyle=1;orthogonal=1" target="3" value="">
+    <mxCell edge="1" id="4" parent="1" source="2" style="incomingEdge" target="3" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
           <mxPoint x="80.0" y="46.96875"/>
@@ -23,11 +23,11 @@
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="5">
       <Parameter><![CDATA[{InterceptController}]]></Parameter>
-      <mxCell parent="1" style="rectangle;shape=doubleRectangle" vertex="1">
+      <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="35.0" y="512.296875"/>
       </mxCell>
     </Relay>
-    <mxCell edge="1" id="6" parent="1" source="21" style="noEdgeStyle=1;orthogonal=1" target="5" value="">
+    <mxCell edge="1" id="6" parent="1" source="21" style="incomingEdge" target="5" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
           <mxPoint x="80.0" y="471.8125"/>
@@ -37,14 +37,14 @@
     </mxCell>
     <Sink id="7">
       <mxCell parent="1" style="shape=cylinder" vertex="1">
-        <mxGeometry as="geometry" height="20.0" width="30.0" x="65.0" y="929.6875"/>
+        <mxGeometry as="geometry" height="20.0" width="30.0" x="65.0" y="934.65625"/>
       </mxCell>
     </Sink>
-    <mxCell edge="1" id="8" parent="1" source="19" style="noEdgeStyle=1;orthogonal=1" target="7" value="">
+    <mxCell edge="1" id="8" parent="1" source="19" style="outgoingEdge" target="7" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
-          <mxPoint x="80.0" y="891.6875"/>
-          <mxPoint x="80.0" y="917.6875"/>
+          <mxPoint x="80.0" y="896.65625"/>
+          <mxPoint x="80.0" y="922.65625"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -53,7 +53,7 @@
         <mxGeometry as="geometry" height="30.0" width="120.0" x="20.0" y="172.421875"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="10" parent="1" source="3" style="noEdgeStyle=1;orthogonal=1" target="9" value="">
+    <mxCell edge="1" id="10" parent="1" source="3" style="incomingEdge" target="9" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="117.0"/>
         <mxPoint as="targetPoint" x="80.0" y="172.0"/>
@@ -69,7 +69,7 @@
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="257.390625"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="12" parent="1" source="9" style="noEdgeStyle=1;orthogonal=1" target="11" value="">
+    <mxCell edge="1" id="12" parent="1" source="9" style="incomingEdge" target="11" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="202.0"/>
         <mxPoint as="targetPoint" x="80.0" y="257.0"/>
@@ -85,7 +85,7 @@
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="342.359375"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="14" parent="1" source="11" style="noEdgeStyle=1;orthogonal=1" target="13" value="">
+    <mxCell edge="1" id="14" parent="1" source="11" style="incomingEdge" target="13" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="285.0"/>
         <mxPoint as="targetPoint" x="80.0" y="337.0"/>
@@ -98,57 +98,57 @@
     <ChannelHandler classname="io.netty.handler.codec.string.StringDecoder" id="15">
       <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="762.234375"/>
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="767.203125"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="16" parent="1" source="17" style="noEdgeStyle=1;orthogonal=1" target="15" value="">
+    <mxCell edge="1" id="16" parent="1" source="17" style="outgoingEdge" target="15" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="452.0"/>
         <mxPoint as="targetPoint" x="80.0" y="505.0"/>
         <Array as="points">
-          <mxPoint x="80.0" y="721.75"/>
-          <mxPoint x="80.0" y="747.75"/>
+          <mxPoint x="80.0" y="726.71875"/>
+          <mxPoint x="80.0" y="752.71875"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.string.StringEncoder" id="17">
       <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="677.265625"/>
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="682.234375"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="18" parent="1" source="23" style="noEdgeStyle=1;orthogonal=1" target="17" value="">
+    <mxCell edge="1" id="18" parent="1" source="23" style="outgoingEdge" target="17" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="457.0"/>
         <mxPoint as="targetPoint" x="80.0" y="510.0"/>
         <Array as="points">
-          <mxPoint x="80.0" y="636.78125"/>
-          <mxPoint x="80.0" y="662.78125"/>
+          <mxPoint x="80.0" y="641.75"/>
+          <mxPoint x="80.0" y="667.75"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.json.JsonObjectDecoder" id="19">
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="120.0" x="20.0" y="847.203125"/>
+        <mxGeometry as="geometry" height="30.0" width="120.0" x="20.0" y="852.171875"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="20" parent="1" source="15" style="noEdgeStyle=1;orthogonal=1" target="19" value="">
+    <mxCell edge="1" id="20" parent="1" source="15" style="outgoingEdge" target="19" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="627.0"/>
         <mxPoint as="targetPoint" x="80.0" y="680.0"/>
         <Array as="points">
-          <mxPoint x="80.0" y="806.71875"/>
-          <mxPoint x="80.0" y="832.71875"/>
+          <mxPoint x="80.0" y="811.6875"/>
+          <mxPoint x="80.0" y="837.6875"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="21">
       <Parameter><![CDATA[{InterceptController}]]></Parameter>
-      <mxCell parent="1" style="rectangle;shape=doubleRectangle" vertex="1">
+      <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="427.328125"/>
       </mxCell>
     </Intercept>
-    <mxCell edge="1" id="22" parent="1" source="13" style="noEdgeStyle=1;orthogonal=1" target="21" value="">
+    <mxCell edge="1" id="22" parent="1" source="13" style="incomingEdge" target="21" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="372.0"/>
         <mxPoint as="targetPoint" x="80.0" y="427.0"/>
@@ -160,11 +160,11 @@
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="23">
       <Parameter><![CDATA[{InterceptController}]]></Parameter>
-      <mxCell parent="1" style="rectangle;shape=doubleRectangle" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="594.78125"/>
+      <mxCell parent="1" style="intercept" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="597.265625"/>
       </mxCell>
     </Intercept>
-    <mxCell edge="1" id="24" parent="1" source="5" style="noEdgeStyle=1;orthogonal=1" target="23" value="">
+    <mxCell edge="1" id="24" parent="1" source="5" style="outgoingEdge" target="23" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="80.0" y="537.0"/>
         <mxPoint as="targetPoint" x="80.0" y="592.0"/>
