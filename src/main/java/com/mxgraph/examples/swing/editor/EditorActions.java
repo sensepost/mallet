@@ -16,14 +16,11 @@ import java.awt.print.PrinterJob;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.URLDecoder;
-import java.util.Map;
 
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
@@ -58,7 +55,6 @@ import com.mxgraph.util.mxConstants;
 import com.mxgraph.util.mxResources;
 import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
-import com.mxgraph.util.png.mxPngTextDecoder;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.util.XmlUtil;
 
@@ -94,73 +90,6 @@ public class EditorActions {
 		editor.setCurrentFile(null);
 		editor.getUndoManager().clear();
 		editor.getGraphComponent().zoomAndCenter();
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class ToggleRulersItem extends JCheckBoxMenuItem {
-		/**
-		 * 
-		 */
-		public ToggleRulersItem(final BasicGraphEditor editor, String name) {
-			super(name);
-			setSelected(editor.getGraphComponent().getColumnHeader() != null);
-
-			addActionListener(new ActionListener() {
-				/**
-				 * 
-				 */
-				public void actionPerformed(ActionEvent e) {
-					mxGraphComponent graphComponent = editor
-							.getGraphComponent();
-
-					if (graphComponent.getColumnHeader() != null) {
-						graphComponent.setColumnHeader(null);
-						graphComponent.setRowHeader(null);
-					} else {
-						graphComponent.setColumnHeaderView(new EditorRuler(
-								graphComponent,
-								EditorRuler.ORIENTATION_HORIZONTAL));
-						graphComponent.setRowHeaderView(new EditorRuler(
-								graphComponent,
-								EditorRuler.ORIENTATION_VERTICAL));
-					}
-				}
-			});
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class ToggleGridItem extends JCheckBoxMenuItem {
-		/**
-		 * 
-		 */
-		public ToggleGridItem(final BasicGraphEditor editor, String name) {
-			super(name);
-			setSelected(true);
-
-			addActionListener(new ActionListener() {
-				/**
-				 * 
-				 */
-				public void actionPerformed(ActionEvent e) {
-					mxGraphComponent graphComponent = editor
-							.getGraphComponent();
-					mxGraph graph = graphComponent.getGraph();
-					boolean enabled = !graph.isGridEnabled();
-
-					graph.setGridEnabled(enabled);
-					graphComponent.setGridVisible(enabled);
-					graphComponent.repaint();
-					setSelected(enabled);
-				}
-			});
-		}
 	}
 
 	/**
@@ -318,60 +247,6 @@ public class EditorActions {
 	 *
 	 */
 	@SuppressWarnings("serial")
-	public static class GridStyleAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		protected int style;
-
-		/**
-		 * 
-		 */
-		public GridStyleAction(int style) {
-			this.style = style;
-		}
-
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				graphComponent.setGridStyle(style);
-				graphComponent.repaint();
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class GridColorAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				Color newColor = JColorChooser.showDialog(graphComponent,
-						mxResources.get("gridColor"),
-						graphComponent.getGridColor());
-
-				if (newColor != null) {
-					graphComponent.setGridColor(newColor);
-					graphComponent.repaint();
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
 	public static class ScaleAction extends AbstractAction {
 		/**
 		 * 
@@ -407,63 +282,6 @@ public class EditorActions {
 
 				if (scale > 0) {
 					graphComponent.zoomTo(scale, graphComponent.isCenterZoom());
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class PageSetupAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				PrinterJob pj = PrinterJob.getPrinterJob();
-				PageFormat format = pj.pageDialog(graphComponent
-						.getPageFormat());
-
-				if (format != null) {
-					graphComponent.setPageFormat(format);
-					graphComponent.zoomAndCenter();
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class PrintAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				PrinterJob pj = PrinterJob.getPrinterJob();
-
-				if (pj.printDialog()) {
-					PageFormat pf = graphComponent.getPageFormat();
-					Paper paper = new Paper();
-					double margin = 36;
-					paper.setImageableArea(margin, margin, paper.getWidth()
-							- margin * 2, paper.getHeight() - margin * 2);
-					pf.setPaper(paper);
-					pj.setPrintable(graphComponent, pf);
-
-					try {
-						pj.print();
-					} catch (PrinterException e2) {
-						System.out.println(e2);
-					}
 				}
 			}
 		}
@@ -823,107 +641,6 @@ public class EditorActions {
 	 *
 	 */
 	@SuppressWarnings("serial")
-	public static class FontStyleAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		protected boolean bold;
-
-		/**
-		 * 
-		 */
-		public FontStyleAction(boolean bold) {
-			this.bold = bold;
-		}
-
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				Component editorComponent = null;
-
-				if (graphComponent.getCellEditor() instanceof mxCellEditor) {
-					editorComponent = ((mxCellEditor) graphComponent
-							.getCellEditor()).getEditor();
-				}
-
-				if (editorComponent instanceof JEditorPane) {
-					JEditorPane editorPane = (JEditorPane) editorComponent;
-					int start = editorPane.getSelectionStart();
-					int ende = editorPane.getSelectionEnd();
-					String text = editorPane.getSelectedText();
-
-					if (text == null) {
-						text = "";
-					}
-
-					try {
-						HTMLEditorKit editorKit = new HTMLEditorKit();
-						HTMLDocument document = (HTMLDocument) editorPane
-								.getDocument();
-						document.remove(start, (ende - start));
-						editorKit.insertHTML(document, start, ((bold) ? "<b>"
-								: "<i>") + text + ((bold) ? "</b>" : "</i>"),
-								0, 0, (bold) ? HTML.Tag.B : HTML.Tag.I);
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-
-					editorPane.requestFocus();
-					editorPane.select(start, ende);
-				} else {
-					mxIGraphModel model = graphComponent.getGraph().getModel();
-					model.beginUpdate();
-					try {
-						graphComponent.stopEditing(false);
-						graphComponent.getGraph().toggleCellStyleFlags(
-								mxConstants.STYLE_FONTSTYLE,
-								(bold) ? mxConstants.FONT_BOLD
-										: mxConstants.FONT_ITALIC);
-					} finally {
-						model.endUpdate();
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
-	public static class WarningAction extends AbstractAction {
-		/**
-		 * 
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof mxGraphComponent) {
-				mxGraphComponent graphComponent = (mxGraphComponent) e
-						.getSource();
-				Object[] cells = graphComponent.getGraph().getSelectionCells();
-
-				if (cells != null && cells.length > 0) {
-					String warning = JOptionPane.showInputDialog(mxResources
-							.get("enterWarningMessage"));
-
-					for (int i = 0; i < cells.length; i++) {
-						graphComponent.setCellWarning(cells[i], warning);
-					}
-				} else {
-					JOptionPane.showMessageDialog(graphComponent,
-							mxResources.get("noCellSelected"));
-				}
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	@SuppressWarnings("serial")
 	public static class NewAction extends AbstractAction {
 
 		private static final String TEMPLATE = "/com/mxgraph/examples/swing/resources/basic_relay.mxe";
@@ -1098,34 +815,6 @@ public class EditorActions {
 		 * 
 		 */
 		protected String lastDir;
-
-		/**
-		 * Reads XML+PNG format.
-		 */
-		protected void openXmlPng(BasicGraphEditor editor, File file)
-				throws IOException {
-			Map<String, String> text = mxPngTextDecoder
-					.decodeCompressedText(new FileInputStream(file));
-
-			if (text != null) {
-				String value = text.get("mxGraphModel");
-
-				if (value != null) {
-					Document document = mxXmlUtils.parseXml(URLDecoder.decode(
-							value, "UTF-8"));
-					mxCodec codec = new mxCodec(document);
-					codec.decode(document.getDocumentElement(), editor
-							.getGraphComponent().getGraph().getModel());
-					resetEditor(editor);
-					editor.setCurrentFile(file);
-
-					return;
-				}
-			}
-
-			JOptionPane.showMessageDialog(editor,
-					mxResources.get("imageContainsNoDiagramData"));
-		}
 
 		/**
 		 * @throws IOException
