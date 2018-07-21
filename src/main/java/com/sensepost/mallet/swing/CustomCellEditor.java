@@ -10,7 +10,6 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import org.w3c.dom.Element;
@@ -20,13 +19,10 @@ import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.view.mxICellEditor;
 import com.mxgraph.view.mxGraph;
-import com.sensepost.mallet.graph.GraphNode;
 
 public class CustomCellEditor implements mxICellEditor {
 
 	private mxGraphComponent graphComponent;
-
-	private JPanel graphNodePanel = new JPanel(new BorderLayout());
 
 	private Object editingCell = null;
 

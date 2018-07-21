@@ -11,11 +11,17 @@
 	<add as="defaultEdge" extend="defaultEdge">
 		<add as="labelBackgroundColor" value="white"/>
 		<add as="rounded" value="1"/>
-		<add as="edgeStyle" value="elbowEdgeStyle"/>
+		<add as="edgeStyle" value="topToBottomEdgeStyle"/>
 		<add as="strokeColor" value="#5d65df"/>
 		<add as="fontSize" value="11"/>
 		<add as="fontColor" value="#1d258f"/>
 		<add as="fontFamily" value="Verdana"/>
+	</add>
+	<add as="incomingEdge" extend="defaultEdge">
+		<add as="strokeColor" value="blue"/>
+	</add>
+	<add as="outgoingEdge" extend="defaultEdge">
+		<add as="strokeColor" value="red"/>
 	</add>
 	<add as="label">
 		<add as="shape" value="label"/>
@@ -82,6 +88,18 @@
 		<add as="shape" value="triangle"/>
 		<add as="perimeter" value="trianglePerimeter"/>
 	</add>
+	<add as="relay">
+		<add as="shape" value="doubleRectangle"/>
+		<add as="perimeter" value="rectanglePerimeter"/>
+		<add as="fillColor" value="green"/>
+		<add as="gradientColor" value="lightgreen"/>
+	</add>
+	<add as="intercept">
+		<add as="shape" value="doubleRectangle"/>
+		<add as="perimeter" value="rectanglePerimeter"/>
+		<add as="fillColor" value="red"/>
+		<add as="gradientColor" value="pink"/>
+	</add>
 	<add as="line">
 		<add as="shape" value="line"/>
 		<add as="strokeWidth" value="4"/>
@@ -101,4 +119,5 @@
 	<add as="rhombusImage" extend="image">
 		<add as="perimeter" value="rhombusPerimeter"/>
 	</add>
+	
 </mxStylesheet>

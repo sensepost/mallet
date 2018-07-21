@@ -113,7 +113,7 @@ public class GraphEditor extends BasicGraphEditor {
 		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.RelayHandler", 
 				"{InterceptController}");
 
-		Element targetHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
+		Element targetHandler = createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
 		
 		Element sink = xmlDocument.createElement("Sink");
 
@@ -186,10 +186,10 @@ public class GraphEditor extends BasicGraphEditor {
 				"rounded=1", 160, 120, logHandler);
 		basicPalette.addTemplate("Intercept",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
-				"rectangle;shape=doubleRectangle", 160, 120, intercept);
+				"intercept;shape=doubleRectangle", 160, 120, intercept);
 		basicPalette.addTemplate("Relay",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
-				"rectangle;shape=doubleRectangle", 160, 120, relay);
+				"relay;shape=doubleRectangle", 160, 120, relay);
 		// shapesPalette
 		// .addTemplate(
 		// "Ellipse",
@@ -743,7 +743,51 @@ public class GraphEditor extends BasicGraphEditor {
 
 		@Override
 		public String validateCell(Object cell, Hashtable<Object, Object> context) {
+			Object value = getModel().getValue(cell);
+			if (value instanceof Element) {
+				Element element = (Element) value;
+				String tagName = element.getTagName();
+				Object[] incoming = getIncomingEdges(cell);
+				if (incoming != null && incoming.length > 1)
+					return "Only 1 incoming edge allowed";
+				Object[] outgoing = getOutgoingEdges(cell);
+				if ("Listener".equals(tagName)) {
+					if (incoming != null && incoming.length != 0)
+						return "Listener cannot have incoming edges";
+					if (outgoing != null && outgoing.length != 1)
+						return "Listener must have one outgoing edge";
+				} else if (!"IndeterminateChannelHandler".equals(tagName) && outgoing != null && outgoing.length > 1) {
+					return "Only one outgoing edge";
+				} else if ("Relay".equals(tagName) && (outgoing == null || outgoing.length != 1)) {
+					return "Relay must have an outgoing edge";
+				} else if ("Sink".equals(tagName)) {
+					if (incoming == null || incoming.length == 0)
+						return "Sink must be the last vertex";
+					if (outgoing != null && outgoing.length != 0)
+						return "Sink must be the last vertex";
+					String path = validatePath(cell);
+					if (path != null)
+						return path;
+				}
+			}
 			return super.validateCell(cell, context);
+		}
+
+		private String validatePath(Object sink) {
+			Object cell = sink;
+			Object[] incoming = getIncomingEdges(cell);
+			while (incoming != null && incoming.length == 1) {
+				cell = getModel().getTerminal(incoming[0], true);
+				Object value = getModel().getValue(cell);
+				if (value instanceof Element) {
+					Element element = (Element) value;
+					String tagName = element.getTagName();
+					if ("Relay".equals(tagName))
+						return null;
+				}
+				incoming = getIncomingEdges(cell);
+			}
+			return "Any path with a Sink must have a Relay";
 		}
 
 		@Override

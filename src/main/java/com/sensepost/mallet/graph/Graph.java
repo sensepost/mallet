@@ -20,8 +20,6 @@ import io.netty.handler.proxy.Socks5ProxyHandler;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -40,7 +38,6 @@ import javax.script.Bindings;
 
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.CharacterData;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -49,14 +46,10 @@ import com.mxgraph.analysis.StructuralException;
 import com.mxgraph.analysis.mxAnalysisGraph;
 import com.mxgraph.analysis.mxGraphProperties;
 import com.mxgraph.analysis.mxGraphStructure;
-import com.mxgraph.io.mxCodec;
-import com.mxgraph.layout.mxIGraphLayout;
-import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.model.mxGraphModel.mxChildChange;
-import com.mxgraph.model.mxGraphModel.mxGeometryChange;
 import com.mxgraph.model.mxGraphModel.mxRootChange;
-import com.mxgraph.model.mxGraphModel.mxStyleChange;
 import com.mxgraph.model.mxGraphModel.mxValueChange;
+import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxCellOverlay;
 import com.mxgraph.util.mxEvent;
@@ -64,8 +57,6 @@ import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import com.mxgraph.util.mxUndoableEdit;
 import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
-import com.mxgraph.util.mxUtils;
-import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
@@ -96,7 +87,27 @@ public class Graph implements GraphLookup {
 		this.scriptContext = scriptContext;
 		
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
-			
+			@Override
+			public void invoke(Object sender, mxEventObject evt) {
+				mxUndoableEdit edit = (mxUndoableEdit) evt.getProperty("edit");
+				List<mxUndoableChange> changes = edit.getChanges();
+				for (mxUndoableChange change : changes) {
+					if (change instanceof mxRootChange) {
+						graph.getModel().beginUpdate();
+						try {
+							upgradeGraph(((mxRootChange)change).getRoot());
+						} catch (Exception e) {
+							e.printStackTrace();
+						} finally {
+							graph.getModel().endUpdate();
+						}
+					}
+				}
+				styleEdges(graph);
+			}
+		});
+		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
+
 			@Override
 			public void invoke(Object sender, mxEventObject evt) {
 				mxUndoableEdit edit = (mxUndoableEdit) evt.getProperty("edit");
@@ -120,39 +131,109 @@ public class Graph implements GraphLookup {
 							if (incoming == null || incoming.length == 0)
 								stopStartServerFromChange(cc.getPrevious(), cc.getChild());
 						}
-					} else if (!(change instanceof mxGeometryChange) && !(change instanceof mxStyleChange)) {
-						System.out.println("Change: " + change.getClass());
 					}
 				}
 			}
 		});
-
+		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
+			public void invoke(Object sender, mxEventObject evt) {
+				graphComponent.validateGraph();
+			}
+		});
 	}
 
 	public mxGraph getGraph() {
 		return graph;
 	}
 
-	public void loadGraph(File file) throws IOException {
-		Document document = mxXmlUtils.parseXml(mxUtils.readFile(file.getAbsolutePath()));
-		mxCodec codec = new mxCodec(document);
-		codec.decode(document.getDocumentElement(), graph.getModel());
-		layoutGraph(graph);
+	/* 
+	 * Upgrades an older graph to the current format
+	 */
+	private void upgradeGraph(Object root) {
+		Object[] cells = graph.getChildCells(root);
+		if (cells == null)
+			return;
+		for (int i=0; i<cells.length; i++) {
+			Object cell = cells[i];
+			upgradeGraph(cell);
+
+			if (graph.getModel().isVertex(cells[i])) {
+				Object value = graph.getModel().getValue(cell);
+				if (!(value instanceof Element))
+					return;
+				Element e = (Element) value;
+				if ("Relay".equals(e.getTagName())) {
+					graph.getModel().setStyle(cell, "relay");
+				} else if ("Intercept".equals(e.getTagName())) {
+					graph.getModel().setStyle(cell, "intercept");
+				} else if ("ChannelHandler".equals(e.getTagName())) {
+					if ("com.sensepost.mallet.graph.TargetSpecificChannelHandler"
+							.equals(e.getAttribute("classname"))) {
+						e.getOwnerDocument().renameNode(e, null, "IndeterminateChannelHandler");
+						graph.getModel().setValue(cell, e);
+					}
+				}
+			}
+		}
 	}
 
-	private void layoutGraph(mxGraph graph) {
-		mxIGraphLayout layout = new mxHierarchicalLayout(graph);
-		graph.getModel().beginUpdate();
-		try {
-			Object[] cells = graph.getChildCells(graph.getDefaultParent());
-			for (int i = 0; i < cells.length; i++) {
-				graph.updateCellSize(cells[i]);
-			}
+	/*
+	 * styles the edges of the inbound graph and outbound graph
+	 */
+	private void styleEdges(mxGraph graph) {
+		mxAnalysisGraph aGraph = new mxAnalysisGraph();
+		aGraph.setGraph(graph);
 
-			layout.execute(graph.getDefaultParent());
+		mxGraphProperties.setDirected(aGraph.getProperties(), true);
+
+		Object[] sourceVertices;
+		try {
+			sourceVertices = mxGraphStructure.getSourceVertices(aGraph);
+		} catch (StructuralException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+		if (sourceVertices == null)
+			return;
+
+		try {
+			graph.getModel().beginUpdate();
+			stylePath(graph, sourceVertices, "incomingEdge");
 		} finally {
 			graph.getModel().endUpdate();
 		}
+	}
+
+	private void stylePath(mxGraph graph, Object[] cells, String style) {
+		mxIGraphModel model = graph.getModel();
+		for (int i=0; i<cells.length; i++) {
+			Object cell = cells[i];
+			String thisStyle = style;
+			if (model.isEdge(cell)) {
+				graph.setCellStyle(thisStyle, new Object[] {cell});
+				cell = model.getTerminal(cell, false);
+			}
+			Object[] edges = graph.getOutgoingEdges(cell);
+			thisStyle = isRelay(graph, cell) ? "outgoingEdge" : style;
+			if (edges != null)
+				stylePath(graph, edges, thisStyle);
+		}
+	}
+
+	private boolean isRelay(mxGraph graph, Object cell) {
+		Object value = graph.getModel().getValue(cell);
+		String className = getClassName(value);
+		if (className == null || "".equals(className))
+			return false;
+		try {
+			Class<?> clazz = Class.forName(className);
+			if (RelayHandler.class.isAssignableFrom(clazz) 
+					|| DatagramRelayHandler.class.isAssignableFrom(clazz)) {
+				return true;
+			}
+		} catch (Exception e) {}
+		return false;
 	}
 
 	private void startServersFromGraph() {
@@ -189,6 +270,7 @@ public class Graph implements GraphLookup {
 		}
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
+			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler())
 				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
@@ -268,9 +350,8 @@ public class Graph implements GraphLookup {
 		if (c > -1) {
 			String address = sa.substring(0, c);
 			int port = Integer.parseInt(sa.substring(c + 1));
-			return new InetSocketAddress(address, port);
-			// FIXME: check that this is actually a bind-able
-			// address?
+			if (port > 0 && port < 65536)
+				return new InetSocketAddress(address, port);
 		}
 		throw new RuntimeException("Could not parse '" + sa + "' as an InetSocketAddress");
 	}
@@ -290,8 +371,6 @@ public class Graph implements GraphLookup {
 			Element e = (Element) v;
 			return "Sink".equals(e.getTagName());
 		}
-		if (v instanceof GraphNode)
-			return false;
 		throw new RuntimeException("Unexpected cell value");
 	}
 
@@ -357,9 +436,7 @@ public class Graph implements GraphLookup {
 	}
 
 	private String[] getParameters(Object o) {
-		if (o instanceof GraphNode) {
-			return ((GraphNode) o).getArguments();
-		} else if (o instanceof Element) {
+		if (o instanceof Element) {
 			Element e = (Element) o;
 			NodeList parameters = e.getElementsByTagName("Parameter");
 			String[] p = new String[parameters.getLength()];
