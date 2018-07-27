@@ -126,6 +126,15 @@ public class Main {
 				.trustManager(InsecureTrustManagerFactory.INSTANCE).build();
 
 		mxGraphComponent graphComponent = new CustomGraphComponent(new CustomGraph());
+		Bindings scriptContext = new SimpleBindings();
+
+		scriptContext.put("SSLServerCertificateMap", serverCertMapping);
+		scriptContext.put("SSLClientContext", clientContext);
+
+		X509KeyManager clientKeyManager = new KeyStoreX509KeyManager(ks, PASSWORD);
+		scriptContext.put("SSLClientKeyManager", clientKeyManager);
+
+		Graph graph = new Graph(graphComponent, scriptContext);
 		InterceptFrame ui = new InterceptFrame(graphComponent);
 
 		// set up LoggingHandler logging
@@ -135,6 +144,7 @@ public class Main {
 		logger.addHandler(handler);
 
 		InterceptController ic = ui.getInterceptController();
+		scriptContext.put("InterceptController", ic);
 //		ObjectMapper om = new ObjectMapper();
 //		MessageDAO dao = new MessageDAO(null, om);
 //		ic.setMessageDAO(dao);
@@ -152,17 +162,6 @@ public class Main {
 			}
 		});
 
-		Bindings scriptContext = new SimpleBindings();
-
-		scriptContext.put("SSLServerCertificateMap", serverCertMapping);
-		scriptContext.put("SSLClientContext", clientContext);
-		scriptContext.put("InterceptController", ic);
-
-		X509KeyManager clientKeyManager = new KeyStoreX509KeyManager(ks, PASSWORD);
-		scriptContext.put("SSLClientKeyManager", clientKeyManager);
-
-		Graph graph = new Graph(graphComponent, scriptContext);
-		ui.setGraph(graph);
 		ui.setVisible(true);
 	}
 }

@@ -68,12 +68,6 @@ public class InterceptFrame extends JFrame {
 
 	}
 
-	public void setGraph(final Graph graph) {
-		if (graph == null)
-			throw new NullPointerException("graph");
-		this.graphComponent.setGraph(graph.getGraph());
-	}
-
 	public InterceptController getInterceptController() {
 		return connectionPanel;
 	}
