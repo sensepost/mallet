@@ -26,15 +26,13 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
+import org.jdesktop.swingx.JXTable;
+
 import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
-import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelMessageEvent;
-import com.sensepost.mallet.InterceptController.ChannelReadEvent;
-import com.sensepost.mallet.InterceptController.ChannelUserEvent;
-import com.sensepost.mallet.InterceptController.ChannelWriteEvent;
 import com.sensepost.mallet.InterceptController.Direction;
+import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
+import com.sensepost.mallet.InterceptController.UserEventTriggeredEvent;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
 
@@ -124,7 +122,7 @@ public class ConnectionDataPanel extends JPanel {
 		JScrollPane scrollPane = new JScrollPane();
 		splitPane.setTopComponent(scrollPane);
 
-		table = new JTable(tableModel);
+		table = new JXTable(tableModel);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(table);
@@ -152,13 +150,13 @@ public class ConnectionDataPanel extends JPanel {
 					editorController.setObject(o);
 					ReferenceCountUtil.release(o);
 					editorController.setReadOnly(evt.isExecuted());
-				} else if (evt instanceof ChannelExceptionEvent) {
+				} else if (evt instanceof ExceptionCaughtEvent) {
 					editing = null;
-					editorController.setObject(((ChannelExceptionEvent) evt).getCause());
+					editorController.setObject(((ExceptionCaughtEvent) evt).getCause());
 					editorController.setReadOnly(true);
-				} else if (evt instanceof ChannelUserEvent) {
+				} else if (evt instanceof UserEventTriggeredEvent) {
 					editing = null;
-					editorController.setObject(((ChannelUserEvent) evt).getUserEvent());
+					editorController.setObject(((UserEventTriggeredEvent) evt).getUserEvent());
 					editorController.setReadOnly(true);
 				} else {
 					editing = null;
@@ -205,8 +203,8 @@ public class ConnectionDataPanel extends JPanel {
 						}
 					}
 					ReferenceCountUtil.release(o);
-				} else if (evt instanceof ChannelUserEvent) {
-					Object uevt = ((ChannelUserEvent) evt).getUserEvent();
+				} else if (evt instanceof UserEventTriggeredEvent) {
+					Object uevt = ((UserEventTriggeredEvent) evt).getUserEvent();
 					if (uevt != null) {
 						if ((uevt instanceof ChannelInputShutdownEvent))
 							value = "Input Shutdown";
@@ -214,8 +212,8 @@ public class ConnectionDataPanel extends JPanel {
 							value = "UserEvent " + uevt.toString();
 					} else
 						value += " UserEvent (null)";
-				} else if (evt instanceof ChannelExceptionEvent) {
-					String cause = ((ChannelExceptionEvent) evt).getCause();
+				} else if (evt instanceof ExceptionCaughtEvent) {
+					String cause = ((ExceptionCaughtEvent) evt).getCause();
 					int cr = cause.indexOf('\n');
 					if (cr != -1)
 						cause = cause.substring(0, cr);
@@ -293,19 +291,7 @@ public class ConnectionDataPanel extends JPanel {
 			case 2:
 				return e.getDirection();
 			case 3:
-				if (e instanceof ChannelActiveEvent)
-					return "Open";
-				else if (e instanceof ChannelInactiveEvent)
-					return "Close";
-				else if (e instanceof ChannelReadEvent)
-					return "Read";
-				else if (e instanceof ChannelWriteEvent)
-					return "Write";
-				else if (e instanceof ChannelExceptionEvent)
-					return "Exception";
-				else if (e instanceof ChannelUserEvent)
-					return "Event";
-				return "Unknown event";
+				return e.getEventDescription();
 			case 4:
 				return e;
 			}

@@ -150,7 +150,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				((SocketChannel) other).shutdownOutput();
 			} else {
 				ctx.channel().close();
-				other.close();
+				if (other != null)
+					other.close();
 			}
 		} else if (evt instanceof ChannelOutputShutdownEvent) {
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {

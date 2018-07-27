@@ -7,7 +7,7 @@ import javax.swing.ListModel;
 
 import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelExceptionEvent;
+import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
 import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
 import com.sensepost.mallet.InterceptController.ChannelReadEvent;
 
@@ -20,7 +20,7 @@ public class ConnectionData {
 	
 	public void addChannelEvent(ChannelEvent e) throws Exception {
 		events.addElement(e);
-		if (e instanceof ChannelExceptionEvent)
+		if (e instanceof ExceptionCaughtEvent)
 			exception = true;
 		int n = events.size() - 1;
 		pending.set(n);
