@@ -28,7 +28,6 @@ import io.netty.util.Mapping;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
@@ -47,6 +46,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -115,14 +115,8 @@ public class AutoGeneratingContextSelector implements
 	 * 
 	 * @param keystore
 	 *            the location of the keystore
-	 * @param type
-	 *            the keystore type
-	 * @param password
-	 *            the keystore password
 	 * @param keyPassword
 	 *            the key password
-	 * @param caAlias
-	 *            the alias of the key entry
 	 * @throws GeneralSecurityException
 	 * @throws IOException
 	 */
@@ -139,7 +133,21 @@ public class AutoGeneratingContextSelector implements
 		Certificate[] certChain = keyStore.getCertificateChain(CA_ALIAS);
 		caCerts = new X509Certificate[certChain.length];
 		System.arraycopy(certChain, 0, caCerts, 0, certChain.length);
-		// FIXME: Should initialise the serials cache from the keystore
+
+		// make sure we don't reuse any serial numbers
+		Enumeration<String> aliases = keyStore.aliases();
+		while (aliases.hasMoreElements()) {
+			String alias = aliases.nextElement();
+			Certificate[] certs = keyStore.getCertificateChain(alias);
+			if (certs != null) {
+				for (int i=0; i<certs.length; i++) {
+					if (certs[i] instanceof X509Certificate) {
+						BigInteger serial = ((X509Certificate)certs[i]).getSerialNumber();
+						serials.add(serial);
+					}
+				}
+			}
+		}
 	}
 
 	private void create(X500Principal caName) throws GeneralSecurityException,
@@ -181,11 +189,13 @@ public class AutoGeneratingContextSelector implements
 	 */
 	public void save(File file, char[] password)
 			throws GeneralSecurityException, IOException {
-		OutputStream out = new FileOutputStream(file);
-		try {
-			keyStore.store(out, password);
-		} finally {
-			out.close();
+		synchronized(keyStore) {
+			OutputStream out = new FileOutputStream(file);
+			try {
+				keyStore.store(out, password);
+			} finally {
+				out.close();
+			}
 		}
 	}
 
@@ -223,35 +233,37 @@ public class AutoGeneratingContextSelector implements
 	private X509KeyManager createKeyMaterial(String target)
 			throws GeneralSecurityException, IOException,
 			OperatorCreationException {
-		if (keyStore.containsAlias(target))
-			return KeystoreUtils.getKeyManagerForAlias(keyStore, target,
-					keyPassword);
-
-		KeyPair keyPair;
-		if (reuseKeys) {
-			keyPair = new KeyPair(caCerts[0].getPublicKey(), caKey);
-		} else {
-			KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA");
-			keygen.initialize(1024);
-			keyPair = keygen.generateKeyPair();
+		synchronized(keyStore) {
+			if (keyStore.containsAlias(target))
+				return KeystoreUtils.getKeyManagerForAlias(keyStore, target,
+						keyPassword);
+	
+			KeyPair keyPair;
+			if (reuseKeys) {
+				keyPair = new KeyPair(caCerts[0].getPublicKey(), caKey);
+			} else {
+				KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA");
+				keygen.initialize(1024);
+				keyPair = keygen.generateKeyPair();
+			}
+	
+			X500Principal subject = getSubjectPrincipal(target);
+			Date begin = new Date();
+			Date ends = new Date(begin.getTime() + DEFAULT_VALIDITY);
+	
+			X509Certificate cert = CertificateUtils.sign(subject,
+					keyPair.getPublic(), caCerts[0].getSubjectX500Principal(),
+					caCerts[0].getPublicKey(), caKey, begin, ends,
+					getNextSerialNo(), null);
+	
+			X509Certificate[] chain = new X509Certificate[caCerts.length + 1];
+			System.arraycopy(caCerts, 0, chain, 1, caCerts.length);
+			chain[0] = cert;
+	
+			keyStore.setKeyEntry(target, keyPair.getPrivate(), keyPassword, chain);
+	
+			return new SingleX509KeyManager(target, keyPair.getPrivate(), chain);
 		}
-
-		X500Principal subject = getSubjectPrincipal(target);
-		Date begin = new Date();
-		Date ends = new Date(begin.getTime() + DEFAULT_VALIDITY);
-
-		X509Certificate cert = CertificateUtils.sign(subject,
-				keyPair.getPublic(), caCerts[0].getSubjectX500Principal(),
-				caCerts[0].getPublicKey(), caKey, begin, ends,
-				getNextSerialNo(), null);
-
-		X509Certificate[] chain = new X509Certificate[caCerts.length + 1];
-		System.arraycopy(caCerts, 0, chain, 1, caCerts.length);
-		chain[0] = cert;
-
-		keyStore.setKeyEntry(target, keyPair.getPrivate(), keyPassword, chain);
-
-		return new SingleX509KeyManager(target, keyPair.getPrivate(), chain);
 	}
 
 	protected BigInteger getNextSerialNo() {
@@ -276,7 +288,7 @@ public class AutoGeneratingContextSelector implements
 		private SslContextBuilder builder;
 
 		private LinkedHashMap<String, SslContext> cache = new LinkedHashMap<String, SslContext>() {
-			protected boolean removeEldestEntry(Map.Entry eldest) {
+			protected boolean removeEldestEntry(Map.Entry<String, SslContext> eldest) {
 				return size() > 100;
 			}
 		};
