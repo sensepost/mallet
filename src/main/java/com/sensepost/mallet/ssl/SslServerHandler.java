@@ -56,7 +56,23 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 		ChannelPipeline p = ch.pipeline();
 		String me = p.context(this).name();
 		p.addAfter(me, null, new TargetSslHandler());
-		sniHandler = new SniHandler(mapping);
+		sniHandler = new SniHandler(mapping) {
+		    protected void replaceHandler(ChannelHandlerContext ctx, String hostname, SslContext sslContext) throws Exception {
+		        SslHandler sslHandler = null;
+		        try {
+		            sslHandler = sslContext.newHandler(ctx.alloc(), hostname, -1);
+		            ctx.pipeline().replace(this, SslHandler.class.getName(), sslHandler);
+		            sslHandler = null;
+		        } finally {
+		            // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
+		            // transferred to the SslHandler.
+		            // See https://github.com/netty/netty/issues/5678
+		            if (sslHandler != null) {
+		                ReferenceCountUtil.safeRelease(sslHandler.engine());
+		            }
+		        }
+		    }
+		};
 		p.addAfter(me, null, sniHandler);
 	}
 
@@ -135,7 +151,7 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 				SslContext sslContext) throws Exception {
 			try {
 				String me = ctx.name();
-				sslHandler = sslContext.newHandler(ctx.alloc());
+				sslHandler = sslContext.newHandler(ctx.alloc(), hostname, -1);
 				ctx.pipeline().addAfter(me, null, sslHandler);
 				sslHandler = null;
 			} finally {
