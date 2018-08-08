@@ -26,8 +26,6 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import org.jdesktop.swingx.JXTable;
-
 import com.sensepost.mallet.InterceptController.ChannelEvent;
 import com.sensepost.mallet.InterceptController.ChannelMessageEvent;
 import com.sensepost.mallet.InterceptController.Direction;
@@ -44,7 +42,7 @@ public class ConnectionDataPanel extends JPanel {
 	private ConnectionData connectionData = null;
 	private EditorController editorController = new EditorController();
 	private ChannelEventRenderer channelEventRenderer = new ChannelEventRenderer();
-	private DateRenderer dateRenderer = new DateRenderer();
+	private DateRenderer dateRenderer = new DateRenderer(true);
 	private DirectionRenderer directionRenderer = new DirectionRenderer();
 
 	private ChannelMessageEvent editing = null;
@@ -71,100 +69,22 @@ public class ConnectionDataPanel extends JPanel {
 		buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
 		JButton dropButton = new JButton("Drop");
-		dropButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int n = table.getSelectedRow();
-				if (n >= 0) {
-					try {
-						connectionData.dropNextEvents(n);
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-				} else {
-					try {
-						connectionData.dropNextEvent();
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-				}
-			}
-		});
+		dropButton.addActionListener(new DropAction());
 		buttonPanel.add(dropButton);
 
 		JButton sendButton = new JButton("Send");
-		sendButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int n = table.getSelectedRow();
-				if (n >= 0) {
-					if (editing != null && !editorController.isReadOnly()) {
-						Object o = editorController.getObject();
-						ReferenceCountUtil.retain(o);
-						editing.setMessage(o);
-						editing = null;
-						editorController.setObject(null);
-					}
-					try {
-						connectionData.executeNextEvents(n);
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-				} else {
-					try {
-						connectionData.executeNextEvent();
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-				}
-			}
-		});
+		sendButton.addActionListener(new SendAction());
 		buttonPanel.add(sendButton);
 
 		JScrollPane scrollPane = new JScrollPane();
 		splitPane.setTopComponent(scrollPane);
 
-		table = new JXTable(tableModel);
+		table = new JTable(tableModel);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(table);
-		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-			@Override
-			public void valueChanged(ListSelectionEvent e) {
-				if (e.getValueIsAdjusting())
-					return;
-				if (editing != null && !editorController.isReadOnly()) {
-					Object o = editorController.getObject();
-					ReferenceCountUtil.retain(o);
-					editing.setMessage(o);
-				}
-				int selectedRow = table.getSelectedRow();
-				if (selectedRow != -1)
-					selectedRow = table.convertRowIndexToModel(selectedRow);
-				ChannelEvent evt;
-				if (selectedRow < 0)
-					evt = null;
-				else
-					evt = connectionData.getEvents().getElementAt(selectedRow);
-				if (evt instanceof ChannelMessageEvent) {
-					editing = (ChannelMessageEvent) evt;
-					Object o = editing.getMessage();
-					editorController.setObject(o);
-					ReferenceCountUtil.release(o);
-					editorController.setReadOnly(evt.isExecuted());
-				} else if (evt instanceof ExceptionCaughtEvent) {
-					editing = null;
-					editorController.setObject(((ExceptionCaughtEvent) evt).getCause());
-					editorController.setReadOnly(true);
-				} else if (evt instanceof UserEventTriggeredEvent) {
-					editing = null;
-					editorController.setObject(((UserEventTriggeredEvent) evt).getUserEvent());
-					editorController.setReadOnly(true);
-				} else {
-					editing = null;
-					editorController.setObject(null);
-					editorController.setReadOnly(true);
-				}
-			}
-		});
+		table.getSelectionModel().addListSelectionListener(
+				new EventSelectionListener());
 		table.setDefaultRenderer(Date.class, dateRenderer);
 		table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
 		table.setDefaultRenderer(Direction.class, directionRenderer);
@@ -187,8 +107,9 @@ public class ConnectionDataPanel extends JPanel {
 	private class ChannelEventRenderer extends DefaultTableCellRenderer {
 
 		@Override
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
-				int row, int column) {
+		public Component getTableCellRendererComponent(JTable table,
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
 			if (value instanceof ChannelEvent) {
 				ChannelEvent evt = (ChannelEvent) value;
 				value = "";
@@ -197,14 +118,16 @@ public class ConnectionDataPanel extends JPanel {
 					if (o != null) {
 						value = o.getClass().getName();
 						if (o instanceof ByteBuf)
-							value += " (" + ((ByteBuf) o).readableBytes() + " bytes)";
+							value += " (" + ((ByteBuf) o).readableBytes()
+									+ " bytes)";
 						else if (o instanceof byte[]) {
 							value += " (" + ((byte[]) o).length + " bytes)";
 						}
 					}
 					ReferenceCountUtil.release(o);
 				} else if (evt instanceof UserEventTriggeredEvent) {
-					Object uevt = ((UserEventTriggeredEvent) evt).getUserEvent();
+					Object uevt = ((UserEventTriggeredEvent) evt)
+							.getUserEvent();
 					if (uevt != null) {
 						if ((uevt instanceof ChannelInputShutdownEvent))
 							value = "Input Shutdown";
@@ -220,7 +143,8 @@ public class ConnectionDataPanel extends JPanel {
 					value = cause;
 				}
 			}
-			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+			return super.getTableCellRendererComponent(table, value,
+					isSelected, hasFocus, row, column);
 		}
 
 	}
@@ -228,8 +152,9 @@ public class ConnectionDataPanel extends JPanel {
 	private class DirectionRenderer extends DefaultTableCellRenderer {
 
 		@Override
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
-				int row, int column) {
+		public Component getTableCellRendererComponent(JTable table,
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
 			if (value instanceof Direction) {
 				Direction d = (Direction) value;
 				if (d == Direction.Client_Server)
@@ -237,17 +162,20 @@ public class ConnectionDataPanel extends JPanel {
 				else
 					value = "<-";
 			}
-			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+			return super.getTableCellRendererComponent(table, value,
+					isSelected, hasFocus, row, column);
 		}
 
 	}
 
-	private class ListTableModelAdapter extends AbstractTableModel implements ListDataListener {
+	private class ListTableModelAdapter extends AbstractTableModel implements
+			ListDataListener {
 
 		private ListModel<ChannelEvent> listModel = null;
-		private String[] columnNames = new String[] { "Received", "Sent", "Direction", "Event Type", "Value" };
-		private Class<?>[] columnClasses = new Class<?>[] { Date.class, Date.class, Direction.class, String.class,
-				ChannelEvent.class };
+		private String[] columnNames = new String[] { "Received", "Sent",
+				"Direction", "Event Type", "Value" };
+		private Class<?>[] columnClasses = new Class<?>[] { Date.class,
+				Date.class, Direction.class, String.class, ChannelEvent.class };
 
 		public void setListModel(ListModel<ChannelEvent> listModel) {
 			if (this.listModel != null)
@@ -256,6 +184,10 @@ public class ConnectionDataPanel extends JPanel {
 			if (this.listModel != null)
 				this.listModel.addListDataListener(this);
 			fireTableDataChanged();
+		}
+
+		public ChannelEvent getElementAt(int rowIndex) {
+			return listModel.getElementAt(rowIndex);
 		}
 
 		@Override
@@ -314,5 +246,92 @@ public class ConnectionDataPanel extends JPanel {
 		}
 
 	}
-	
+
+	private class DropAction implements ActionListener {
+
+		public void actionPerformed(ActionEvent e) {
+			int n = table.getSelectedRow();
+			if (n >= 0) {
+				try {
+					connectionData.dropNextEvents(n);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			} else {
+				try {
+					connectionData.dropNextEvent();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		}
+	}
+
+	private class SendAction implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			int n = table.getSelectedRow();
+			if (n >= 0) {
+				if (editing != null && !editorController.isReadOnly()) {
+					Object o = editorController.getObject();
+					ReferenceCountUtil.retain(o);
+					editing.setMessage(o);
+					editing = null;
+					editorController.setObject(null);
+				}
+				try {
+					connectionData.executeNextEvents(n);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			} else {
+				try {
+					connectionData.executeNextEvent();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		}
+	}
+
+	private class EventSelectionListener implements ListSelectionListener {
+		@Override
+		public void valueChanged(ListSelectionEvent e) {
+			if (e.getValueIsAdjusting())
+				return;
+			if (editing != null && !editorController.isReadOnly()) {
+				Object o = editorController.getObject();
+				ReferenceCountUtil.retain(o);
+				editing.setMessage(o);
+			}
+			int selectedRow = table.getSelectedRow();
+			if (selectedRow != -1)
+				selectedRow = table.convertRowIndexToModel(selectedRow);
+			ChannelEvent evt;
+			if (selectedRow < 0)
+				evt = null;
+			else
+				evt = connectionData.getEvents().getElementAt(selectedRow);
+			if (evt instanceof ChannelMessageEvent) {
+				editing = (ChannelMessageEvent) evt;
+				Object o = editing.getMessage();
+				editorController.setObject(o);
+				ReferenceCountUtil.release(o);
+				editorController.setReadOnly(evt.isExecuted());
+			} else if (evt instanceof ExceptionCaughtEvent) {
+				editing = null;
+				editorController.setObject(((ExceptionCaughtEvent) evt)
+						.getCause());
+				editorController.setReadOnly(true);
+			} else if (evt instanceof UserEventTriggeredEvent) {
+				editing = null;
+				editorController.setObject(((UserEventTriggeredEvent) evt)
+						.getUserEvent());
+				editorController.setReadOnly(true);
+			} else {
+				editing = null;
+				editorController.setObject(null);
+				editorController.setReadOnly(true);
+			}
+		}
+	}
 }
