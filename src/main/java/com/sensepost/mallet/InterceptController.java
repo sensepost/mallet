@@ -412,7 +412,7 @@ public interface InterceptController {
 		@Override
 		public void execute() throws Exception {
 			if (ctx != null)
-				ctx.disconnect(promise);
+				ctx.close(promise);
 			super.execute();
 		}
 	}
