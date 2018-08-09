@@ -109,7 +109,6 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			other.close();
 		}
 		ctx.channel().close();
-		cause.printStackTrace();
 	}
 
 	@Override

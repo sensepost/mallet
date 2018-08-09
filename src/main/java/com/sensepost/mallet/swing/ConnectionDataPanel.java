@@ -10,6 +10,7 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Date;
+import java.util.prefs.Preferences;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -47,6 +48,8 @@ public class ConnectionDataPanel extends JPanel {
 
 	private ChannelMessageEvent editing = null;
 	private JTable table;
+	private Preferences prefs = Preferences
+			.userNodeForPackage(ConnectionDataPanel.class);
 
 	public ConnectionDataPanel() {
 		setLayout(new BorderLayout(0, 0));
@@ -89,6 +92,11 @@ public class ConnectionDataPanel extends JPanel {
 		table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
 		table.setDefaultRenderer(Direction.class, directionRenderer);
 		table.setAutoCreateRowSorter(true);
+
+		TableColumnModelPersistence tcmp = new TableColumnModelPersistence(
+				prefs, "column_widths");
+		tcmp.apply(table.getColumnModel(), 75, 75, 75, 200, 800);
+		table.getColumnModel().addColumnModelListener(tcmp);
 	}
 
 	public void setConnectionData(ConnectionData connectionData) {
@@ -334,4 +342,5 @@ public class ConnectionDataPanel extends JPanel {
 			}
 		}
 	}
+
 }

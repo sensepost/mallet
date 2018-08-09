@@ -81,7 +81,7 @@ public class DatagramRelayHandler
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
 			throws Exception {
-		System.out
+		System.err
 				.println("Caught an exception under context " + ctx.channel());
 		cause.printStackTrace();
 	}
@@ -89,9 +89,17 @@ public class DatagramRelayHandler
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
 			throws Exception {
-		System.out.println("Datagram Event: " + evt);
 		if (evt instanceof IdleStateEvent) {
-			ctx.close();
+			ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
+				
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (!future.isSuccess()) {
+						future.cause().printStackTrace();
+					}
+				}
+			});
+			ctx.channel().close();
 		}
 	}
 
@@ -202,9 +210,7 @@ public class DatagramRelayHandler
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
-			if (future.isSuccess()) {
-				System.out.println("Write success!");
-			} else {
+			if (!future.isSuccess()) {
 				future.cause().printStackTrace();
 			}
 		}

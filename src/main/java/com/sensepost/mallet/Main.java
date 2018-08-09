@@ -136,6 +136,7 @@ public class Main {
 
 		Graph graph = new Graph(graphComponent, scriptContext);
 		InterceptFrame ui = new InterceptFrame(graphComponent);
+		ui.setServerKeyStore(ks);
 
 		// set up LoggingHandler logging
 		Handler handler = ui.getLogHandler();
@@ -148,8 +149,6 @@ public class Main {
 //		ObjectMapper om = new ObjectMapper();
 //		MessageDAO dao = new MessageDAO(null, om);
 //		ic.setMessageDAO(dao);
-
-		ui.setSize(800, 600);
 
 		ui.addWindowStateListener(new WindowStateListener() {
 			@Override
