@@ -29,6 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -185,7 +186,7 @@ public class BasicGraphEditor extends JPanel {
 				graph.updateCellSize(cells[i]);
 			}
 
-			mxIGraphLayout layout = new mxCompactTreeLayout(graph, false);
+			mxIGraphLayout layout = new mxParallelEdgeLayout(graph);
 
 		    try {
 		        layout.execute(graph.getDefaultParent());
