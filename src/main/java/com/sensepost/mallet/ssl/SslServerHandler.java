@@ -87,7 +87,7 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 			if (evt instanceof SniCompletionEvent) {
 				SniCompletionEvent sce = (SniCompletionEvent) evt;
 				sniException = sce.cause() != null;
-				if (!sniException)
+				if (sce.hostname() != null)
 					ctx.pipeline().remove(this);
 				else {
 					ConnectRequest cr = ctx.channel()

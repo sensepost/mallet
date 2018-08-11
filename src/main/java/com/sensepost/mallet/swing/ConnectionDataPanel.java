@@ -40,6 +40,8 @@ public class ConnectionDataPanel extends JPanel {
 	private final ListModel<ChannelEvent> EMPTY = new DefaultListModel<ChannelEvent>();
 	private ListTableModelAdapter tableModel = new ListTableModelAdapter();
 
+	private JButton dropButton, sendButton;
+
 	private ConnectionData connectionData = null;
 	private EditorController editorController = new EditorController();
 	private ChannelEventRenderer channelEventRenderer = new ChannelEventRenderer();
@@ -61,8 +63,10 @@ public class ConnectionDataPanel extends JPanel {
 		JPanel pendingPanel = new JPanel();
 		pendingPanel.setLayout(new BorderLayout(0, 0));
 		splitPane.setBottomComponent(pendingPanel);
+		SplitPanePersistence spp = new SplitPanePersistence(prefs);
+		spp.apply(splitPane, 200);
+		splitPane.addPropertyChangeListener(spp);
 
-		// ObjectEditor editor = new ByteBufEditor();
 		ObjectEditor editor = new AutoEditor();
 		editor.setEditorController(editorController);
 		pendingPanel.add(editor.getEditorComponent(), BorderLayout.CENTER);
@@ -71,12 +75,14 @@ public class ConnectionDataPanel extends JPanel {
 		pendingPanel.add(buttonPanel, BorderLayout.SOUTH);
 		buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
-		JButton dropButton = new JButton("Drop");
+		dropButton = new JButton("Drop");
 		dropButton.addActionListener(new DropAction());
+		dropButton.setEnabled(false);
 		buttonPanel.add(dropButton);
 
-		JButton sendButton = new JButton("Send");
+		sendButton = new JButton("Send");
 		sendButton.addActionListener(new SendAction());
+		sendButton.setEnabled(false);
 		buttonPanel.add(sendButton);
 
 		JScrollPane scrollPane = new JScrollPane();
@@ -166,9 +172,9 @@ public class ConnectionDataPanel extends JPanel {
 			if (value instanceof Direction) {
 				Direction d = (Direction) value;
 				if (d == Direction.Client_Server)
-					value = "->";
+					value = "Server";
 				else
-					value = "<-";
+					value = "Client";
 			}
 			return super.getTableCellRendererComponent(table, value,
 					isSelected, hasFocus, row, column);
@@ -272,6 +278,9 @@ public class ConnectionDataPanel extends JPanel {
 					ex.printStackTrace();
 				}
 			}
+			updateButtonState(null);
+			if (n < table.getRowCount() - 1)
+				table.getSelectionModel().setLeadSelectionIndex(n+1);
 		}
 	}
 
@@ -298,6 +307,9 @@ public class ConnectionDataPanel extends JPanel {
 					ex.printStackTrace();
 				}
 			}
+			updateButtonState(null);
+			if (n < table.getRowCount() - 1)
+				table.getSelectionModel().setLeadSelectionIndex(n+1);
 		}
 	}
 
@@ -340,7 +352,12 @@ public class ConnectionDataPanel extends JPanel {
 				editorController.setObject(null);
 				editorController.setReadOnly(true);
 			}
+			updateButtonState(evt);
 		}
 	}
 
+	private void updateButtonState(ChannelEvent evt) {
+		dropButton.setEnabled(evt != null && !evt.isExecuted());
+		sendButton.setEnabled(evt != null && !evt.isExecuted());
+	}
 }

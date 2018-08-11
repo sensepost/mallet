@@ -1,13 +1,13 @@
 package com.sensepost.mallet;
 
-import io.netty.channel.Channel;
-import io.netty.util.AttributeKey;
-
 import java.net.SocketAddress;
 
 import javax.script.Bindings;
 
 import com.sensepost.mallet.graph.GraphLookup;
+
+import io.netty.channel.Channel;
+import io.netty.util.AttributeKey;
 
 public class ChannelAttributes {
 
@@ -24,6 +24,5 @@ public class ChannelAttributes {
 	public static final AttributeKey<SocketAddress> REMOTE_ADDRESS = AttributeKey.valueOf("remote_address");
 	
 	public static final AttributeKey<Bindings> SCRIPT_CONTEXT = AttributeKey.valueOf("script_context");
-	
-	
+
 }

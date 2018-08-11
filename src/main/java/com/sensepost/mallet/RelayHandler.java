@@ -1,6 +1,7 @@
 package com.sensepost.mallet;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -15,6 +16,7 @@ import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.ChannelOutputShutdownEvent;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.Promise;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -52,7 +54,6 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 
-		logger.info("Connecting " + ctx.channel().remoteAddress() + " -> " + target);
 		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
 
 			@Override
@@ -62,8 +63,6 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
-				if (!target.getConnectPromise().isDone())
-					target.getConnectPromise().setSuccess(ch);
 
 				ChannelHandler[] handlers = gl.getClientChannelInitializer(RelayHandler.this);
 				ch.pipeline().addLast(handlers);
@@ -75,18 +74,20 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 					.option(ChannelOption.SO_KEEPALIVE, true).option(ChannelOption.ALLOW_HALF_CLOSURE, true);
 
 			connectFuture = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
+			connectFuture.addListener(new ConnectRequestPromiseExecutor(target.getConnectPromise()));
 			connectFuture.addListener(new ChannelFutureListener() {
 				
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
 					if (future.isSuccess()) {
-						while(!queue.isEmpty())
-							future.channel().writeAndFlush(queue.remove());
-					} else {
-						future.cause().printStackTrace();
+						while(!queue.isEmpty()) {
+							ChannelFuture cf = future.channel().writeAndFlush(queue.remove());
+							cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+						}
 					}
 				}
 			});
+			connectFuture.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 		} catch (Exception e) {
 			logger.error("Failed connecting to " + ctx.channel().remoteAddress() + " -> " + target, e);
 			ctx.close();
@@ -126,17 +127,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				throw new NullPointerException("Channel is null!");
 			}
 			ChannelFuture cf = channel.writeAndFlush(msg);
-			cf.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) {
-					if (!future.isSuccess()) {
-						System.out.println("Write failed!");
-						if (future.channel().isOpen())
-							future.channel().close();
-						future.cause().printStackTrace();
-					}
-				}
-			});
+			cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 		}
 	}
 
@@ -145,20 +136,16 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 		if (evt instanceof ChannelInputShutdownEvent) {
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other instanceof SocketChannel && !((SocketChannel)other).isOutputShutdown()) {
-				((SocketChannel) other).shutdownOutput();
-			} else {
-				ctx.channel().close();
-				if (other != null)
-					other.close();
+			if (other != null) {
+				other.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ShutdownOutput.INSTANCE);
 			}
 		} else if (evt instanceof ChannelOutputShutdownEvent) {
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {
 			ctx.channel().config().setAutoRead(false);
+
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other != null && ((SocketChannel)other).isInputShutdown()) {
-				other.close();
-				ctx.channel().close();
+			if (other != null) {
+				other.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
 			}
 		} else if (evt instanceof ConnectRequest && !added) {
 			added = true;
@@ -167,4 +154,42 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		super.userEventTriggered(ctx, evt);
 	}
 
+	private static class ShutdownOutput implements ChannelFutureListener {
+		static ShutdownOutput INSTANCE = new ShutdownOutput();
+
+		private ShutdownOutput() {}
+
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			Channel ch = future.channel();
+			if (future.isSuccess()) {
+				if (ch instanceof SocketChannel) {
+					((SocketChannel) ch).shutdownOutput();
+				} else if (ch.isOpen()) {
+					ch.close();
+				}
+			} else {
+				if (ch.isOpen())
+					ch.close();
+			}
+		}
+
+	}
+
+	private class ConnectRequestPromiseExecutor implements ChannelFutureListener {
+		private Promise<Channel> promise;
+		public ConnectRequestPromiseExecutor(Promise<Channel> promise) {
+			this.promise = promise;
+		}
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (!promise.isDone()) {
+				if (future.isSuccess()) {
+					promise.setSuccess(future.channel());
+				} else {
+					promise.setFailure(future.cause());
+				}
+			}
+		}
+	}
 }

@@ -57,6 +57,9 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.KeyManagerFactorySpi;
 import javax.net.ssl.ManagerFactoryParameters;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
 import javax.security.auth.x500.X500Principal;
 
@@ -86,8 +89,12 @@ public class AutoGeneratingContextSelector implements
 
 	private Set<BigInteger> serials = new HashSet<BigInteger>();
 
+	private final KeyManagerFactory AUTO_FACTORY = new AutoGeneratingKeyManagerFactory();
+
+	private final SslContextBuilder DEFAULT_SSLCONTEXTBUILDER = getContextBuilderForServerTemplate();
+
 	private final SslContextMapper DEFAULT_MAPPER = new SslContextMapper(
-			getContextBuilderForServerTemplate());
+			DEFAULT_SSLCONTEXTBUILDER);
 
 	/**
 	 * creates a {@link AutoGeneratingContextSelector} that will create a RSA
@@ -140,9 +147,10 @@ public class AutoGeneratingContextSelector implements
 			String alias = aliases.nextElement();
 			Certificate[] certs = keyStore.getCertificateChain(alias);
 			if (certs != null) {
-				for (int i=0; i<certs.length; i++) {
+				for (int i = 0; i < certs.length; i++) {
 					if (certs[i] instanceof X509Certificate) {
-						BigInteger serial = ((X509Certificate)certs[i]).getSerialNumber();
+						BigInteger serial = ((X509Certificate) certs[i])
+								.getSerialNumber();
 						serials.add(serial);
 					}
 				}
@@ -189,7 +197,7 @@ public class AutoGeneratingContextSelector implements
 	 */
 	public void save(File file, char[] password)
 			throws GeneralSecurityException, IOException {
-		synchronized(keyStore) {
+		synchronized (keyStore) {
 			OutputStream out = new FileOutputStream(file);
 			try {
 				keyStore.store(out, password);
@@ -233,11 +241,11 @@ public class AutoGeneratingContextSelector implements
 	private X509KeyManager createKeyMaterial(String target)
 			throws GeneralSecurityException, IOException,
 			OperatorCreationException {
-		synchronized(keyStore) {
+		synchronized (keyStore) {
 			if (keyStore.containsAlias(target))
 				return KeystoreUtils.getKeyManagerForAlias(keyStore, target,
 						keyPassword);
-	
+
 			KeyPair keyPair;
 			if (reuseKeys) {
 				keyPair = new KeyPair(caCerts[0].getPublicKey(), caKey);
@@ -246,22 +254,25 @@ public class AutoGeneratingContextSelector implements
 				keygen.initialize(1024);
 				keyPair = keygen.generateKeyPair();
 			}
-	
+
+			logger.info("Creating key material for " + target);
+
 			X500Principal subject = getSubjectPrincipal(target);
 			Date begin = new Date();
 			Date ends = new Date(begin.getTime() + DEFAULT_VALIDITY);
-	
+
 			X509Certificate cert = CertificateUtils.sign(subject,
 					keyPair.getPublic(), caCerts[0].getSubjectX500Principal(),
 					caCerts[0].getPublicKey(), caKey, begin, ends,
 					getNextSerialNo(), null);
-	
+
 			X509Certificate[] chain = new X509Certificate[caCerts.length + 1];
 			System.arraycopy(caCerts, 0, chain, 1, caCerts.length);
 			chain[0] = cert;
-	
-			keyStore.setKeyEntry(target, keyPair.getPrivate(), keyPassword, chain);
-	
+
+			keyStore.setKeyEntry(target, keyPair.getPrivate(), keyPassword,
+					chain);
+
 			return new SingleX509KeyManager(target, keyPair.getPrivate(), chain);
 		}
 	}
@@ -280,15 +291,16 @@ public class AutoGeneratingContextSelector implements
 	}
 
 	public SslContextBuilder getContextBuilderForServerTemplate() {
-		return SslContextBuilder.forServer(new AutoGeneratingKeyManagerFactory());
+		return SslContextBuilder.forServer(AUTO_FACTORY);
 	}
-	
+
 	private class SslContextMapper implements Mapping<String, SslContext> {
 
 		private SslContextBuilder builder;
 
 		private LinkedHashMap<String, SslContext> cache = new LinkedHashMap<String, SslContext>() {
-			protected boolean removeEldestEntry(Map.Entry<String, SslContext> eldest) {
+			protected boolean removeEldestEntry(
+					Map.Entry<String, SslContext> eldest) {
 				return size() > 100;
 			}
 		};
@@ -323,16 +335,17 @@ public class AutoGeneratingContextSelector implements
 		}
 
 	}
-	
+
 	private class AutoGeneratingKeyManagerFactory extends KeyManagerFactory {
 
 		public AutoGeneratingKeyManagerFactory() {
 			super(new AutoGeneratingKeyManagerFactorySpi(), null, null);
 		}
-		
+
 	}
-	
-	private class AutoGeneratingKeyManagerFactorySpi extends KeyManagerFactorySpi {
+
+	private class AutoGeneratingKeyManagerFactorySpi extends
+			KeyManagerFactorySpi {
 
 		@Override
 		protected void engineInit(KeyStore ks, char[] password)
@@ -351,10 +364,22 @@ public class AutoGeneratingContextSelector implements
 		protected KeyManager[] engineGetKeyManagers() {
 			return new KeyManager[] { new AutoGeneratingKeyManager() };
 		}
-		
+
 	}
-	
-	private class AutoGeneratingKeyManager implements X509KeyManager {
+
+	private class AutoGeneratingKeyManager extends X509ExtendedKeyManager {
+
+		@Override
+		public String chooseEngineClientAlias(String[] keyType,
+				Principal[] issuers, SSLEngine engine) {
+			return super.chooseEngineClientAlias(keyType, issuers, engine);
+		}
+
+		@Override
+		public String chooseEngineServerAlias(String keyType,
+				Principal[] issuers, SSLEngine engine) {
+			return engine.getPeerHost();
+		}
 
 		@Override
 		public String[] getClientAliases(String keyType, Principal[] issuers) {
@@ -370,7 +395,8 @@ public class AutoGeneratingContextSelector implements
 		@Override
 		public String[] getServerAliases(String keyType, Principal[] issuers) {
 			try {
-				Set<String> aliases = KeystoreUtils.getAliases(keyStore).keySet();
+				Set<String> aliases = KeystoreUtils.getAliases(keyStore)
+						.keySet();
 				return aliases.toArray(new String[aliases.size()]);
 			} catch (KeyStoreException e) {
 			}
@@ -404,6 +430,6 @@ public class AutoGeneratingContextSelector implements
 			}
 			return null;
 		}
-		
+
 	}
 }

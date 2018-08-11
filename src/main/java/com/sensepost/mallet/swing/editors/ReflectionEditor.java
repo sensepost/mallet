@@ -119,11 +119,18 @@ public class ReflectionEditor extends JPanel {
 
 	private String[] getScriptLanguages() {
 		List<ScriptEngineFactory> factories = sem.getEngineFactories();
-		String[] languages = new String[factories.size()];
-		int i = 0;
+		List<String> languages = new ArrayList<>();
 		for (ScriptEngineFactory f : factories)
-			languages[i++] = f.getLanguageName();
-		return languages;
+			languages.add(f.getEngineName());
+		return languages.toArray(new String[languages.size()]);
+	}
+
+	private ScriptEngine findEngineByName(String language) {
+		List<ScriptEngineFactory> factories = sem.getEngineFactories();
+		for (ScriptEngineFactory f : factories)
+			if (f.getEngineName().equals(language))
+				return f.getScriptEngine();
+		return null;
 	}
 
 	private PropertyChangeListener listener = new PropertyChangeListener() {
@@ -670,8 +677,12 @@ public class ReflectionEditor extends JPanel {
 			if (script == null)
 				script = src.getText();
 			String language = (String) engineBox.getSelectedItem();
-			ScriptEngine engine = sem.getEngineByName(language);
 			try {
+				ScriptEngine engine = findEngineByName(language);
+				if (engine == null) {
+					JOptionPane.showMessageDialog(src, "Could not find script engine", "Script error", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
 				Object object = ((Node) path.getLastPathComponent()).getValue();
 				Bindings bindings = engine.createBindings();
 				bindings.put("object", object);
@@ -680,7 +691,8 @@ public class ReflectionEditor extends JPanel {
 				object = bindings.get("object");
 				otm.valueForPathChanged(path, object);
 			} catch (Exception e) {
-				JOptionPane.showMessageDialog(src, e.getLocalizedMessage(), "Script error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(src, e.toString(), "Script error", JOptionPane.ERROR_MESSAGE);
+				e.printStackTrace();
 			}
 		}
 

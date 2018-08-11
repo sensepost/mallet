@@ -8,6 +8,7 @@ import java.sql.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.prefs.Preferences;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JPanel;
@@ -42,6 +43,8 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private boolean intercept = false;
 	private MessageDAO dao = null;
 	
+	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class);
+	
 	public ConnectionPanel() {
 		setLayout(new BorderLayout(0, 0));
 		JSplitPane splitPane = new JSplitPane();
@@ -50,6 +53,9 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 
 		JScrollPane scrollPane = new JScrollPane();
 		splitPane.setLeftComponent(scrollPane);
+		SplitPanePersistence spp = new SplitPanePersistence(prefs);
+		spp.apply(splitPane, 200);
+		splitPane.addPropertyChangeListener(spp);
 
 		table = new JXTable(new ListTableModelAdapter(listModel)) {
 			public Component prepareRenderer(TableCellRenderer renderer,
@@ -93,12 +99,16 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		});
 		table.setDefaultRenderer(Date.class, new DateRenderer(false));
 		table.setAutoCreateRowSorter(true);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		scrollPane.setViewportView(table);
 
 		cdp = new ConnectionDataPanel();
 		splitPane.setRightComponent(cdp);
 
-
+		TableColumnModelPersistence tcmp = new TableColumnModelPersistence(
+				prefs, "column_widths");
+		tcmp.apply(table.getColumnModel(), 75, 75, 75, 200, 800);
+		table.getColumnModel().addColumnModelListener(tcmp);
 	}
 	
 	public boolean isIntercept() {

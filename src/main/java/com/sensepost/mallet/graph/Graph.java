@@ -279,7 +279,7 @@ public class Graph implements GraphLookup {
 			b.childHandler(new GraphChannelInitializer(vertex));
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
-			return b.bind(address);			
+			return b.bind(address);
 		} else {
 			Bootstrap b = new Bootstrap().channel(channelClass)
 					.group(getEventGroup(workerGroups, channelClass, 0))

@@ -13,6 +13,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -57,8 +58,11 @@ import com.mxgraph.util.mxUndoManager;
 import com.mxgraph.util.mxUndoableEdit;
 import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
 import com.mxgraph.view.mxGraph;
+import com.sensepost.mallet.swing.SplitPanePersistence;
 
 public class BasicGraphEditor extends JPanel {
+
+	private Preferences prefs = Preferences.userNodeForPackage(BasicGraphEditor.class);
 
 	/**
 	 * 
@@ -186,7 +190,7 @@ public class BasicGraphEditor extends JPanel {
 				graph.updateCellSize(cells[i]);
 			}
 
-			mxIGraphLayout layout = new mxParallelEdgeLayout(graph);
+			mxIGraphLayout layout = new mxHierarchicalLayout(graph, SwingConstants.NORTH);
 
 		    try {
 		        layout.execute(graph.getDefaultParent());
@@ -264,6 +268,10 @@ public class BasicGraphEditor extends JPanel {
 		inner.setDividerSize(6);
 		inner.setBorder(null);
 
+		SplitPanePersistence spp = new SplitPanePersistence(prefs, "inner-");
+		spp.apply(inner, inner.getDividerLocation());
+		inner.addPropertyChangeListener(spp);
+
 		// Creates the outer split pane that contains the inner split pane and
 		// the graph component on the right side of the window
 		JSplitPane outer = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, inner, graphComponent);
@@ -271,6 +279,10 @@ public class BasicGraphEditor extends JPanel {
 		outer.setDividerLocation(200);
 		outer.setDividerSize(6);
 		outer.setBorder(null);
+
+		spp = new SplitPanePersistence(prefs, "outer-");
+		spp.apply(outer, outer.getDividerLocation());
+		outer.addPropertyChangeListener(spp);
 
 		// Creates the status bar
 		statusBar = createStatusBar();

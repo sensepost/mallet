@@ -105,6 +105,8 @@ public class GraphEditor extends BasicGraphEditor {
 		Element relay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.RelayHandler", 
 				"{InterceptController}");
 
+		Element udpRelay = createElement(xmlDocument, "Relay", "com.sensepost.mallet.DatagramRelayHandler");
+
 		Element targetHandler = createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
 		
 		Element sink = xmlDocument.createElement("Sink");
@@ -139,6 +141,9 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("Relay",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
 				"relay;shape=doubleRectangle", 160, 120, relay);
+		basicPalette.addTemplate("UDP Relay",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
+				"relay;shape=doubleRectangle", 160, 120, udpRelay);
 
 		basicPalette.addTemplate("TargetSpecific",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
@@ -157,10 +162,10 @@ public class GraphEditor extends BasicGraphEditor {
 		protocolPalette.addTemplate("Http2 SSL Server",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslServerHandler", "{SSLServerCertificateMap}"));
-		protocolPalette.addTemplate("Http2SSL Client",
+		protocolPalette.addTemplate("Http2 SSL Client",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslClientHandler"));
-		
+
 		protocolPalette.addTemplate("HttpServerCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));

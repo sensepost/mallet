@@ -16,7 +16,7 @@ import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.SupportedCipherSuiteFilter;
 import io.netty.util.Mapping;
 
-public class Http2SslServerHandler extends ChannelInitializer {
+public class Http2SslServerHandler extends ChannelInitializer<Channel> {
 
 	private Mapping<String, SslContext> selector;
 	
