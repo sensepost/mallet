@@ -266,7 +266,7 @@ public interface InterceptController {
 		@Override
 		public void execute() throws Exception {
 			if (ctx != null)
-				ctx.write(getMessage());
+				ctx.write(getMessage(), promise);
 			super.execute();
 		}
 
