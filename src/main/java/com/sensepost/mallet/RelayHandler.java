@@ -1,7 +1,11 @@
 package com.sensepost.mallet;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
+import com.sensepost.mallet.graph.GraphLookup;
+
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -16,17 +20,15 @@ import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.ChannelOutputShutdownEvent;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Promise;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
-import java.util.LinkedList;
-import java.util.Queue;
-
-import com.sensepost.mallet.graph.GraphLookup;
-
 @Sharable
 public class RelayHandler extends ChannelInboundHandlerAdapter {
+
+	public static final AttributeKey<ChannelFuture> LAST_FUTURE = AttributeKey.valueOf("last_future");
 
 	private static final InternalLogger logger = InternalLoggerFactory.getInstance(RelayHandler.class);
 
@@ -83,6 +85,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 						while(!queue.isEmpty()) {
 							ChannelFuture cf = future.channel().writeAndFlush(queue.remove());
 							cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+							future.channel().attr(LAST_FUTURE).set(cf);
 						}
 					}
 				}
@@ -128,7 +131,15 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			}
 			ChannelFuture cf = channel.writeAndFlush(msg);
 			cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+			channel.attr(LAST_FUTURE).set(cf);
 		}
+	}
+
+	private ChannelFuture getLastFuture(Channel ch) {
+		ChannelFuture cf = ch.attr(LAST_FUTURE).get();
+		if (cf == null)
+			cf = ch.newSucceededFuture();
+		return cf;
 	}
 
 	@Override
@@ -137,15 +148,19 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		if (evt instanceof ChannelInputShutdownEvent) {
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (other != null) {
-				other.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ShutdownOutput.INSTANCE);
+				getLastFuture(other).addListener(ShutdownOutput.INSTANCE);
 			}
 		} else if (evt instanceof ChannelOutputShutdownEvent) {
+			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+			if (other != null) {
+				getLastFuture(other).addListener(ShutdownInput.INSTANCE);
+			}
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {
 			ctx.channel().config().setAutoRead(false);
 
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (other != null) {
-				other.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+				getLastFuture(other).addListener(ChannelFutureListener.CLOSE);
 			}
 		} else if (evt instanceof ConnectRequest && !added) {
 			added = true;
@@ -164,7 +179,39 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			Channel ch = future.channel();
 			if (future.isSuccess()) {
 				if (ch instanceof SocketChannel) {
-					((SocketChannel) ch).shutdownOutput();
+					SocketChannel sch = (SocketChannel) ch;
+					if (!sch.isOutputShutdown()) {
+						sch.shutdownOutput();
+					} else {
+						sch.close();
+					}
+				} else if (ch.isOpen()) {
+					ch.close();
+				}
+			} else {
+				if (ch.isOpen())
+					ch.close();
+			}
+		}
+
+	}
+
+	private static class ShutdownInput implements ChannelFutureListener {
+		static ShutdownInput INSTANCE = new ShutdownInput();
+
+		private ShutdownInput() {}
+
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			Channel ch = future.channel();
+			if (future.isSuccess()) {
+				if (ch instanceof SocketChannel) {
+					SocketChannel sch = (SocketChannel) ch;
+					if (!sch.isInputShutdown()) {
+						sch.shutdownInput();
+					} else {
+						sch.close();
+					}
 				} else if (ch.isOpen()) {
 					ch.close();
 				}
