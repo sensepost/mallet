@@ -176,10 +176,7 @@ public class Client extends JFrame {
 			s.shutdownOutput();
 
 			StringBuilder builder = new StringBuilder();
-			String line;
-			while ((line = in.readLine()) != null) {
-				builder.append(line);
-			}
+			builder.append(in.readLine());
 			s.close();
 			int quote = builder.lastIndexOf("\"");
 			try {
