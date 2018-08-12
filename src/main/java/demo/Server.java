@@ -26,7 +26,6 @@ public class Server extends JFrame {
 	private JTextField lastField;
 	private JTextField yearField;
 	private JLabel message;
-	private JButton btnSend;
 
 	public Server() {
 		setResizable(false);

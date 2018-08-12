@@ -173,14 +173,11 @@ public class Client extends JFrame {
 			Thread.sleep(100);
 			out.write("}\n");
 			out.flush();
-			s.shutdownOutput();
 
-			StringBuilder builder = new StringBuilder();
-			builder.append(in.readLine());
-			s.close();
-			int quote = builder.lastIndexOf("\"");
+			String line = in.readLine();
+			int quote = line.lastIndexOf("\"");
 			try {
-				int age = Integer.parseInt(builder.substring(builder.lastIndexOf("\"", quote - 1) + 1, quote));
+				int age = Integer.parseInt(line.substring(line.lastIndexOf("\"", quote - 1) + 1, quote));
 				if (age > 100) {
 					return "What?! You're " + age + " years old?!";
 				} else if (age < 50) {
