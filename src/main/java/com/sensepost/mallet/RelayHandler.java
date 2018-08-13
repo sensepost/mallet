@@ -99,20 +99,21 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (other != null && other.isOpen()) {
-			other.close();
-		}
+		closeBoth(ctx.channel());
 		super.channelInactive(ctx);
+	}
+
+	private static void closeBoth(Channel channel) {
+		if (channel.isOpen())
+			channel.close();
+		Channel other = channel.attr(ChannelAttributes.CHANNEL).get();
+		if (other != null && other.isOpen())
+			other.close();
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-		if (other != null && other.isOpen()) {
-			other.close();
-		}
-		ctx.channel().close();
+		closeBoth(ctx.channel());
 	}
 
 	@Override
@@ -160,7 +161,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (other != null) {
-				getLastFuture(other).addListener(ChannelFutureListener.CLOSE);
+				getLastFuture(other).addListener(CloseBoth.INSTANCE);
 			}
 		} else if (evt instanceof ConnectRequest && !added) {
 			added = true;
@@ -219,6 +220,19 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				if (ch.isOpen())
 					ch.close();
 			}
+		}
+
+	}
+
+	private static class CloseBoth implements ChannelFutureListener {
+		static CloseBoth INSTANCE = new CloseBoth();
+
+		private CloseBoth() {}
+
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			Channel ch = future.channel();
+			closeBoth(ch);
 		}
 
 	}
