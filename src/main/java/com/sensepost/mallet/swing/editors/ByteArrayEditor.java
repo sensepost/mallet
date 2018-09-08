@@ -5,7 +5,6 @@ import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 
 import java.awt.BorderLayout;
-import java.awt.Event;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.ByteArrayOutputStream;
@@ -42,8 +41,8 @@ public class ByteArrayEditor extends JPanel {
 		scrollPane.setViewportView(table);
 		
         InputMap im = getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, Event.CTRL_MASK), "Save");
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, Event.CTRL_MASK), "Open");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK), "Save");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_DOWN_MASK), "Open");
         getActionMap().put("Save", new AbstractAction() {
 			public void actionPerformed(ActionEvent evt) {
                 JFileChooser jfc = new JFileChooser();
@@ -202,7 +201,7 @@ public class ByteArrayEditor extends JPanel {
 			if (aValue instanceof String) {
 				try {
 					String s = (String) aValue;
-					data[position] = new Integer(Integer.parseInt(s.trim(), 16)).byteValue();
+					data[position] = (byte) Integer.parseInt(s.trim(), 16);
 					fireTableCellUpdated(rowIndex, columns + 1);
 				} catch (NumberFormatException nfe) {
 					System.out.println("Number format error : " + nfe);
