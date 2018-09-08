@@ -207,7 +207,7 @@ public class HttpMessageEditor extends JPanel {
 		}
 		if (message instanceof HttpResponse) {
 			HttpResponse response = (HttpResponse) message;
-			if (!statusField.getText().equals(response.status().codeAsText())
+			if (!statusField.getText().equals(response.status().codeAsText().toString())
 					|| !messageField.getText().equals(
 							response.status().reasonPhrase())) {
 				try {
