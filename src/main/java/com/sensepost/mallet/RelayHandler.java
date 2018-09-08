@@ -37,9 +37,9 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	private InterceptController controller;
 
 	private Queue<Object> queue = new LinkedList<>();
-	
+
 	private ChannelFuture connectFuture = null;
-	
+
 	public RelayHandler(InterceptController controller) {
 		this.controller = controller;
 	}
@@ -60,7 +60,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
-				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText());
+				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText(), ch.localAddress(),
+						ch.remoteAddress());
 
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
@@ -72,17 +73,18 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		};
 
 		try {
-			Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-					.option(ChannelOption.SO_KEEPALIVE, true).option(ChannelOption.ALLOW_HALF_CLOSURE, true);
+			Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class)
+					.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000).option(ChannelOption.SO_KEEPALIVE, true)
+					.option(ChannelOption.ALLOW_HALF_CLOSURE, true);
 
 			connectFuture = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
 			connectFuture.addListener(new ConnectRequestPromiseExecutor(target.getConnectPromise()));
 			connectFuture.addListener(new ChannelFutureListener() {
-				
+
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
 					if (future.isSuccess()) {
-						while(!queue.isEmpty()) {
+						while (!queue.isEmpty()) {
 							ChannelFuture cf = future.channel().writeAndFlush(queue.remove());
 							cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 							future.channel().attr(LAST_FUTURE).set(cf);
@@ -95,6 +97,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			logger.error("Failed connecting to " + ctx.channel().remoteAddress() + " -> " + target, e);
 			ctx.close();
 		}
+	}
+
+	@Override
+	public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+		System.out.println(ctx.channel().id() + " writable " + ctx.channel().isWritable());
 	}
 
 	@Override
@@ -173,7 +180,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	private static class ShutdownOutput implements ChannelFutureListener {
 		static ShutdownOutput INSTANCE = new ShutdownOutput();
 
-		private ShutdownOutput() {}
+		private ShutdownOutput() {
+		}
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
@@ -200,7 +208,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	private static class ShutdownInput implements ChannelFutureListener {
 		static ShutdownInput INSTANCE = new ShutdownInput();
 
-		private ShutdownInput() {}
+		private ShutdownInput() {
+		}
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
@@ -227,7 +236,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	private static class CloseBoth implements ChannelFutureListener {
 		static CloseBoth INSTANCE = new CloseBoth();
 
-		private CloseBoth() {}
+		private CloseBoth() {
+		}
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
@@ -239,9 +249,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private class ConnectRequestPromiseExecutor implements ChannelFutureListener {
 		private Promise<Channel> promise;
+
 		public ConnectRequestPromiseExecutor(Promise<Channel> promise) {
 			this.promise = promise;
 		}
+
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			if (!promise.isDone()) {

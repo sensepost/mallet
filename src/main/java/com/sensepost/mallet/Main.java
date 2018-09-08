@@ -134,9 +134,10 @@ public class Main {
 		X509KeyManager clientKeyManager = new KeyStoreX509KeyManager(ks, PASSWORD);
 		scriptContext.put("SSLClientKeyManager", clientKeyManager);
 
-		Graph graph = new Graph(graphComponent, scriptContext);
 		InterceptFrame ui = new InterceptFrame(graphComponent);
+		InterceptController ic = ui.getInterceptController();
 		ui.setServerKeyStore(ks);
+		Graph graph = new Graph(graphComponent, ic, scriptContext);
 
 		// set up LoggingHandler logging
 		Handler handler = ui.getLogHandler();
@@ -144,7 +145,6 @@ public class Main {
 		logger.setLevel(Level.FINEST);
 		logger.addHandler(handler);
 
-		InterceptController ic = ui.getInterceptController();
 		scriptContext.put("InterceptController", ic);
 //		ObjectMapper om = new ObjectMapper();
 //		MessageDAO dao = new MessageDAO(null, om);

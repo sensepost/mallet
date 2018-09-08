@@ -1,23 +1,5 @@
 package com.sensepost.mallet.graph;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.AbstractChannel;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.ServerChannel;
-import io.netty.channel.nio.AbstractNioChannel;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.proxy.HttpProxyHandler;
-import io.netty.handler.proxy.Socks5ProxyHandler;
-
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Method;
@@ -60,7 +42,26 @@ import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
+import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.AbstractChannel;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.ServerChannel;
+import io.netty.channel.nio.AbstractNioChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.proxy.HttpProxyHandler;
+import io.netty.handler.proxy.Socks5ProxyHandler;
 
 public class Graph implements GraphLookup {
 
@@ -77,14 +78,16 @@ public class Graph implements GraphLookup {
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	private Bindings scriptContext;
+	private InterceptController controller;
 
 	private InstanceFactory instanceFactory;
 	
-	public Graph(final mxGraphComponent graphComponent, Bindings scriptContext) {
+	public Graph(final mxGraphComponent graphComponent, InterceptController controller, Bindings scriptContext) {
 		this.instanceFactory = new InstanceFactory(scriptContext);
 		this.graphComponent = graphComponent;
 		this.graph = graphComponent.getGraph();
 		this.scriptContext = scriptContext;
+		this.controller = controller;
 		
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 			@Override
@@ -607,6 +610,8 @@ public class Graph implements GraphLookup {
 				return;
 			}
 
+			if (controller != null)
+				controller.addChannel(ch.id().asLongText(), ch.localAddress(), ch.remoteAddress());
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
 			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
