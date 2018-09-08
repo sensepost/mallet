@@ -2,10 +2,10 @@ package com.sensepost.mallet.graph;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Arrays;
 
 import javax.script.Bindings;
@@ -51,14 +51,15 @@ public class InstanceFactory {
 			return description;
 		} else if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
 			return Integer.parseInt(description);
-		} else if (type.equals(InetSocketAddress.class)) {
+		} else if (type.equals(InetSocketAddress.class) || type.equals(SocketAddress.class)) {
 			int c = description.indexOf(':');
 			if (c > 0) {
 				String host = description.substring(0, c);
 				try {
 					int port = Integer.parseInt(description.substring(c + 1));
-					if (port > 0 && port < 65536)
-						return InetSocketAddress.createUnresolved(host, port);
+					if (port > 0 && port < 65536) {
+						return new InetSocketAddress(host, port);
+					}
 				} catch (NumberFormatException e) {
 				}
 			}
