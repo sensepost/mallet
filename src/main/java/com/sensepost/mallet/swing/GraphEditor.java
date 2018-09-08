@@ -109,6 +109,9 @@ public class GraphEditor extends BasicGraphEditor {
 
 		Element targetHandler = createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.graph.TargetSpecificChannelHandler");
 		
+		Element socks5Handler = createElement(xmlDocument, "ChannelHandler", "io.netty.handler.proxy.Socks5ProxyHandler", 
+				"0.0.0.0:1080");
+
 		Element sink = xmlDocument.createElement("Sink");
 
 		// Creates the shapes palette
@@ -148,6 +151,9 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("TargetSpecific",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
 				"shape=hexagon", 160, 120, targetHandler);
+		basicPalette.addTemplate("Socks5 Client",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				"rounded=1", 160, 120, socks5Handler);
 		basicPalette.addTemplate("Sink",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/cylinder.png")),
 				"shape=cylinder", 120, 160, sink);
@@ -199,11 +205,11 @@ public class GraphEditor extends BasicGraphEditor {
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.string.StringEncoder", "io.netty.util.CharsetUtil.UTF_8"));
 		
 
-		protocolPalette.addTemplate("JsonFrameDecoder",
+		protocolPalette.addTemplate("JsonObjectDecoder",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
 		
-		protocolPalette.addTemplate("JsonObjectCodec",
+		protocolPalette.addTemplate("JsonCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", "import com.fasterxml.jackson.databind.*;\nimport com.fasterxml.jackson.databind.node.*;\n\nimport io.netty.buffer.*;\nimport io.netty.channel.*;\nimport io.netty.handler.codec.*;\n\nimport java.util.List;\n\nreturn new ByteToMessageCodec<JsonNode>(JsonNode.class) {\n    private final ObjectMapper objectMapper = new ObjectMapper();\n\n    protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {\n        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);\n        objectMapper.writeValue(byteBufOutputStream, msg);\n    }\n\n    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<JsonNode> out) throws Exception {\n        ByteBufInputStream byteBufInputStream = new ByteBufInputStream(buf);\n        out.add(objectMapper.readTree(byteBufInputStream));\n    }\n\n};\n\n", "groovy"));
 		
