@@ -177,6 +177,9 @@ public class GraphEditor extends BasicGraphEditor {
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslClientHandler"));
 
+		protocolPalette.addTemplate("HTTP Sniff",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+				"shape=hexagon", 160, 120, createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.handlers.http.HttpSniffHandler"));
 		protocolPalette.addTemplate("HttpServerCodec",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));
