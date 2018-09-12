@@ -157,10 +157,15 @@ public class GraphEditor extends BasicGraphEditor {
 		basicPalette.addTemplate("Sink",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/cylinder.png")),
 				"shape=cylinder", 120, 160, sink);
-		
+
+		protocolPalette.addTemplate("Ssl Sniff",
+				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+				"shape=hexagon", 160, 120, createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.ssl.SslSniffHandler"));
+
 		protocolPalette.addTemplate("SSL Server",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler", "{SSLServerCertificateMap}"));
+		
 		protocolPalette.addTemplate("SSL Client",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslClientHandler"));
