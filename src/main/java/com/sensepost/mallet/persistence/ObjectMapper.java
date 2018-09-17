@@ -18,6 +18,7 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -104,12 +105,24 @@ public class ObjectMapper {
 		EmbeddedChannel ec = new EmbeddedChannel();
 		for (Class<? extends ChannelHandler> c : handlers) {
 			try {
-				ChannelHandler h = c.newInstance();
+				ChannelHandler h = c.getConstructor(new Class[0]).newInstance();
 				ec.pipeline().addLast(h);
 			} catch (InstantiationException | IllegalAccessException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return null;
+			} catch (IllegalArgumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoSuchMethodException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (SecurityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		return ec;
