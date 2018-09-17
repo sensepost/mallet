@@ -65,7 +65,7 @@ public class GraphEditor extends BasicGraphEditor {
 		if (params != null) {
 			for (int i=0; i<params.length; i++) {
 				e.appendChild(doc.createElement("Parameter")).
-					appendChild(doc.createCDATASection(params[i]));
+					appendChild(doc.createTextNode(params[i]));
 			}
 		}
 		return e;

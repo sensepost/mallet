@@ -312,7 +312,7 @@ public class GraphNodeEditor extends JPanel implements TableModelListener {
 			node.removeChild(nl.item(i));
 		Document doc = node.getOwnerDocument();
 		for (int i = 0; i < args.length; i++)
-			node.appendChild(doc.createElement("Parameter")).appendChild(doc.createCDATASection(args[i]));
+			node.appendChild(doc.createElement("Parameter")).appendChild(doc.createTextNode(args[i]));
 		return node;
 	}
 
