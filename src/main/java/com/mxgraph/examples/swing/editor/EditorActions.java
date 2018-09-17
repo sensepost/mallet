@@ -377,8 +377,7 @@ public class EditorActions {
 					String ext = filename
 							.substring(filename.lastIndexOf('.') + 1);
 
-					if (ext.equalsIgnoreCase("mxe")
-							|| ext.equalsIgnoreCase("xml")) {
+					if (ext.equalsIgnoreCase("mxe")) {
 						mxCodec codec = new mxCodec();
 
 						FileOutputStream fos = new FileOutputStream(filename);
