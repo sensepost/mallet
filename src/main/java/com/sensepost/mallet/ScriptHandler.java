@@ -51,6 +51,8 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 
 				String extension = fileName.substring(fileName.lastIndexOf('.'));
 				engine = sem.getEngineByExtension(extension);
+				if (engine == null)
+					throw new RuntimeException("No engine for extension: '" + extension +"'");
 				scriptResult = engine.eval(new InputStreamReader(is));
 			} catch (IOException ioe) {
 				throw new ScriptException(ioe);
@@ -63,6 +65,8 @@ public class ScriptHandler extends ChannelInitializer<Channel> {
 			}
 		} else if (script != null && language != null) {
 			engine = sem.getEngineByName(language);
+			if (engine == null)
+				throw new RuntimeException("No engine for language: '" + language +"'");
 			try {
 				scriptResult = engine.eval(script);
 			} catch (Exception e) {
