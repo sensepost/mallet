@@ -1,17 +1,17 @@
 package com.sensepost.mallet;
 
+import java.net.SocketAddress;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.concurrent.Promise;
 
-import java.net.InetSocketAddress;
-
 public class FixedTargetHandler extends ChannelInboundHandlerAdapter {
 
-	private InetSocketAddress target;
+	private SocketAddress target;
 	
-	public FixedTargetHandler(InetSocketAddress target) {
+	public FixedTargetHandler(SocketAddress target) {
 		this.target = target;
 	}
 	
