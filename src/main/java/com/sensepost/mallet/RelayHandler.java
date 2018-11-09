@@ -3,6 +3,7 @@ package com.sensepost.mallet;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
 import com.sensepost.mallet.graph.GraphLookup;
 
 import io.netty.bootstrap.Bootstrap;
@@ -120,6 +121,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		ExceptionCaughtEvent evt = new ExceptionCaughtEvent(ctx, cause);
+		controller.addChannelEvent(evt);
 		closeBoth(ctx.channel());
 	}
 
@@ -135,7 +138,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		} else {
 			Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
 			if (channel == null) {
-				throw new NullPointerException("Channel is null!");
+				throw new NullPointerException("No connected channel! Did you forget to use a SocksInitializer or a FixedTargetHandler?");
 			}
 			ChannelFuture cf = channel.writeAndFlush(msg);
 			cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
