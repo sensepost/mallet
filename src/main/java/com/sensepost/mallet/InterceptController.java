@@ -54,6 +54,8 @@ public interface InterceptController {
 		}
 
 		public ChannelEvent(ChannelHandlerContext ctx) {
+			if (ctx == null)
+				throw new NullPointerException("ctx");
 			this.ctx = ctx;
 			connection = ctx.channel().id().asLongText();
 			direction = ctx.channel().parent() == null ? Direction.Server_Client
