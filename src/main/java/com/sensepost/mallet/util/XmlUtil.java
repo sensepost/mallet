@@ -23,17 +23,15 @@ import org.xml.sax.SAXException;
 public class XmlUtil {
 
 	public static String elementAsString(Object o) {
-		if (o instanceof Element) {
-			Element e = (Element) o;
+		return elementAsString(o, 0);
+	}
+
+	public static String elementAsString(Object o, int indent) {
+		if (o instanceof Node) {
+			Node n = (Node) o;
 			try {
-				TransformerFactory transFactory = TransformerFactory
-						.newInstance();
-				Transformer transformer = transFactory.newTransformer();
 				StringWriter buffer = new StringWriter();
-				transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION,
-						"yes");
-				transformer.transform(new DOMSource(e),
-						new StreamResult(buffer));
+				pretty(n, new StreamResult(buffer), indent);
 				return buffer.toString();
 			} catch (TransformerException e1) {
 				e1.printStackTrace();
@@ -61,7 +59,7 @@ public class XmlUtil {
 		return docBuilder.parse(uri);
 	}
 	
-	public static void pretty(Node node, Result result, int indent) throws Exception {
+	public static void pretty(Node node, Result result, int indent) throws TransformerException {
 	    TransformerFactory transformerFactory = TransformerFactory.newInstance();
 	    Transformer transformer = transformerFactory.newTransformer();
 	    transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
