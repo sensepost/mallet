@@ -42,7 +42,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private boolean intercept = false;
 	private MessageDAO dao = null;
 
-	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class);
+	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class).node(ConnectionPanel.class.getSimpleName());
 
 	public ConnectionPanel() {
 		setLayout(new BorderLayout(0, 0));

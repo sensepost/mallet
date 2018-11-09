@@ -51,7 +51,7 @@ public class ConnectionDataPanel extends JPanel {
 	private ChannelMessageEvent editing = null;
 	private JTable table;
 	private Preferences prefs = Preferences
-			.userNodeForPackage(ConnectionDataPanel.class);
+			.userNodeForPackage(ConnectionDataPanel.class).node(ConnectionDataPanel.class.getSimpleName());
 
 	public ConnectionDataPanel() {
 		setLayout(new BorderLayout(0, 0));
