@@ -8,7 +8,8 @@
       </mxCell>
     </Listener>
     <ChannelHandler classname="com.sensepost.mallet.ssl.Http2SslServerHandler" id="5">
-            
+                  
+      
       <Parameter>{SSLServerCertificateMap}</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="150.0" x="93.0" y="342.359375"/>
@@ -16,7 +17,7 @@
     </ChannelHandler>
     <Sink id="11">
       <mxCell parent="1" style="shape=cylinder" vertex="1">
-        <mxGeometry as="geometry" height="20.0" width="30.0" x="59.0" y="942.140625"/>
+        <mxGeometry as="geometry" height="20.0" width="30.0" x="59.0" y="1027.109375"/>
       </mxCell>
     </Sink>
     <mxCell edge="1" id="14" parent="1" source="15" style="outgoingEdge" target="11" value="">
@@ -24,14 +25,14 @@
         <mxPoint as="sourcePoint" x="80.0" y="190.0"/>
         <mxPoint as="targetPoint" x="230.0" y="10.0"/>
         <Array as="points">
-          <mxPoint x="74.0" y="896.65625"/>
-          <mxPoint x="74.0" y="922.65625"/>
+          <mxPoint x="74.0" y="981.625"/>
+          <mxPoint x="74.0" y="1007.625"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.ssl.Http2SslClientHandler" id="15">
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="140.0" x="4.0" y="852.171875"/>
+        <mxGeometry as="geometry" height="30.0" width="140.0" x="4.0" y="937.140625"/>
       </mxCell>
     </ChannelHandler>
     <ChannelHandler classname="com.sensepost.mallet.handlers.http2.Http2ToHttpServerInitializer" id="23">
@@ -41,7 +42,7 @@
     </ChannelHandler>
     <ChannelHandler classname="com.sensepost.mallet.handlers.http2.HttpToHttp2ClientInitializer" id="26">
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="170.0" x="-9.0" y="767.203125"/>
+        <mxGeometry as="geometry" height="30.0" width="170.0" x="-10.0" y="852.171875"/>
       </mxCell>
     </ChannelHandler>
     <mxCell edge="1" id="28" parent="1" source="26" style="outgoingEdge" target="15" value="">
@@ -49,8 +50,8 @@
         <mxPoint as="sourcePoint" x="80.0" y="440.0"/>
         <mxPoint as="targetPoint" x="260.0" y="20.0"/>
         <Array as="points">
-          <mxPoint x="76.0" y="811.6875"/>
-          <mxPoint x="74.0" y="837.6875"/>
+          <mxPoint x="75.0" y="896.65625"/>
+          <mxPoint x="74.0" y="922.65625"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -78,7 +79,8 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.logging.LoggingHandler" id="32">
-            
+                  
+      
       <Parameter>io.netty.handler.logging.LogLevel.INFO</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="106.0" y="87.453125"/>
@@ -120,7 +122,8 @@
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="37">
-            
+                  
+      
       <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="35.0" y="682.234375"/>
@@ -131,18 +134,18 @@
         <mxPoint as="sourcePoint" x="90.0" y="440.0"/>
         <mxPoint as="targetPoint" x="520.0" y="10.0"/>
         <Array as="points">
-          <mxPoint x="84.0" y="641.75"/>
+          <mxPoint x="85.0" y="641.75"/>
           <mxPoint x="80.0" y="667.75"/>
         </Array>
       </mxGeometry>
     </mxCell>
-    <mxCell edge="1" id="45" parent="1" source="37" style="outgoingEdge" target="26" value="">
+    <mxCell edge="1" id="45" parent="1" source="66" style="outgoingEdge" target="26" value="">
       <mxGeometry as="geometry" relative="1">
         <mxPoint as="sourcePoint" x="90.0" y="520.0"/>
         <mxPoint as="targetPoint" x="320.0" y="10.0"/>
         <Array as="points">
-          <mxPoint x="80.0" y="726.71875"/>
-          <mxPoint x="76.0" y="752.71875"/>
+          <mxPoint x="77.0" y="811.6875"/>
+          <mxPoint x="75.0" y="837.6875"/>
         </Array>
       </mxGeometry>
     </mxCell>
@@ -175,7 +178,8 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="50">
-            
+                  
+      
       <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="188.0" y="597.265625"/>
@@ -192,38 +196,40 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="52">
-            
+                  
+      
       <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="140.0" x="177.0" y="852.171875"/>
+        <mxGeometry as="geometry" height="30.0" width="140.0" x="177.0" y="937.140625"/>
       </mxCell>
     </ChannelHandler>
-    <mxCell edge="1" id="53" parent="1" source="60" style="outgoingEdge" target="52" value="">
+    <mxCell edge="1" id="53" parent="1" source="68" style="outgoingEdge" target="52" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
-          <mxPoint x="249.0" y="811.6875"/>
-          <mxPoint x="247.0" y="837.6875"/>
+          <mxPoint x="248.0" y="896.65625"/>
+          <mxPoint x="247.0" y="922.65625"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpClientCodec" id="54">
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="187.0" y="937.140625"/>
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="187.0" y="1022.109375"/>
       </mxCell>
     </ChannelHandler>
     <mxCell edge="1" id="55" parent="1" source="52" style="outgoingEdge" target="54" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
-          <mxPoint x="247.0" y="896.65625"/>
-          <mxPoint x="242.0" y="922.65625"/>
+          <mxPoint x="247.0" y="981.625"/>
+          <mxPoint x="242.0" y="1007.625"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="56">
-            
+                  
+      
       <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="29.0" y="597.265625"/>
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="30.0" y="597.265625"/>
       </mxCell>
     </Intercept>
     <mxCell edge="1" id="57" parent="1" source="23" style="incomingEdge" target="56" value="">
@@ -232,12 +238,13 @@
         <mxPoint as="targetPoint" x="84.99999999999999" y="590.0888278825616"/>
         <Array as="points">
           <mxPoint x="90.0" y="556.78125"/>
-          <mxPoint x="84.0" y="582.78125"/>
+          <mxPoint x="85.0" y="582.78125"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="58">
-            
+                  
+      
       <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="198.0" y="682.234375"/>
@@ -254,7 +261,8 @@
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="60">
-            
+                  
+      
       <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="204.0" y="767.203125"/>
@@ -272,20 +280,20 @@
     </mxCell>
     <Sink id="62">
       <mxCell parent="1" style="shape=cylinder" vertex="1">
-        <mxGeometry as="geometry" height="20.0" width="30.0" x="225.0" y="1104.59375"/>
+        <mxGeometry as="geometry" height="20.0" width="30.0" x="225.0" y="1189.5625"/>
       </mxCell>
     </Sink>
     <mxCell edge="1" id="63" parent="1" source="64" style="outgoingEdge" target="62" value="">
       <mxGeometry as="geometry" relative="1">
         <Array as="points">
-          <mxPoint x="240.0" y="1066.59375"/>
-          <mxPoint x="240.0" y="1092.59375"/>
+          <mxPoint x="240.0" y="1151.5625"/>
+          <mxPoint x="240.0" y="1177.5625"/>
         </Array>
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.ssl.SslClientHandler" id="64">
       <mxCell parent="1" style="rounded=1" vertex="1">
-        <mxGeometry as="geometry" height="30.0" width="110.0" x="185.0" y="1022.109375"/>
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="185.0" y="1107.078125"/>
       </mxCell>
     </ChannelHandler>
     <mxCell edge="1" id="65" parent="1" source="54" style="outgoingEdge" target="64" value="">
@@ -293,8 +301,40 @@
         <mxPoint as="sourcePoint" x="255.0" y="977.7480802807468"/>
         <mxPoint as="targetPoint" x="255.0" y="1030.6708451132636"/>
         <Array as="points">
-          <mxPoint x="242.0" y="981.625"/>
-          <mxPoint x="240.0" y="1007.625"/>
+          <mxPoint x="242.0" y="1066.59375"/>
+          <mxPoint x="240.0" y="1092.59375"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <Intercept classname="com.sensepost.mallet.InterceptHandler" id="66">
+      <Parameter>{InterceptController}</Parameter>
+      <mxCell parent="1" style="intercept;shape=doubleRectangle" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="22.0" y="767.203125"/>
+      </mxCell>
+    </Intercept>
+    <mxCell edge="1" id="67" parent="1" source="37" style="outgoingEdge" target="66" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="80.0" y="712.0"/>
+        <mxPoint as="targetPoint" x="76.0" y="767.0"/>
+        <Array as="points">
+          <mxPoint x="80.0" y="726.71875"/>
+          <mxPoint x="77.0" y="752.71875"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <Intercept classname="com.sensepost.mallet.InterceptHandler" id="68">
+      <Parameter>{InterceptController}</Parameter>
+      <mxCell parent="1" style="intercept;shape=doubleRectangle" vertex="1">
+        <mxGeometry as="geometry" height="30.0" width="110.0" x="193.0" y="852.171875"/>
+      </mxCell>
+    </Intercept>
+    <mxCell edge="1" id="69" parent="1" source="60" style="outgoingEdge" target="68" value="">
+      <mxGeometry as="geometry" relative="1">
+        <mxPoint as="sourcePoint" x="273.0" y="797.0"/>
+        <mxPoint as="targetPoint" x="274.0" y="852.0"/>
+        <Array as="points">
+          <mxPoint x="249.0" y="811.6875"/>
+          <mxPoint x="248.0" y="837.6875"/>
         </Array>
       </mxGeometry>
     </mxCell>
