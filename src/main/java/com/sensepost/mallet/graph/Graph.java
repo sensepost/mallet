@@ -143,6 +143,7 @@ public class Graph implements GraphLookup {
 				graphComponent.validateGraph();
 			}
 		});
+		startServers();
 	}
 
 	public mxGraph getGraph() {
