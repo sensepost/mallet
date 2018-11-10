@@ -1,5 +1,16 @@
 package com.sensepost.mallet;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.script.Bindings;
+
+import com.sensepost.mallet.graph.GraphLookup;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.AddressedEnvelope;
 import io.netty.channel.Channel;
@@ -16,15 +27,6 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import com.sensepost.mallet.graph.GraphLookup;
 
 @Sharable
 public class DatagramRelayHandler
@@ -167,8 +169,12 @@ public class DatagramRelayHandler
 			protected void initChannel(Channel ch) throws Exception {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.REMOTE_ADDRESS).set(remote);
-
+				Bindings scriptContext = ctx.channel().attr(ChannelAttributes.SCRIPT_CONTEXT).get();
+				ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 				ch.pipeline().addLast(clientInitializer);
+				
+				InterceptController ic = (InterceptController) scriptContext.get("InterceptController");
+				ic.addChannel(ch.id().asLongText(), ch.localAddress(), ch.remoteAddress());
 			}
 		};
 
