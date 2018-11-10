@@ -69,6 +69,7 @@ return new ByteToMessageCodec<JsonNode>(JsonNode.class) {
 
     protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {
         ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         objectMapper.writeValue(byteBufOutputStream, msg);
     }
 

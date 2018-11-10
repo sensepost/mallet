@@ -15,6 +15,8 @@ import java.net.Proxy;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.JButton;
@@ -107,6 +109,16 @@ public class Client extends JFrame {
 		btnSend = new JButton("Send");
 		btnSend.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				String year = yearField.getText();
+				try {
+					if (Integer.parseInt(year) < Calendar.getInstance().get(Calendar.YEAR) - 99) {
+						message.setText("Invalid year!");
+						return;
+					}
+				} catch (Exception ex) {
+					message.setText(ex.getMessage());
+					return;
+				}
 				btnSend.setEnabled(false);
 				new SwingWorker<String, Object>() {
 
@@ -178,10 +190,10 @@ public class Client extends JFrame {
 			int quote = line.lastIndexOf("\"");
 			try {
 				int age = Integer.parseInt(line.substring(line.lastIndexOf("\"", quote - 1) + 1, quote));
-				if (age > 100) {
-					return "What?! You're " + age + " years old?!";
-				} else if (age < 50) {
+				if (age < 50) {
 					return "You're " + age + " years old";
+				} else if (age > 100) {
+					return "What?! You're " + age + " years old?!";
 				} else {
 					return "Damn! You're " + age + " years old";
 				}

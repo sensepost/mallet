@@ -119,10 +119,46 @@ public class Server extends JFrame {
 			bytesOfMessage = (first + last + year).getBytes("UTF-8");
 			MessageDigest md = MessageDigest.getInstance("MD5");
 			byte[] thedigest = md.digest(bytesOfMessage);
-			return (checksum.equals(toHex(thedigest))) ? "Checksum - Valid" : "Checksum - Invalid"; 
+			return (checksum.equals(toHex(thedigest))) ? "Checksum - Valid" : "Checksum - Invalid";
 		} catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
 			return "Checksum - Invalid";
 		}
+	}
+
+	private static boolean isCompleteJson(StringBuffer buff) {
+		int opened = 0, closed = 0;
+		boolean quotedString = false;
+		boolean escaped = false;
+		for (int i = 0; i < buff.length(); i++) {
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (quotedString) {
+				if (buff.charAt(i) == '"') {
+					quotedString = false;
+				}
+				continue;
+			}
+			if (buff.charAt(i) == '{')
+				opened++;
+			if (buff.charAt(i) == '}')
+				closed++;
+			if (buff.charAt(i) == '\\')
+				escaped = true;
+			if (buff.charAt(i) == '"')
+				quotedString = true;
+		}
+		return opened > 0 && opened - closed == 0;
+	}
+
+	private static String readLine(StringBuffer buff) {
+		int cr = buff.indexOf("\n");
+		if (cr < 0)
+			cr = buff.length() - 1;
+		String ret = buff.substring(0, cr + 1);
+		buff.delete(0, cr + 1);
+		return ret;
 	}
 
 	public static void main(String[] args) {
@@ -141,20 +177,29 @@ public class Server extends JFrame {
 				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
 				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
 
+				char[] chars = new char[1024];
+				int got;
+				StringBuffer buff = new StringBuffer();
+				while ((got = in.read(chars)) > 0) {
+					buff.append(chars, 0, got);
+					if (isCompleteJson(buff))
+						break;
+				}
 				try {
 					String first, last, year, checksum;
-					in.readLine();
-					year = extract(in.readLine());
-					checksum = extract(in.readLine());
-					first = extract(in.readLine());
-					last = extract(in.readLine());
-					in.readLine();
+					readLine(buff);
+					year = extract(readLine(buff));
+					checksum = extract(readLine(buff));
+					first = extract(readLine(buff));
+					last = extract(readLine(buff));
+					readLine(buff);
 					server.firstField.setText(first);
 					server.lastField.setText(last);
 					server.yearField.setText(year);
 					server.message.setText(message(first, last, year, checksum));
-	
-					out.write("{\"age\":\"" + (Calendar.getInstance().get(Calendar.YEAR)-Integer.parseInt(year)) + "\"}\n");
+
+					out.write("{\"age\":\"" + (Calendar.getInstance().get(Calendar.YEAR) - Integer.parseInt(year))
+							+ "\"}\n");
 					out.flush();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -168,7 +213,8 @@ public class Server extends JFrame {
 			if (ss != null) {
 				try {
 					ss.close();
-				} catch (IOException e) {}
+				} catch (IOException e) {
+				}
 			}
 		}
 	}

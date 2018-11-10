@@ -55,7 +55,8 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.ScriptHandler" id="13">
-      <Parameter><![CDATA[import com.fasterxml.jackson.databind.*;
+      
+      <Parameter>import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 
 import io.netty.buffer.*;
@@ -64,23 +65,24 @@ import io.netty.handler.codec.*;
 
 import java.util.List;
 
-return new ByteToMessageCodec<JsonNode>(JsonNode.class) {
+return new ByteToMessageCodec&lt;JsonNode&gt;(JsonNode.class) {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {
         ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         objectMapper.writeValue(byteBufOutputStream, msg);
     }
 
-    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<JsonNode> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List&lt;JsonNode&gt; out) throws Exception {
         ByteBufInputStream byteBufInputStream = new ByteBufInputStream(buf);
         out.add(objectMapper.readTree(byteBufInputStream));
     }
 
 };
 
-]]></Parameter>
-      <Parameter><![CDATA[groovy]]></Parameter>
+</Parameter>
+      <Parameter>groovy</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="597.265625"/>
       </mxCell>
