@@ -8,22 +8,36 @@ import io.netty.channel.ChannelPromise;
 public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 
 	// NB match and replace MUST be the same length!
-	private byte[] match = "These bytes".getBytes(), replace = "Those bytes".getBytes();
+	private byte[] match, replace;
 
-	private boolean modifyRead = false, modifyWrite = false;
+	private boolean modifyRead, modifyWrite;
 
-	public SimpleBinaryModificationHandler() {}
-	
 	public SimpleBinaryModificationHandler(String match, String replace) {
-		this.match = match.getBytes();
-		this.replace = replace.getBytes();
+		this(match, replace, true, false);
 	}
-	
+
+	public SimpleBinaryModificationHandler(String match, String replace, boolean matchOnRead, boolean matchOnWrite) {
+		this(match == null ? null : match.getBytes(), replace == null ? null : replace.getBytes(), matchOnRead, matchOnWrite);
+	}
+
+	public SimpleBinaryModificationHandler(byte[] match, byte[] replace, boolean matchOnRead, boolean matchOnWrite) {
+		if (match == null)
+			throw new NullPointerException("match");
+		if (replace == null)
+			throw new NullPointerException("replace");
+		if (match.length != replace.length)
+			throw new IllegalArgumentException("'match' and 'replace' must be the same length: " + match.length + " != " + replace.length);
+		this.match = match;
+		this.replace = replace;
+		this.modifyRead = matchOnRead;
+		this.modifyWrite = matchOnWrite;
+	}
+
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {
 		if (modifyWrite && msg instanceof ByteBuf) {
-			findAndReplace((ByteBuf)msg, match, replace);
+			findAndReplace(ctx, (ByteBuf)msg, match, replace);
 		}
 		super.write(ctx, msg, promise);
 	}
@@ -32,12 +46,12 @@ public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
 		if (modifyRead && msg instanceof ByteBuf) {
-			findAndReplace((ByteBuf)msg, match, replace);
+			findAndReplace(ctx, (ByteBuf)msg, match, replace);
 		}
 		super.channelRead(ctx, msg);
 	}
 
-	void findAndReplace(ByteBuf bb, byte[] match, byte[] replace) {
+	void findAndReplace(ChannelHandlerContext ctx, ByteBuf bb, byte[] match, byte[] replace) {
 		int start = bb.readerIndex();
 		int end = bb.writerIndex();
 		int index;
@@ -47,6 +61,10 @@ public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 					start++;
 					break;
 				} else if (i == match.length - 1) {
+					if (ctx != null)
+						ctx.fireUserEventTriggered("Replaced '" + new String(match) + "' with '" + new String(replace) + "'");
+					else
+						System.err.println("Replaced '" + new String(match) + "' with '" + new String(replace) + "'");
 					bb.setBytes(index, replace, 0, replace.length);
 					start += replace.length;
 				}

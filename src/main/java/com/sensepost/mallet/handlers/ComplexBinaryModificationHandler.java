@@ -10,27 +10,42 @@ import java.util.LinkedList;
 public class ComplexBinaryModificationHandler extends ChannelDuplexHandler {
 
 	// NB match and replace MUST be the same length!
-	private byte[] match = "These bytes".getBytes(), replace = "Those bytes"
-			.getBytes();
+	private byte[] match, replace;
 
-	private boolean modifyRead = true, modifyWrite = true;
-
-	private Status readStatus = new Status(match), writeStatus = new Status(
-			match);
-
-	public ComplexBinaryModificationHandler() {}
+	private Status readStatus, writeStatus;
 	
+	private boolean modifyRead, modifyWrite;
+
 	public ComplexBinaryModificationHandler(String match, String replace) {
-		this.match = match.getBytes();
-		this.replace = match.getBytes();
+		this(match, replace, true, false);
 	}
-	
+
+	public ComplexBinaryModificationHandler(String match, String replace, boolean matchOnRead, boolean matchOnWrite) {
+		this(match == null ? null : match.getBytes(), replace == null ? null : replace.getBytes(), matchOnRead, matchOnWrite);
+	}
+
+	public ComplexBinaryModificationHandler(byte[] match, byte[] replace, boolean matchOnRead, boolean matchOnWrite) {
+		if (match == null)
+			throw new NullPointerException("match");
+		if (replace == null)
+			throw new NullPointerException("replace");
+		if (match.length != replace.length)
+			throw new IllegalArgumentException("'match' and 'replace' must be the same length: " + match.length + " != " + replace.length);
+		this.match = match;
+		this.replace = replace;
+		this.modifyRead = matchOnRead;
+		this.modifyWrite = matchOnWrite;
+		this.readStatus = new Status(match);
+		this.writeStatus = new Status(match);
+	}
+
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {
 		if (modifyWrite && msg instanceof ByteBuf) {
 			writeStatus.bufs.add(new BufAndPromise((ByteBuf) msg, promise));
 			while (find(writeStatus)) {
+				ctx.fireUserEventTriggered("Replaced '" + match + "' with '" + replace + "'");
 				replace(writeStatus, replace);
 			}
 			while (writeStatus.completeBufs > 0) {
@@ -48,6 +63,7 @@ public class ComplexBinaryModificationHandler extends ChannelDuplexHandler {
 		if (modifyRead && msg instanceof ByteBuf) {
 			readStatus.bufs.add(new BufAndPromise((ByteBuf) msg, null));
 			while (find(readStatus)) {
+				ctx.fireUserEventTriggered("Replaced '" + match + "' with '" + replace + "'");
 				replace(readStatus, replace);
 			}
 			while (readStatus.completeBufs > 0) {

@@ -51,6 +51,8 @@ public class InstanceFactory {
 			return description;
 		} else if (type.equals(Integer.class) || type.equals(Integer.TYPE)) {
 			return Integer.parseInt(description);
+		} else if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
+			return Boolean.parseBoolean(description);
 		} else if (type.equals(InetSocketAddress.class) || type.equals(SocketAddress.class)) {
 			int c = description.indexOf(':');
 			if (c > 0) {
