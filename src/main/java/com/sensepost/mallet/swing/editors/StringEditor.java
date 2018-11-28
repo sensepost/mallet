@@ -71,6 +71,7 @@ public class StringEditor extends JPanel {
 			} else {
 				getEditorComponent().textArea.setText("");
 			}
+			getEditorComponent().textArea.setCaretPosition(0);
 			getEditorComponent().textArea.setEditable(editingClass != null && editable);
 		}
 	}
@@ -89,6 +90,7 @@ public class StringEditor extends JPanel {
 			} else {
 				getEditorComponent().textArea.setText(o.toString());
 			}
+			getEditorComponent().textArea.setCaretPosition(0);
 		}
 	}
 }
