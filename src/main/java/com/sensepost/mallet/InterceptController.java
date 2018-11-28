@@ -64,6 +64,10 @@ public interface InterceptController {
 			this.eventTime = System.currentTimeMillis();
 		}
 
+		public ChannelHandlerContext context() {
+			return ctx;
+		}
+
 		public void run() {
 			if (isExecuted())
 				throw new IllegalStateException("Already executed!");

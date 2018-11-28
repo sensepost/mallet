@@ -3,14 +3,16 @@ package com.sensepost.mallet.swing;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.net.SocketAddress;
 import java.sql.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.prefs.Preferences;
 
 import javax.swing.DefaultListModel;
+import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -27,8 +29,12 @@ import javax.swing.table.TableCellRenderer;
 
 import org.jdesktop.swingx.JXTable;
 
+import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.persistence.MessageDAO;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 
 public class ConnectionPanel extends JPanel implements InterceptController {
 
@@ -43,6 +49,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private MessageDAO dao = null;
 
 	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class).node(ConnectionPanel.class.getSimpleName());
+	private JButton btnCloseConnection;
 
 	public ConnectionPanel() {
 		setLayout(new BorderLayout(0, 0));
@@ -50,8 +57,10 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		splitPane.setResizeWeight(0.25);
 		add(splitPane);
 
+		JPanel panel = new JPanel(new java.awt.BorderLayout());
+		splitPane.setLeftComponent(panel);
 		JScrollPane scrollPane = new JScrollPane();
-		splitPane.setLeftComponent(scrollPane);
+		panel.add(scrollPane);
 		SplitPanePersistence spp = new SplitPanePersistence(prefs);
 		spp.apply(splitPane, 200);
 		splitPane.addPropertyChangeListener(spp);
@@ -95,6 +104,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 					synchronized (channelEventMap) {
 						String channelId = listModel.getElementAt(selected);
 						cd = channelEventMap.get(channelId);
+						btnCloseConnection.setEnabled(cd != null && !cd.isClosed());
 					}
 				}
 				cdp.setConnectionData(cd);
@@ -104,6 +114,35 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		table.setAutoCreateRowSorter(true);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		scrollPane.setViewportView(table);
+		
+		btnCloseConnection = new JButton("Close Connection");
+		btnCloseConnection.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				ConnectionData cd = null;
+				int selected = table.getSelectedRow();
+				if (selected != -1) {
+					selected = table.convertRowIndexToModel(selected);
+					synchronized (channelEventMap) {
+						String channelId = listModel.getElementAt(selected);
+						cd = channelEventMap.get(channelId);
+					}
+					if (cd == null)
+						return;
+					int count = cd.getEventCount();
+					ChannelEvent ce = cd.getEvents().getElementAt(count-1);
+					ChannelHandlerContext ctx = ce.context();
+					if (ctx == null)
+						btnCloseConnection.setEnabled(false);
+					Channel ch = ctx.channel();
+					Channel och = ch.attr(ChannelAttributes.CHANNEL).get();
+					if (ch.isOpen())
+						ch.close();
+					if (och != null && och.isOpen())
+						och.close();
+				}
+			}
+		});
+		panel.add(btnCloseConnection, BorderLayout.SOUTH);
 
 		cdp = new ConnectionDataPanel();
 		splitPane.setRightComponent(cdp);
