@@ -136,7 +136,8 @@ public class ConnectionDataPanel extends JPanel {
 									+ " bytes)";
 						else if (o instanceof byte[]) {
 							value += " (" + ((byte[]) o).length + " bytes)";
-						}
+						} else 
+							value += " (" + o.toString() + ")";
 					}
 					ReferenceCountUtil.release(o);
 				} else if (evt instanceof UserEventTriggeredEvent) {
