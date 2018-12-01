@@ -62,7 +62,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			@Override
 			protected void initChannel(SocketChannel ch) throws Exception {
 				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText(), ch.localAddress(),
-						ch.remoteAddress());
+						target.getTarget());
 
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
