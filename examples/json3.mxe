@@ -8,7 +8,7 @@
       </mxCell>
     </Listener>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="5">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="35.0" y="512.296875"/>
       </mxCell>
@@ -40,7 +40,7 @@
       </mxCell>
     </ChannelHandler>
     <ChannelHandler classname="io.netty.handler.codec.string.StringDecoder" id="11">
-      <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
+      <Parameter>io.netty.util.CharsetUtil.UTF_8</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="257.390625"/>
       </mxCell>
@@ -56,7 +56,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.string.StringEncoder" id="13">
-      <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
+      <Parameter>io.netty.util.CharsetUtil.UTF_8</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="342.359375"/>
       </mxCell>
@@ -72,7 +72,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.string.StringDecoder" id="15">
-      <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
+      <Parameter>io.netty.util.CharsetUtil.UTF_8</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="767.203125"/>
       </mxCell>
@@ -88,7 +88,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.string.StringEncoder" id="17">
-      <Parameter><![CDATA[io.netty.util.CharsetUtil.UTF_8]]></Parameter>
+      <Parameter>io.netty.util.CharsetUtil.UTF_8</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="682.234375"/>
       </mxCell>
@@ -119,7 +119,7 @@
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="21">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="427.328125"/>
       </mxCell>
@@ -135,7 +135,7 @@
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="23">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="597.265625"/>
       </mxCell>

@@ -23,16 +23,7 @@
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="5">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="75.0" y="852.171875"/>
       </mxCell>
@@ -83,16 +74,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="13">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[1048576]]>
-                      
-      
-      </Parameter>
+      <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="67.0" y="1022.109375"/>
       </mxCell>
@@ -108,16 +90,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="15">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[1048576]]>
-                      
-      
-      </Parameter>
+      <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="2.0" y="512.296875"/>
       </mxCell>
@@ -128,16 +101,7 @@
       </mxCell>
     </ChannelHandler>
     <ChannelHandler classname="com.sensepost.mallet.ssl.SslServerHandler" id="25">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{SSLServerCertificateMap}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{SSLServerCertificateMap}</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="124.0" y="257.390625"/>
       </mxCell>
@@ -153,16 +117,7 @@
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="28">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="375.0" y="767.203125"/>
       </mxCell>
@@ -198,16 +153,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="33">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[1048576]]>
-                      
-      
-      </Parameter>
+      <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="337.0" y="937.140625"/>
       </mxCell>
@@ -223,16 +169,7 @@
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.codec.http.HttpObjectAggregator" id="35">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[1048576]]>
-                      
-      
-      </Parameter>
+      <Parameter>1048576</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="140.0" x="300.0" y="427.328125"/>
       </mxCell>
@@ -283,16 +220,7 @@
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="48">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="174.0" y="512.296875"/>
       </mxCell>
@@ -351,42 +279,20 @@
       </mxCell>
     </ChannelHandler>
     <ChannelHandler classname="com.sensepost.mallet.ScriptHandler" id="63">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[import io.netty.channel.*;
-
+      <Parameter>import io.netty.channel.*;
 import io.netty.handler.codec.http.websocketx.*;
-
 return new ChannelDuplexHandler() {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg)
         throws Exception {
         if (msg instanceof TextWebSocketFrame) {
             String text = ((TextWebSocketFrame) msg).text();
-            // msg = new TextWebSocketFrame(text.toUpperCase());
+            msg = new TextWebSocketFrame(text.toUpperCase());
         }
         super.channelRead(ctx, msg);
     }
-
-};
-]]>
-                      
-      
-      </Parameter>
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[groovy]]>
-                      
-      
-      </Parameter>
+};</Parameter>
+      <Parameter>groovy</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="44.0" y="682.234375"/>
       </mxCell>
@@ -402,42 +308,21 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.ScriptHandler" id="65">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[import io.netty.channel.*;
-
+      <Parameter>import io.netty.channel.*;
 import io.netty.handler.codec.http.websocketx.*;
-
 return new ChannelDuplexHandler() {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg)
         throws Exception {
         if (msg instanceof TextWebSocketFrame) {
             String text = ((TextWebSocketFrame) msg).text();
-            // msg = new TextWebSocketFrame(text.toUpperCase());
+            msg = new TextWebSocketFrame(text.toUpperCase());
         }
         super.channelRead(ctx, msg);
     }
-
 };
-]]>
-                      
-      
       </Parameter>
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[groovy]]>
-                      
-      
-      </Parameter>
+      <Parameter>groovy</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="380.0" y="597.265625"/>
       </mxCell>
@@ -484,16 +369,7 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.FixedTargetHandler" id="84">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[8.8.8.8:53]]>
-                      
-      
-      </Parameter>
+      <Parameter>8.8.8.8:53</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="130.0" x="676.0" y="87.453125"/>
       </mxCell>
@@ -509,36 +385,9 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="io.netty.handler.timeout.IdleStateHandler" id="88">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[0]]>
-                      
-      
-      </Parameter>
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[0]]>
-                      
-      
-      </Parameter>
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[10]]>
-                      
-      
-      </Parameter>
+      <Parameter>0</Parameter>
+      <Parameter>0</Parameter>
+      <Parameter>10</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="686.0" y="767.203125"/>
       </mxCell>
@@ -554,16 +403,7 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="92">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="55.0" y="767.203125"/>
       </mxCell>
@@ -579,16 +419,7 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="96">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="373.0" y="682.234375"/>
       </mxCell>
@@ -604,46 +435,19 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="101">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="157.0" y="427.328125"/>
       </mxCell>
     </Intercept>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="105">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="686.0" y="342.359375"/>
       </mxCell>
     </Intercept>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="107">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="686.0" y="682.234375"/>
       </mxCell>
@@ -759,9 +563,7 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <ChannelHandler classname="com.sensepost.mallet.ScriptHandler" id="133">
-            
       <Parameter>
-                
         <![CDATA[
 import io.netty.channel.AddressedEnvelope;
 import io.netty.channel.ChannelDuplexHandler;
@@ -773,11 +575,8 @@ import io.netty.handler.codec.dns.DnsQuestion;
 import io.netty.handler.codec.dns.DnsRecord;
 import io.netty.handler.codec.dns.DnsResponse;
 import io.netty.handler.codec.dns.DnsSection;
-
 return new ChannelDuplexHandler() {
-
     private DnsQuestion question = null;
-
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
@@ -800,7 +599,6 @@ return new ChannelDuplexHandler() {
 		}
 		super.channelRead(ctx, msg);
 	}
-
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {
@@ -821,18 +619,9 @@ return new ChannelDuplexHandler() {
 		super.write(ctx, msg, promise);
 	}
 }
-
-
-
 ]]>
-              
       </Parameter>
-            
-      <Parameter>
-                
-        <![CDATA[groovy]]>
-              
-      </Parameter>
+      <Parameter>groovy</Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="686.0" y="427.328125"/>
       </mxCell>
@@ -898,16 +687,7 @@ return new ChannelDuplexHandler() {
       </mxGeometry>
     </mxCell>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="144">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="472.0" y="427.328125"/>
       </mxCell>
@@ -926,16 +706,7 @@ return new ChannelDuplexHandler() {
       </mxCell>
     </Sink>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="147">
-                        
-      
-      
-      <Parameter>
-                        
-        
-        <![CDATA[{InterceptController}]]>
-                      
-      
-      </Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="416.0" y="342.359375"/>
       </mxCell>

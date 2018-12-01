@@ -8,7 +8,7 @@
       </mxCell>
     </Listener>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="5">
-      <Parameter>{InterceptController}</Parameter>
+      <Parameter><![CDATA[{InterceptController}]]></Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="35.0" y="427.328125"/>
       </mxCell>
@@ -69,7 +69,7 @@ return new ByteToMessageCodec<JsonNode>(JsonNode.class) {
 
     protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {
         ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+		objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         objectMapper.writeValue(byteBufOutputStream, msg);
     }
 
@@ -81,7 +81,7 @@ return new ByteToMessageCodec<JsonNode>(JsonNode.class) {
 };
 
 ]]></Parameter>
-      <Parameter>groovy</Parameter>
+      <Parameter><![CDATA[groovy]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="682.234375"/>
       </mxCell>
@@ -122,7 +122,7 @@ return new ByteToMessageCodec<JsonNode>(JsonNode.class) {
 };
 
 ]]></Parameter>
-      <Parameter>groovy</Parameter>
+      <Parameter><![CDATA[groovy]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="257.390625"/>
       </mxCell>
@@ -183,7 +183,7 @@ return new ChannelOutboundHandlerAdapter() {
 };
 
 ]]></Parameter>
-      <Parameter>groovy</Parameter>
+      <Parameter><![CDATA[groovy]]></Parameter>
       <mxCell parent="1" style="rounded=1" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="597.265625"/>
       </mxCell>
@@ -199,7 +199,7 @@ return new ChannelOutboundHandlerAdapter() {
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="19">
-      <Parameter>{InterceptController}</Parameter>
+      <Parameter><![CDATA[{InterceptController}]]></Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="342.359375"/>
       </mxCell>
@@ -215,7 +215,7 @@ return new ChannelOutboundHandlerAdapter() {
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="21">
-      <Parameter>{InterceptController}</Parameter>
+      <Parameter><![CDATA[{InterceptController}]]></Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="512.296875"/>
       </mxCell>

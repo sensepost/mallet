@@ -8,7 +8,7 @@
       </mxCell>
     </Listener>
     <Relay classname="com.sensepost.mallet.RelayHandler" id="5">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="relay" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="90.0" x="35.0" y="342.359375"/>
       </mxCell>
@@ -55,7 +55,7 @@
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="13">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="257.390625"/>
       </mxCell>
@@ -71,7 +71,7 @@
       </mxGeometry>
     </mxCell>
     <Intercept classname="com.sensepost.mallet.InterceptHandler" id="15">
-      <Parameter><![CDATA[{InterceptController}]]></Parameter>
+      <Parameter>{InterceptController}</Parameter>
       <mxCell parent="1" style="intercept" vertex="1">
         <mxGeometry as="geometry" height="30.0" width="110.0" x="25.0" y="427.328125"/>
       </mxCell>
