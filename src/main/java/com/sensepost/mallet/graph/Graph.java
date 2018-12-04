@@ -9,10 +9,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.WeakHashMap;
 
@@ -44,6 +46,7 @@ import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
+import com.sensepost.mallet.channel.ProxyChannelInitializer;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -74,21 +77,21 @@ public class Graph implements GraphLookup {
 	private Map<Class<? extends Channel>, EventLoopGroup> workerGroups = new HashMap<>();
 
 	private Map<Object, Channel> channels = new HashMap<>();
-	
+
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 
 	private Bindings scriptContext;
 	private InterceptController controller;
 
 	private InstanceFactory instanceFactory;
-	
+
 	public Graph(final mxGraphComponent graphComponent, InterceptController controller, Bindings scriptContext) {
 		this.instanceFactory = new InstanceFactory(scriptContext);
 		this.graphComponent = graphComponent;
 		this.graph = graphComponent.getGraph();
 		this.scriptContext = scriptContext;
 		this.controller = controller;
-		
+
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 			@Override
 			public void invoke(Object sender, mxEventObject evt) {
@@ -98,7 +101,7 @@ public class Graph implements GraphLookup {
 					if (change instanceof mxRootChange) {
 						graph.getModel().beginUpdate();
 						try {
-							upgradeGraph(((mxRootChange)change).getRoot());
+							upgradeGraph(((mxRootChange) change).getRoot());
 						} catch (Exception e) {
 							e.printStackTrace();
 						} finally {
@@ -108,6 +111,31 @@ public class Graph implements GraphLookup {
 				}
 				styleEdges(graph);
 			}
+		});
+		graph.addListener(mxEvent.CELLS_REMOVED, new mxIEventListener() {
+
+			@Override
+			public void invoke(Object sender, mxEventObject evt) {
+				Object[] cells = (Object[]) evt.getProperties().get("cells");
+				Set<Object> sources = new HashSet<>();
+				Set<Object> targets = new HashSet<>();
+				Set<Object> deleted = new HashSet<>();
+				for (int i = 0; i < cells.length; i++) {
+					if (!graph.getModel().isVertex(cells[i])) {
+						sources.add(graph.getModel().getTerminal(cells[i], true));
+						targets.add(graph.getModel().getTerminal(cells[i], false));
+					} else {
+						deleted.add(cells[i]);
+					}
+				}
+				sources.removeAll(deleted);
+				targets.removeAll(deleted);
+				if (sources.size() == 1 && targets.size() == 1) {
+					graph.insertEdge(graph.getDefaultParent(), null, null, sources.iterator().next(),
+							targets.iterator().next());
+				}
+			}
+
 		});
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 
@@ -150,14 +178,14 @@ public class Graph implements GraphLookup {
 		return graph;
 	}
 
-	/* 
+	/*
 	 * Upgrades an older graph to the current format
 	 */
 	private void upgradeGraph(Object root) {
 		Object[] cells = graph.getChildCells(root);
 		if (cells == null)
 			return;
-		for (int i=0; i<cells.length; i++) {
+		for (int i = 0; i < cells.length; i++) {
 			Object cell = cells[i];
 			upgradeGraph(cell);
 
@@ -171,8 +199,7 @@ public class Graph implements GraphLookup {
 				} else if ("Intercept".equals(e.getTagName())) {
 					graph.getModel().setStyle(cell, "intercept");
 				} else if ("ChannelHandler".equals(e.getTagName())) {
-					if ("com.sensepost.mallet.graph.TargetSpecificChannelHandler"
-							.equals(e.getAttribute("classname"))) {
+					if ("com.sensepost.mallet.graph.TargetSpecificChannelHandler".equals(e.getAttribute("classname"))) {
 						e.getOwnerDocument().renameNode(e, null, "IndeterminateChannelHandler");
 						graph.getModel().setValue(cell, e);
 					}
@@ -211,11 +238,11 @@ public class Graph implements GraphLookup {
 
 	private void stylePath(mxGraph graph, Object[] cells, String style) {
 		mxIGraphModel model = graph.getModel();
-		for (int i=0; i<cells.length; i++) {
+		for (int i = 0; i < cells.length; i++) {
 			Object cell = cells[i];
 			String thisStyle = style;
 			if (model.isEdge(cell)) {
-				graph.setCellStyle(thisStyle, new Object[] {cell});
+				graph.setCellStyle(thisStyle, new Object[] { cell });
 				cell = model.getTerminal(cell, false);
 			}
 			Object[] edges = graph.getOutgoingEdges(cell);
@@ -232,11 +259,11 @@ public class Graph implements GraphLookup {
 			return false;
 		try {
 			Class<?> clazz = Class.forName(className);
-			if (RelayHandler.class.isAssignableFrom(clazz) 
-					|| DatagramRelayHandler.class.isAssignableFrom(clazz)) {
+			if (RelayHandler.class.isAssignableFrom(clazz) || DatagramRelayHandler.class.isAssignableFrom(clazz)) {
 				return true;
 			}
-		} catch (Exception e) {}
+		} catch (Exception e) {
+		}
 		return false;
 	}
 
@@ -276,34 +303,32 @@ public class Graph implements GraphLookup {
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
-			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler())
-				.attr(ChannelAttributes.GRAPH, this).childOption(ChannelOption.AUTO_READ, true)
-				.childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
+			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
+					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
-			b.childHandler(new GraphChannelInitializer(vertex));
+			b.childHandler(new ProxyChannelInitializer(new GraphChannelInitializer(vertex)));
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
 		} else {
-			Bootstrap b = new Bootstrap().channel(channelClass)
-					.group(getEventGroup(workerGroups, channelClass, 0))
+			Bootstrap b = new Bootstrap().channel(channelClass).group(getEventGroup(workerGroups, channelClass, 0))
 					.handler(new GraphChannelInitializer(vertex));
 			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
 		}
 	}
-	
+
 	private ChannelFuture stopServerFromSourceValue(Object serverValue) {
 		if (channels == null || channels.size() == 0)
 			return null;
-		
+
 		Channel channel = channels.remove(serverValue);
 		if (channel != null) {
 			return channel.close();
 		}
 		return null;
 	}
-	
+
 	private EventLoopGroup getEventGroup(Map<Class<? extends Channel>, EventLoopGroup> cache,
 			Class<? extends Channel> channelClass, int threads) {
 		EventLoopGroup group = cache.get(channelClass);
@@ -322,8 +347,7 @@ public class Graph implements GraphLookup {
 	 * server, second line is the socketaddress
 	 * 
 	 * @param channelClass
-	 * @param o
-	 *            the value Object for the server vertex
+	 * @param o            the value Object for the server vertex
 	 * @return the SocketAddress specified
 	 */
 	private SocketAddress parseSocketAddress(Class<? extends Channel> channelClass, Object o) {
@@ -382,9 +406,11 @@ public class Graph implements GraphLookup {
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
 		// FIXME: Add a handler to catch exceptions and link them back to the graph node
 		// By inserting an exception catching handler after each "node", we can wrap the
-		// exception with a "GraphNodeException" that contains a reference to the graph node
-		// that threw the exception. When it reaches the end of the pipeline, we can then 
-		// annotate the graph to show where the exception was thrown. This is useful in 
+		// exception with a "GraphNodeException" that contains a reference to the graph
+		// node
+		// that threw the exception. When it reaches the end of the pipeline, we can
+		// then
+		// annotate the graph to show where the exception was thrown. This is useful in
 		// cases where you may have more than one of a particular handler in the graph
 		// e.g. multiple SSLHandler's (client and server, for example)
 		List<ChannelHandler> handlers = new ArrayList<ChannelHandler>();
@@ -450,9 +476,9 @@ public class Graph implements GraphLookup {
 				if (children.getLength() == 1) {
 					p[i] = children.item(0).getTextContent();
 				} else { // find the CDATA node
-					for (int j=0; i<children.getLength(); j++) {
+					for (int j = 0; i < children.getLength(); j++) {
 						if (children.item(j) instanceof CDATASection) {
-							p[i] = ((CharacterData)children.item(j)).getData();
+							p[i] = ((CharacterData) children.item(j)).getData();
 							break;
 						}
 					}
@@ -495,11 +521,13 @@ public class Graph implements GraphLookup {
 	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler, boolean retain) {
 		Object vertex = retain ? handlerVertexMap.get(handler) : handlerVertexMap.remove(handler);
 		if (vertex == null)
-			throw new IllegalStateException("Handler " + handler + " not found in handlerVertexMap: " + handlerVertexMap);
+			throw new IllegalStateException(
+					"Handler " + handler + " not found in handlerVertexMap: " + handlerVertexMap);
 		try {
 			Object[] outgoing = graph.getOutgoingEdges(vertex);
 			if (outgoing == null || outgoing.length != 1)
-				throw new IllegalStateException("Exactly one outgoing edge allowed! Currently " + (outgoing == null ? "null" : outgoing.length));
+				throw new IllegalStateException("Exactly one outgoing edge allowed! Currently "
+						+ (outgoing == null ? "null" : outgoing.length));
 			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(
 					Arrays.asList(getChannelHandlers(outgoing[0])));
 			handlers.add(0, handler);
@@ -532,7 +560,7 @@ public class Graph implements GraphLookup {
 			closeFutures.add(e.getValue().close());
 			it.remove();
 		}
-		
+
 		shutdownEventLoop(bossGroups);
 		shutdownEventLoop(workerGroups);
 	}
@@ -570,7 +598,7 @@ public class Graph implements GraphLookup {
 			}
 		}
 	}
-	
+
 	public void addGraphException(final Object node, final Throwable cause) {
 		String warning = cause.getLocalizedMessage();
 		if (warning == null) {
@@ -588,7 +616,7 @@ public class Graph implements GraphLookup {
 				}
 			});
 	}
-	
+
 	private class GraphChannelInitializer extends ChannelInitializer<Channel> {
 
 		private Object serverVertex;
@@ -616,7 +644,7 @@ public class Graph implements GraphLookup {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
 			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
-			
+
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
 			if (ch.parent() != null) {
@@ -624,38 +652,37 @@ public class Graph implements GraphLookup {
 				ch.attr(ChannelAttributes.GRAPH).set(gl);
 			}
 			p.addLast(handlers);
-			
+
 			ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 		}
 	}
-	
+
 	private class AddServerChannelListener implements ChannelFutureListener {
 		private Object node;
-		
+
 		AddServerChannelListener(Object node) {
 			this.node = node;
 		}
-		
+
 		@Override
-		public void operationComplete(ChannelFuture future)
-				throws Exception {
+		public void operationComplete(ChannelFuture future) throws Exception {
 			if (future.isSuccess()) {
 				channels.put(node, future.channel());
 			} else {
 				addGraphException(node, future.cause());
 			}
 		}
-		
+
 	}
-	
+
 	private class StopAndStartChannelListener implements ChannelFutureListener {
 
 		private Object vertex;
-		
+
 		public StopAndStartChannelListener(Object vertex) {
 			this.vertex = vertex;
 		}
-		
+
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			try {
@@ -663,10 +690,10 @@ public class Graph implements GraphLookup {
 				if (cf != null)
 					cf.addListener(new AddServerChannelListener(vertex));
 			} catch (Exception e) {
-				addGraphException(vertex,  e);
+				addGraphException(vertex, e);
 			}
 		}
-		
+
 	}
-	
+
 }
