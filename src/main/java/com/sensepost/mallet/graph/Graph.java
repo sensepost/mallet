@@ -92,6 +92,7 @@ public class Graph implements GraphLookup {
 		this.scriptContext = scriptContext;
 		this.controller = controller;
 
+		// Listen for new graphs being loaded, and stop and restart the listeners
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 			@Override
 			public void invoke(Object sender, mxEventObject evt) {
@@ -112,6 +113,9 @@ public class Graph implements GraphLookup {
 				styleEdges(graph);
 			}
 		});
+		
+		// Listen for deletion of cells, and, if possible, reconnect the vertices
+		// on either side
 		graph.addListener(mxEvent.CELLS_REMOVED, new mxIEventListener() {
 
 			@Override
@@ -137,6 +141,8 @@ public class Graph implements GraphLookup {
 			}
 
 		});
+		// Listen for changes to the nodes representing the listeners, and stop
+		// and restart them if necessary
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 
 			@Override
@@ -166,6 +172,7 @@ public class Graph implements GraphLookup {
 				}
 			}
 		});
+		// Keep the graph validation up to date
 		graph.getModel().addListener(mxEvent.CHANGE, new mxIEventListener() {
 			public void invoke(Object sender, mxEventObject evt) {
 				graphComponent.validateGraph();
