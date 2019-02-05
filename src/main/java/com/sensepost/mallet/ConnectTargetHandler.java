@@ -25,6 +25,9 @@ public class ConnectTargetHandler extends ChannelInboundHandlerAdapter {
 		if (evt instanceof ConnectRequest) {
 			ConnectRequest cr = (ConnectRequest) evt;
 			ctx.channel().attr(ChannelAttributes.TARGET).set(cr);
+			// We set the promise successful here in case of
+			// indeterminate handlers, as the event will run off
+			// the end of the pipeline and not be seen by the RelayHandler
 			if (!cr.getConnectPromise().isDone())
 				cr.getConnectPromise().setSuccess(ctx.channel());
 			ctx.pipeline().remove(this);
