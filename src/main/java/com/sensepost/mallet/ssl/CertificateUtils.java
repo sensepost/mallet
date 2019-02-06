@@ -48,6 +48,8 @@ import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
@@ -65,7 +67,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 public class CertificateUtils {
 
-	private static final String SIGALG = "SHA1withRSA";
+	private static final String SIGALG = "SHA256withRSA";
 
 	public static X509Certificate sign(X500Principal subject, PublicKey pubKey, X500Principal issuer,
 			PublicKey caPubKey, PrivateKey caKey, Date begin, Date ends, BigInteger serialNo, X509Certificate baseCrt)
@@ -88,6 +90,10 @@ public class CertificateUtils {
 				if (sans != null) {
 					certificateBuilder.copyAndAddExtension(Extension.subjectAlternativeName, true, baseCrt);
 				}
+			} else {
+				GeneralName altName = new GeneralName(GeneralName.dNSName, getCN(subject));
+				GeneralNames subjectAltName = new GeneralNames(altName);
+				certificateBuilder.addExtension(Extension.subjectAlternativeName, false, subjectAltName); 
 			}
 
 			SubjectKeyIdentifier subjectKeyIdentifier = jxeu.createSubjectKeyIdentifier(pubKey);
