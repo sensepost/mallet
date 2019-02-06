@@ -24,7 +24,7 @@ public interface InterceptController {
 
 	void addChannel(String id, SocketAddress local, SocketAddress remote);
 
-	void addChannelEvent(ChannelEvent evt) throws Exception;
+	void addChannelEvent(ChannelEvent evt);
 
 	void linkChannels(String channel1, String channel2, SocketAddress localAddress2, SocketAddress remoteAddress2);
 
@@ -38,16 +38,16 @@ public interface InterceptController {
 
 	public abstract class ChannelEvent implements Runnable {
 
-		protected ChannelHandlerContext ctx = null;
-		private long eventTime, executionTime = -1;
-		private String connection;
-		private Direction direction;
+		final protected ChannelHandlerContext ctx;
+		private final long eventTime;
+		private long executionTime = -1;
+		final private String connection;
 		private State state;
 
-		public ChannelEvent(String connection, Direction direction,
+		public ChannelEvent(String connection,
 				State state, long eventTime, long executionTime) {
+			this.ctx = null;
 			this.connection = connection;
-			this.direction = direction;
 			this.state = state;
 			this.eventTime = eventTime;
 			this.executionTime = executionTime;
@@ -58,8 +58,6 @@ public interface InterceptController {
 				throw new NullPointerException("ctx");
 			this.ctx = ctx;
 			connection = ctx.channel().id().asLongText();
-			direction = ctx.channel().parent() == null ? Direction.Server_Client
-					: Direction.Client_Server;
 			this.state = State.PENDING;
 			this.eventTime = System.currentTimeMillis();
 		}
@@ -90,17 +88,13 @@ public interface InterceptController {
 			return eventTime;
 		}
 
-		public Direction getDirection() {
-			return direction;
-		}
-
 		public State getState() {
 			return state;
 		}
 
-		protected abstract void execute0() throws Exception;
+		protected abstract void execute0();
 
-		public void execute() throws Exception {
+		public void execute() {
 			if (ctx == null)
 				throw new IllegalStateException("Cannot execute with no context");
 			state = State.SENT;
@@ -168,9 +162,9 @@ public interface InterceptController {
 
 		private SocketAddress remoteAddress, localAddress;
 
-		public ChannelActiveEvent(String connection, Direction direction, State state,
+		public ChannelActiveEvent(String connection, State state,
 				long eventTime, long executionTime, SocketAddress remoteAddress, SocketAddress localAddress) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 			this.remoteAddress = remoteAddress;
 			this.localAddress = localAddress;
 		}
@@ -190,15 +184,15 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelActive();
 		}
 	}
 
 	public class ChannelInactiveEvent extends ChannelEvent {
-		public ChannelInactiveEvent(String connection, Direction direction, State state,
+		public ChannelInactiveEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public ChannelInactiveEvent(ChannelHandlerContext ctx) {
@@ -206,7 +200,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelInactive();
 		}
 	}
@@ -216,9 +210,9 @@ public interface InterceptController {
 		private Throwable cause;
 		private String causeString;
 
-		public ExceptionCaughtEvent(String connection, Direction direction, State state,
+		public ExceptionCaughtEvent(String connection, State state,
 				long eventTime, long executionTime, String cause) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 			this.causeString = cause;
 		}
 
@@ -235,7 +229,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireExceptionCaught(cause);
 		}
 	}
@@ -246,10 +240,10 @@ public interface InterceptController {
 		private MessageDAO dao = null;
 		private String messageId = null;
 
-		public ChannelMessageEvent(String connection, Direction direction, State state,
+		public ChannelMessageEvent(String connection, State state,
 				long eventTime, long executionTime, MessageDAO dao,
 				String messageId) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 			this.dao = dao;
 			this.messageId = messageId;
 		}
@@ -288,7 +282,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute() throws Exception {
+		public void execute() {
 			super.execute();
 			if (messageId != null)
 				msg = null;
@@ -297,10 +291,10 @@ public interface InterceptController {
 
 	public class ChannelReadEvent extends ChannelMessageEvent {
 
-		public ChannelReadEvent(String connection, Direction direction, State state,
+		public ChannelReadEvent(String connection, State state,
 				long eventTime, long executionTime, MessageDAO dao,
 				String messageId) {
-			super(connection, direction, state, eventTime, executionTime, dao,
+			super(connection, state, eventTime, executionTime, dao,
 					messageId);
 		}
 
@@ -309,7 +303,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelRead(getMessage());
 		}
 
@@ -323,10 +317,10 @@ public interface InterceptController {
 
 		protected ChannelPromise promise;
 
-		public WriteEvent(String connection, Direction direction, State state,
+		public WriteEvent(String connection, State state,
 				long eventTime, long executionTime, MessageDAO dao,
 				String messageId) {
-			super(connection, direction, state, eventTime, executionTime, dao,
+			super(connection, state, eventTime, executionTime, dao,
 					messageId);
 		}
 
@@ -336,7 +330,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.write(getMessage(), promise);
 		}
 
@@ -346,9 +340,9 @@ public interface InterceptController {
 
 		private Object evt;
 
-		public UserEventTriggeredEvent(String connection, Direction direction, State state,
+		public UserEventTriggeredEvent(String connection, State state,
 				long eventTime, long executionTime, Object evt) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 			this.evt = evt;
 		}
 
@@ -362,7 +356,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireUserEventTriggered(getUserEvent());
 		}
 
@@ -372,9 +366,9 @@ public interface InterceptController {
 
 		protected ChannelPromise promise;
 
-		public ChannelPromiseEvent(String connection, Direction direction, State state,
+		public ChannelPromiseEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 		public ChannelPromiseEvent(ChannelHandlerContext ctx, ChannelPromise promise) {
 			super(ctx);
@@ -390,9 +384,9 @@ public interface InterceptController {
 
 		private SocketAddress localAddress;
 
-		public BindEvent(String connection, Direction direction, State state,
+		public BindEvent(String connection, State state,
 				long eventTime, long executionTime, SocketAddress localAddress) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public BindEvent(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) {
@@ -405,7 +399,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.bind(localAddress, promise);
 		}
 	}
@@ -414,10 +408,10 @@ public interface InterceptController {
 
 		private SocketAddress remoteAddress, localAddress;
 
-		public ConnectEvent(String connection, Direction direction, State state,
+		public ConnectEvent(String connection, State state,
 				long eventTime, long executionTime,
 				SocketAddress remoteAddress, SocketAddress localAddress) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 			this.remoteAddress = remoteAddress;
 			this.localAddress = localAddress;
 		}
@@ -438,16 +432,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.connect(remoteAddress, localAddress, promise);
 		}
 	}
 
 	public class DisconnectEvent extends ChannelPromiseEvent {
 
-		public DisconnectEvent(String connection, Direction direction, State state,
+		public DisconnectEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public DisconnectEvent(ChannelHandlerContext ctx, ChannelPromise promise) {
@@ -455,16 +449,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.disconnect(promise);
 		}
 	}
 
 	public class CloseEvent extends ChannelPromiseEvent {
 
-		public CloseEvent(String connection, Direction direction, State state,
+		public CloseEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public CloseEvent(ChannelHandlerContext ctx, ChannelPromise promise) {
@@ -472,16 +466,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.close(promise);
 		}
 	}
 
 	public class DeregisterEvent extends ChannelPromiseEvent {
 
-		public DeregisterEvent(String connection, Direction direction, State state,
+		public DeregisterEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public DeregisterEvent(ChannelHandlerContext ctx, ChannelPromise promise) {
@@ -489,16 +483,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.deregister(promise);
 		}
 	}
 
 	public class ReadEvent extends ChannelEvent {
 
-		public ReadEvent(String connection, Direction direction, State state,
+		public ReadEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public ReadEvent(ChannelHandlerContext ctx) {
@@ -506,16 +500,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.read();
 		}
 	}
 
 	public class ChannelRegisteredEvent extends ChannelEvent {
 
-		public ChannelRegisteredEvent(String connection, Direction direction, State state,
+		public ChannelRegisteredEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public ChannelRegisteredEvent(ChannelHandlerContext ctx) {
@@ -523,16 +517,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelRegistered();
 		}
 	}
 
 	public class ChannelUnregisteredEvent extends ChannelEvent {
 
-		public ChannelUnregisteredEvent(String connection, Direction direction, State state,
+		public ChannelUnregisteredEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public ChannelUnregisteredEvent(ChannelHandlerContext ctx) {
@@ -540,16 +534,16 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelUnregistered();
 		}
 	}
 
 	public class FlushEvent extends ChannelEvent {
 
-		public FlushEvent(String connection, Direction direction, State state,
+		public FlushEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public FlushEvent(ChannelHandlerContext ctx) {
@@ -557,33 +551,46 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.flush();
 		}
 	}
 	
 	public class ChannelWritabilityChangedEvent extends ChannelEvent {
 
-		public ChannelWritabilityChangedEvent(String connection, Direction direction, State state,
-				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+		final private boolean writable;
+
+		public ChannelWritabilityChangedEvent(String connection, State state,
+				long eventTime, long executionTime, boolean writable) {
+			super(connection, state, eventTime, executionTime);
+			this.writable = writable;
 		}
 
-		public ChannelWritabilityChangedEvent(ChannelHandlerContext ctx) {
+		public ChannelWritabilityChangedEvent(ChannelHandlerContext ctx, boolean writable) {
 			super(ctx);
+			this.writable = writable;
+		}
+
+		public boolean writable() {
+			return writable;
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelWritabilityChanged();
+		}
+
+		@Override
+		public String toString() {
+			return super.toString() + " : Writable = " + writable;
 		}
 	}
 
 	public class ChannelReadCompleteEvent extends ChannelEvent {
 
-		public ChannelReadCompleteEvent(String connection, Direction direction, State state,
+		public ChannelReadCompleteEvent(String connection, State state,
 				long eventTime, long executionTime) {
-			super(connection, direction, state, eventTime, executionTime);
+			super(connection, state, eventTime, executionTime);
 		}
 
 		public ChannelReadCompleteEvent(ChannelHandlerContext ctx) {
@@ -591,7 +598,7 @@ public interface InterceptController {
 		}
 
 		@Override
-		public void execute0() throws Exception {
+		public void execute0() {
 			ctx.fireChannelReadComplete();
 		}
 	}

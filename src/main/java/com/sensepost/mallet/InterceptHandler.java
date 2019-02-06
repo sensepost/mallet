@@ -128,7 +128,7 @@ public class InterceptHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelWritabilityChanged(ChannelHandlerContext ctx)
 			throws Exception {
-		submitEvent(new ChannelWritabilityChangedEvent(ctx));
+		submitEvent(new ChannelWritabilityChangedEvent(ctx, ctx.channel().isWritable()));
 	}
 
 	@Override
