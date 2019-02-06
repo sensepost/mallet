@@ -301,7 +301,7 @@ public class JTableRenderer extends JComponent
 			data = new Object[30][5];
 			for (int i = 0; i < 30; i++)
 			{
-				data[i][0] = new Boolean(false);
+				data[i][0] = Boolean.FALSE;
 				data[i][1] = "Column " + i;
 				data[i][2] = (Math.random() > 0.5) ? new ImageIcon(
 						JTableRenderer.class.getResource(IMAGE_PATH
