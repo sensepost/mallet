@@ -134,11 +134,8 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 					if (ctx == null)
 						btnCloseConnection.setEnabled(false);
 					Channel ch = ctx.channel();
-					Channel och = ch.attr(ChannelAttributes.CHANNEL).get();
 					if (ch.isOpen())
 						ch.close();
-					if (och != null && och.isOpen())
-						och.close();
 				}
 			}
 		});
@@ -199,27 +196,26 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	}
 
 	@Override
-	public void addChannelEvent(final ChannelEvent evt) throws Exception {
+	public void addChannelEvent(final ChannelEvent evt) {
 		if (evt instanceof ChannelReadEvent && dao != null) {
 			((ChannelReadEvent) evt).setDao(dao);
 		}
 
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				try {
-					addChannelEventEDT(evt);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				addChannelEventEDT(evt);
 			}
 		});
 	}
 
-	private void addChannelEventEDT(ChannelEvent evt) throws Exception {
+	private void addChannelEventEDT(ChannelEvent evt) {
 		String cp = evt.getConnectionIdentifier();
 		ConnectionData connectionData;
 		synchronized (channelEventMap) {
 			connectionData = channelEventMap.get(cp);
+			if (connectionData == null) {
+				System.out.println("ConnectionData for " + cp + " is null");
+			}
 			connectionData.addChannelEvent(evt);
 		}
 

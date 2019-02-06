@@ -6,16 +6,14 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 import javax.script.Bindings;
@@ -46,7 +44,7 @@ import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
-import com.sensepost.mallet.channel.ProxyChannelInitializer;
+import com.sensepost.mallet.channel.SubChannelHandler;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -55,6 +53,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -313,7 +313,7 @@ public class Graph implements GraphLookup {
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
-			b.childHandler(new ProxyChannelInitializer(new GraphChannelInitializer(vertex)));
+			b.childHandler(subChannelInitializer(new GraphChannelInitializer(vertex)));
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
@@ -323,6 +323,35 @@ public class Graph implements GraphLookup {
 			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
 		}
+	}
+
+	private ChannelInitializer<Channel> subChannelInitializer(final ChannelInitializer<Channel> init) {
+		return new ChannelInitializer<Channel>() {
+
+			@Override
+			protected void initChannel(Channel ch) throws Exception {
+				SubChannelHandler sch = new SubChannelHandler(init);
+				ch.pipeline().addAfter(ch.pipeline().context(this).name(), null, new ReportingChannelHandler());
+				ch.pipeline().replace(this, null, sch);
+			}
+			
+		};
+	}
+	
+	private ChannelInitializer<Channel> initializer(final ChannelHandler relay, final ChannelHandler... handlers) {
+		return new ChannelInitializer<Channel>() {
+
+			@Override
+			protected void initChannel(Channel ch) throws Exception {
+				String name = ch.pipeline().context(this).name();
+				for (ChannelHandler handler : handlers) {
+					ch.pipeline().addBefore(name, null, handler);
+				}
+				ch.pipeline().addAfter(name, null, relay);
+			}
+			
+		};
+		
 	}
 
 	private ChannelFuture stopServerFromSourceValue(Object serverValue) {
@@ -411,15 +440,6 @@ public class Graph implements GraphLookup {
 
 	private ChannelHandler[] getChannelHandlers(Object o)
 			throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-		// FIXME: Add a handler to catch exceptions and link them back to the graph node
-		// By inserting an exception catching handler after each "node", we can wrap the
-		// exception with a "GraphNodeException" that contains a reference to the graph
-		// node
-		// that threw the exception. When it reaches the end of the pipeline, we can
-		// then
-		// annotate the graph to show where the exception was thrown. This is useful in
-		// cases where you may have more than one of a particular handler in the graph
-		// e.g. multiple SSLHandler's (client and server, for example)
 		List<ChannelHandler> handlers = new ArrayList<ChannelHandler>();
 		do {
 			if (graph.getModel().isEdge(o))
@@ -503,14 +523,24 @@ public class Graph implements GraphLookup {
 	}
 
 	@Override
-	synchronized public ChannelHandler[] getNextHandlers(ChannelHandler handler, String option) {
+	synchronized public ChannelInitializer<Channel> getNextHandlers(ChannelHandler handler, String option) {
 		Object vertex = handlerVertexMap.remove(handler);
 		Object[] outgoing = graph.getOutgoingEdges(vertex);
 		try {
 			for (Object edge : outgoing) {
 				Object v = graph.getModel().getValue(edge);
-				if (option.equals(v))
-					return getChannelHandlers(graph.getModel().getTerminal(edge, false));
+				if (option.equals(v)) {
+					final ChannelHandler[] handlers = getChannelHandlers(graph.getModel().getTerminal(edge, false));
+					return new ChannelInitializer<Channel>() {
+						@Override
+						protected void initChannel(Channel ch) throws Exception {
+							String name = ch.pipeline().context(this).name();
+							for (ChannelHandler handler : handlers) {
+								ch.pipeline().addBefore(name, null, handler);
+							}
+						}
+					};
+				}
 			}
 			throw new NullPointerException("No match found for " + handler.getClass() + ", option " + option);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
@@ -520,12 +550,12 @@ public class Graph implements GraphLookup {
 	}
 
 	@Override
-	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler) {
+	synchronized public ChannelInitializer<Channel> getClientChannelInitializer(ChannelHandler handler) {
 		return getClientChannelInitializer(handler, false);
 	}
 
 	@Override
-	synchronized public ChannelHandler[] getClientChannelInitializer(ChannelHandler handler, boolean retain) {
+	synchronized public ChannelInitializer<Channel> getClientChannelInitializer(ChannelHandler handler, boolean retain) {
 		Object vertex = retain ? handlerVertexMap.get(handler) : handlerVertexMap.remove(handler);
 		if (vertex == null)
 			throw new IllegalStateException(
@@ -535,27 +565,36 @@ public class Graph implements GraphLookup {
 			if (outgoing == null || outgoing.length != 1)
 				throw new IllegalStateException("Exactly one outgoing edge allowed! Currently "
 						+ (outgoing == null ? "null" : outgoing.length));
-			ArrayList<ChannelHandler> handlers = new ArrayList<ChannelHandler>(
-					Arrays.asList(getChannelHandlers(outgoing[0])));
-			handlers.add(0, handler);
-			Collections.reverse(handlers); // FIXME: Decide where to do the
-											// reversing, in the graph, or in
-											// the caller
-			return handlers.toArray(new ChannelHandler[handlers.size()]);
+			ChannelHandler[] handlers = getChannelHandlers(outgoing[0]);
+			// Reversing needs to happen because of the difference in 
+			// direction of flow in the client vs server
+			reverse(handlers);
+			// wrap them in a ChannelInitializer
+			ChannelInitializer<Channel> init = initializer(handler, handlers);
+			 return subChannelInitializer(init);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
-			e.printStackTrace();
+			addGraphException(vertex, e);
 			return null;
 		}
 	}
 
+	private void reverse(ChannelHandler[] handlers) {
+	    for (int left = 0, right = handlers.length - 1; left < right; left++, right--) {
+	        // swap the values at the left and right indices
+	        ChannelHandler temp = handlers[left];
+	        handlers[left]  = handlers[right];
+	        handlers[right] = temp;
+	    }
+	}
+
 	@Override
-	synchronized public ChannelHandler[] getProxyInitializer(ChannelHandler handler, SocketAddress target) {
+	synchronized public ChannelHandler getProxyHandler(SocketAddress target) {
 		if (direct)
-			return new ChannelHandler[] { handler };
+			return null;
 		else if (socks)
-			return new ChannelHandler[] { new Socks5ProxyHandler(new InetSocketAddress("127.0.0.1", 1081)), handler };
+			return new Socks5ProxyHandler(new InetSocketAddress("127.0.0.1", 1081));
 		else
-			return new ChannelHandler[] { new HttpProxyHandler(new InetSocketAddress("127.0.0.1", 8080)), handler };
+			return new HttpProxyHandler(new InetSocketAddress("127.0.0.1", 8080));
 	}
 
 	@Override
@@ -639,8 +678,7 @@ public class Graph implements GraphLookup {
 				addGraphException(serverVertex, new IllegalStateException("No outbound edge"));
 				ch.close();
 				return;
-			}
-			if (edges.length > 1) {
+			} else if (edges.length > 1) {
 				addGraphException(serverVertex, new IllegalStateException("Too many outbound edges"));
 				ch.close();
 				return;
@@ -654,16 +692,64 @@ public class Graph implements GraphLookup {
 
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
-			if (ch.parent() != null) {
-				GraphLookup gl = ch.parent().attr(ChannelAttributes.GRAPH).get();
-				ch.attr(ChannelAttributes.GRAPH).set(gl);
-			}
+			ch.attr(ChannelAttributes.GRAPH).set(Graph.this);
 			p.addLast(handlers);
 
 			ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 		}
 	}
 
+	private class ReportingChannelHandler extends ChannelInboundHandlerAdapter {
+
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelReadEvent(ctx, msg));
+			controller.addChannelEvent(new InterceptController.CloseEvent(ctx, ctx.channel().newPromise()));
+			ctx.close();
+		}
+
+		@Override
+		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+			controller.addChannelEvent(new InterceptController.UserEventTriggeredEvent(ctx, evt));
+		}
+
+		@Override
+		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+			controller.addChannelEvent(new InterceptController.ExceptionCaughtEvent(ctx, cause));
+			ctx.close();
+		}
+
+		@Override
+		public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelRegisteredEvent(ctx));
+		}
+
+		@Override
+		public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelUnregisteredEvent(ctx));
+		}
+
+		@Override
+		public void channelActive(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelActiveEvent(ctx));
+		}
+
+		@Override
+		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelInactiveEvent(ctx));
+		}
+
+		@Override
+		public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelReadCompleteEvent(ctx));
+		}
+
+		@Override
+		public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+			controller.addChannelEvent(new InterceptController.ChannelWritabilityChangedEvent(ctx, ctx.channel().isWritable()));
+		}
+		
+	}
 	private class AddServerChannelListener implements ChannelFutureListener {
 		private Object node;
 

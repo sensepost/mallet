@@ -41,7 +41,7 @@ public class DatagramRelayHandler
 	private Map<InetSocketAddress, Channel> channelMap = new HashMap<>();
 	private Map<InetSocketAddress, InetSocketAddress> endPointMap = new HashMap<>();
 
-	private ChannelHandler[] clientInitializer;
+	private ChannelInitializer<Channel> clientInitializer;
 
 	public DatagramRelayHandler() {
 	}
@@ -158,6 +158,10 @@ public class DatagramRelayHandler
 		}
 	}
 
+	// FIXME: As far as I can tell, it is not required to have multiple outbound
+	// channels, as each message written needs to have a destination address associated
+	// with it! The problem is that without the unique local port number, it is not
+	// possible to know which origin address:port to forward the response to.
 	protected ChannelFuture createOutboundChannel(
 			final ChannelHandlerContext ctx, final SocketAddress remote,
 			final SocketAddress target) {
@@ -171,6 +175,9 @@ public class DatagramRelayHandler
 				ch.attr(ChannelAttributes.REMOTE_ADDRESS).set(remote);
 				Bindings scriptContext = ctx.channel().attr(ChannelAttributes.SCRIPT_CONTEXT).get();
 				ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
+				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
+				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
+
 				ch.pipeline().addLast(clientInitializer);
 				
 				InterceptController ic = (InterceptController) scriptContext.get("InterceptController");

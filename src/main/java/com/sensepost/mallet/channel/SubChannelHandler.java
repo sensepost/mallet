@@ -16,7 +16,7 @@ import io.netty.channel.socket.DuplexChannel;
 public class SubChannelHandler extends ChannelDuplexHandler {
 
 	private ChannelHandler[] handlers;
-	private SubChannel sc;
+	private Channel sc;
 
 	public SubChannelHandler(ChannelHandler... handlers) {
 		this.handlers = handlers;
@@ -124,14 +124,17 @@ public class SubChannelHandler extends ChannelDuplexHandler {
 		return false;
 	}
 
+	protected Channel createSubChannel(ChannelHandlerContext ctx) {
+		if (ctx.channel() instanceof DatagramChannel)
+			return new DatagramSubChannel(ctx);
+		else if (ctx.channel() instanceof DuplexChannel)
+			return new DuplexSubChannel(ctx);
+		else return new SubChannel(ctx);
+	}
+	
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-		if (ctx.channel() instanceof DatagramChannel)
-			sc = new DatagramSubChannel(ctx);
-		else if (ctx.channel() instanceof DuplexChannel)
-			sc = new DuplexSubChannel(ctx);
-		else 
-			sc = new SubChannel(ctx);
+		sc = createSubChannel(ctx);
 		if (handlers != null)
 			sc.pipeline().addFirst(handlers);
 	}

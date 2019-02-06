@@ -85,8 +85,10 @@ public class ConnectionDataPanel extends JPanel {
 		sendButton.setEnabled(false);
 		buttonPanel.add(sendButton);
 
+		JPanel topPanel = new JPanel(new BorderLayout());
+		splitPane.setTopComponent(topPanel);
 		JScrollPane scrollPane = new JScrollPane();
-		splitPane.setTopComponent(scrollPane);
+		topPanel.add(scrollPane, BorderLayout.CENTER);
 
 		table = new JTable(tableModel);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
@@ -236,7 +238,7 @@ public class ConnectionDataPanel extends JPanel {
 			case 1:
 				return e.isExecuted() ? new Date(e.getExecutionTime()) : null;
 			case 2:
-				return e.getDirection();
+				return listModel.getElementAt(0).getConnectionIdentifier().equals(e.getConnectionIdentifier()) ? Direction.Client_Server : Direction.Server_Client;
 			case 3:
 				return e.getEventDescription();
 			case 4:

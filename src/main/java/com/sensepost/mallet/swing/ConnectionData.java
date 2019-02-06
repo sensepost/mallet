@@ -56,7 +56,7 @@ public class ConnectionData {
 		return remoteAddress2;
 	}
 
-	public void addChannelEvent(ChannelEvent e) throws Exception {
+	public void addChannelEvent(ChannelEvent e) {
 		events.addElement(e);
 		if (e instanceof ExceptionCaughtEvent)
 			exception = true;

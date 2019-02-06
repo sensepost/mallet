@@ -4,23 +4,25 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
+import com.sensepost.mallet.channel.ProxyChannel;
+import com.sensepost.mallet.channel.SubChannel;
 import com.sensepost.mallet.graph.GraphLookup;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.ChannelOutputShutdownEvent;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.channel.socket.DatagramChannel;
+import io.netty.channel.socket.DuplexChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Promise;
 import io.netty.util.internal.logging.InternalLogger;
@@ -33,9 +35,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	private static final InternalLogger logger = InternalLoggerFactory.getInstance(RelayHandler.class);
 
-	private volatile boolean added = false;
+	private ChannelHandlerContext ctx1 = null, ctx2 = null;
 
 	private InterceptController controller;
+
+	private Class<Channel> outboundChannelClass;
 
 	private Queue<Object> queue = new LinkedList<>();
 
@@ -45,22 +49,68 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		this.controller = controller;
 	}
 
+	public RelayHandler(InterceptController controller, Class<Channel> outboundChannelClass) {
+		this.controller = controller;
+		this.outboundChannelClass = outboundChannelClass;
+	}
+
 	@Override
 	public void handlerAdded(final ChannelHandlerContext ctx) throws Exception {
-		if (!added && ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
-			added = true;
-			setupOutboundChannel(ctx);
+		if (ctx1 == null) {
+			ctx1 = ctx;
+			if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
+				setupOutboundChannel(ctx);
+			}
+		} else if (ctx2 == null) {
+			ctx2 = ctx;
+		} else
+			throw new IllegalStateException("RelayHandler may only be added to two Channels!");
+	}
+
+	private ChannelHandlerContext other(ChannelHandlerContext ctx) {
+		if (ctx == ctx1)
+			return ctx2;
+		else
+			return ctx1;
+	}
+
+	private EventLoopGroup getOutboundEventLoop(Class<Channel> outboundChannelClass, Channel inbound) {
+		if (inbound instanceof ProxyChannel)
+			inbound = ((ProxyChannel)inbound).proxyChannel();
+		if (inbound instanceof SubChannel)
+			inbound = inbound.parent();
+		if (outboundChannelClass.equals(inbound.getClass()))
+			return inbound.eventLoop();
+		throw new UnsupportedOperationException("Don't know how to find the event loop for a " + outboundChannelClass);
+	}
+
+	@SuppressWarnings("unchecked")
+	private Class<Channel> getOutboundChannelClass(Channel inbound) {
+		if (outboundChannelClass != null)
+			return outboundChannelClass;
+		else {
+			if (inbound instanceof ProxyChannel)
+				inbound = ((ProxyChannel)inbound).proxyChannel();
+			else if (inbound instanceof SubChannel)
+				inbound = inbound.parent();
+			return (Class<Channel>)inbound.getClass();
 		}
 	}
 
+	
 	private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
+		if (connectFuture != null)
+			return;
+
+		// disable autoread until the connection is established
+		ctx.channel().config().setAutoRead(false);
 		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 
-		ChannelInitializer<SocketChannel> initializer = new ChannelInitializer<SocketChannel>() {
+		ChannelInitializer<Channel> initializer = new ChannelInitializer<Channel>() {
 
 			@Override
-			protected void initChannel(SocketChannel ch) throws Exception {
+			protected void initChannel(Channel ch) throws Exception {
 				controller.linkChannels(ctx.channel().id().asLongText(), ch.id().asLongText(), ch.localAddress(),
 						target.getTarget());
 
@@ -68,17 +118,25 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				ch.attr(ChannelAttributes.CHANNEL).set(ctx.channel());
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
 
-				ChannelHandler[] handlers = gl.getClientChannelInitializer(RelayHandler.this);
-				ch.pipeline().addLast(handlers);
+				ChannelInitializer<Channel> initializer = gl.getClientChannelInitializer(RelayHandler.this);
+				ch.pipeline().addLast(initializer);
 			}
 		};
 
 		try {
-			Bootstrap bootstrap = new Bootstrap().channel(NioSocketChannel.class)
-					.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000).option(ChannelOption.SO_KEEPALIVE, true)
+			Bootstrap bootstrap = new Bootstrap();
+			Class<Channel> outboundChannelClass = getOutboundChannelClass(ctx.channel());
+			bootstrap.channel(outboundChannelClass);
+			bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000).option(ChannelOption.SO_KEEPALIVE, true)
 					.option(ChannelOption.ALLOW_HALF_CLOSURE, true);
 
-			connectFuture = bootstrap.group(ctx.channel().eventLoop()).handler(initializer).connect(target.getTarget());
+			EventLoopGroup outboundEventLoop = getOutboundEventLoop(outboundChannelClass, ctx.channel());
+			bootstrap.group(outboundEventLoop).handler(initializer);
+			if (DatagramChannel.class.isAssignableFrom(outboundChannelClass)) {
+				connectFuture = bootstrap.bind(0);
+			} else {
+				connectFuture = bootstrap.connect(target.getTarget());
+			}
 			connectFuture.addListener(new ConnectRequestPromiseExecutor(target.getConnectPromise()));
 			connectFuture.addListener(new ChannelFutureListener() {
 
@@ -90,6 +148,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 							cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 							future.channel().attr(LAST_FUTURE).set(cf);
 						}
+						// re-enable autoread now that the connection is established
+						ctx.channel().config().setAutoRead(true);
 					}
 				}
 			});
@@ -102,82 +162,121 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-		System.out.println(ctx.channel().id() + " writable " + ctx.channel().isWritable());
+		ChannelHandlerContext other = other(ctx);
+		if (other == null) 
+			return;
+		other.channel().config().setAutoRead(ctx.channel().isWritable());
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		closeBoth(ctx.channel());
-		super.channelInactive(ctx);
+		closeBoth(ctx);
 	}
 
-	private static void closeBoth(Channel channel) {
-		if (channel.isOpen())
-			channel.close();
-		Channel other = channel.attr(ChannelAttributes.CHANNEL).get();
-		if (other != null && other.isOpen())
-			other.close();
+	private void closeBoth(ChannelHandlerContext ctx) {
+		if (ctx.channel().isOpen())
+			ctx.channel().close();
+		ChannelHandlerContext other = other(ctx);
+		if (other.channel().isOpen())
+			other.channel().close();
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		ExceptionCaughtEvent evt = new ExceptionCaughtEvent(ctx, cause);
+		ExceptionCaughtEvent evt = new ExceptionCaughtEvent(ctx, cause) {
+			@Override
+			public void execute0() {
+				// do nothing
+			}
+		};
 		controller.addChannelEvent(evt);
-		closeBoth(ctx.channel());
+		closeBoth(ctx);
 	}
 
 	@Override
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
-		if (!added && ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
-			added = true;
-			setupOutboundChannel(ctx);
+		if (connectFuture == null) {
+			if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
+				setupOutboundChannel(ctx);
+			} else {
+				throw new NullPointerException("No connected channel! Did you forget to use a SocksInitializer or a FixedTargetHandler?");
+			}
 		}
-		if (connectFuture != null && !connectFuture.isDone()) {
+		if (!connectFuture.isDone()) {
 			queue.add(msg);
 			return;
 		} else {
-			Channel channel = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (channel == null) {
-				throw new NullPointerException("No connected channel! Did you forget to use a SocksInitializer or a FixedTargetHandler?");
-			}
-			ChannelFuture cf = channel.writeAndFlush(msg);
+			// FIXME: To turn this into a functional "generic relay"
+			// we need to be able to address Datagram packets to their destination
+			// and match replies to their original sender(s).
+			ChannelHandlerContext other = other(ctx);
+			ChannelFuture cf = other.writeAndFlush(msg);
 			cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
-			channel.attr(LAST_FUTURE).set(cf);
+			other.channel().attr(LAST_FUTURE).set(cf);
 		}
 	}
 
-	private ChannelFuture getLastFuture(Channel ch) {
-		ChannelFuture cf = ch.attr(LAST_FUTURE).get();
+	private ChannelFuture getLastFuture(ChannelHandlerContext ctx) {
+		ChannelFuture cf = ctx.channel().attr(LAST_FUTURE).get();
 		if (cf == null)
-			cf = ch.newSucceededFuture();
+			cf = ctx.newSucceededFuture();
 		return cf;
 	}
 
+	private void addOtherChannelFutureListener(ChannelHandlerContext ctx, ChannelFutureListener listener) {
+		ChannelHandlerContext other = other(ctx);
+		if (other == null)
+			return;
+		getLastFuture(other).addListener(listener);
+	}
+
+	private void closeIfShutdown(Channel ch) {
+		if (ch instanceof DuplexChannel) {
+			DuplexChannel dch = (DuplexChannel) ch;
+			if (dch.isShutdown())
+				dch.close();
+		}
+	}
+	
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-
 		if (evt instanceof ChannelInputShutdownEvent) {
-			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other != null) {
-				getLastFuture(other).addListener(ShutdownOutput.INSTANCE);
-			}
+			// FIXME: If the InputShutdownEvent arrives before the queue
+			// of pending messages has been flushed (or even before the outbound
+			// channel has been established), the ShutdownOutput instance
+			// cannot be sent because the LastFuture on the channel is null!
+			// We work around this by disabling channel autoread while we set
+			// up the outbound channel
+			addOtherChannelFutureListener(ctx, ShutdownOutput.INSTANCE);
+			closeIfShutdown(ctx.channel());
 		} else if (evt instanceof ChannelOutputShutdownEvent) {
-			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other != null) {
-				getLastFuture(other).addListener(ShutdownInput.INSTANCE);
-			}
+			closeIfShutdown(ctx.channel());
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {
 			ctx.channel().config().setAutoRead(false);
-
-			Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
-			if (other != null) {
-				getLastFuture(other).addListener(CloseBoth.INSTANCE);
-			}
-		} else if (evt instanceof ConnectRequest && !added) {
-			added = true;
+			closeIfShutdown(ctx.channel());
+		} else if (evt instanceof ConnectRequest) {
 			setupOutboundChannel(ctx);
 		}
-		super.userEventTriggered(ctx, evt);
+	}
+
+	@Override
+	public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+		// Do not forward, this is the end of the road
+	}
+
+	@Override
+	public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+		// Do not forward, this is the end of the road
+	}
+
+	@Override
+	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		// Do not forward, this is the end of the road
+	}
+
+	@Override
+	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+		// Do not forward, this is the end of the road
 	}
 
 	private static class ShutdownOutput implements ChannelFutureListener {
@@ -190,12 +289,10 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		public void operationComplete(ChannelFuture future) throws Exception {
 			Channel ch = future.channel();
 			if (future.isSuccess()) {
-				if (ch instanceof SocketChannel) {
-					SocketChannel sch = (SocketChannel) ch;
-					if (!sch.isOutputShutdown()) {
-						sch.shutdownOutput();
-					} else {
-						sch.close();
+				if (ch instanceof DuplexChannel) {
+					DuplexChannel dch = (DuplexChannel) ch;
+					if (!dch.isOutputShutdown()) {
+						dch.shutdownOutput();
 					}
 				} else if (ch.isOpen()) {
 					ch.close();
@@ -204,48 +301,6 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				if (ch.isOpen())
 					ch.close();
 			}
-		}
-
-	}
-
-	private static class ShutdownInput implements ChannelFutureListener {
-		static ShutdownInput INSTANCE = new ShutdownInput();
-
-		private ShutdownInput() {
-		}
-
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			Channel ch = future.channel();
-			if (future.isSuccess()) {
-				if (ch instanceof SocketChannel) {
-					SocketChannel sch = (SocketChannel) ch;
-					if (!sch.isInputShutdown()) {
-						sch.shutdownInput();
-					} else {
-						sch.close();
-					}
-				} else if (ch.isOpen()) {
-					ch.close();
-				}
-			} else {
-				if (ch.isOpen())
-					ch.close();
-			}
-		}
-
-	}
-
-	private static class CloseBoth implements ChannelFutureListener {
-		static CloseBoth INSTANCE = new CloseBoth();
-
-		private CloseBoth() {
-		}
-
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			Channel ch = future.channel();
-			closeBoth(ch);
 		}
 
 	}

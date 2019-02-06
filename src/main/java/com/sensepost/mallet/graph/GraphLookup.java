@@ -2,20 +2,22 @@ package com.sensepost.mallet.graph;
 
 import java.net.SocketAddress;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInitializer;
 
 public interface GraphLookup {
 
 	void startServers() throws Exception;
 	
-	ChannelHandler[] getNextHandlers(ChannelHandler handler, String option);
+	ChannelInitializer<Channel> getNextHandlers(ChannelHandler handler, String option);
 	
-	ChannelHandler[] getClientChannelInitializer(ChannelHandler handler);
+	ChannelInitializer<Channel> getClientChannelInitializer(ChannelHandler handler);
 	
-	ChannelHandler[] getClientChannelInitializer(ChannelHandler handler,
+	ChannelInitializer<Channel> getClientChannelInitializer(ChannelHandler handler,
 			boolean retain);
 	
-	ChannelHandler[] getProxyInitializer(ChannelHandler handler, SocketAddress target);
+	ChannelHandler getProxyHandler(SocketAddress target);
 	
 	void shutdownServers() throws Exception;
 
