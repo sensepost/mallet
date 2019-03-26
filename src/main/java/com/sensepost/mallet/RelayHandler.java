@@ -183,12 +183,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		ExceptionCaughtEvent evt = new ExceptionCaughtEvent(ctx, cause) {
-			@Override
-			public void execute0() {
-				// do nothing
-			}
-		};
+		ExceptionCaughtEvent evt = new ExceptionCaughtEvent(ctx, cause);
 		controller.addChannelEvent(evt);
 		closeBoth(ctx);
 	}
