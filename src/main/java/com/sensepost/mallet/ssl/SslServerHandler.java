@@ -63,6 +63,7 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 		            sslHandler = sslContext.newHandler(ctx.alloc(), hostname, -1);
 		            ctx.pipeline().replace(this, SslHandler.class.getName(), sslHandler);
 		            sslHandler = null;
+		            ctx.fireUserEventTriggered("Using certificate for " + hostname);
 		        } finally {
 		            // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
 		            // transferred to the SslHandler.
