@@ -45,6 +45,7 @@ import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
 import com.sensepost.mallet.channel.SubChannelHandler;
+import com.sensepost.mallet.model.ChannelEvent;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -331,7 +332,9 @@ public class Graph implements GraphLookup {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
 				SubChannelHandler sch = new SubChannelHandler(init);
-				ch.pipeline().addAfter(ch.pipeline().context(this).name(), null, new ReportingChannelHandler());
+				String name = ch.pipeline().context(this).name();
+				ch.pipeline().addAfter(name, null, new DiscardChannelHandler());
+				ch.pipeline().addAfter(name, null, new ReportingChannelHandler());
 				ch.pipeline().replace(this, null, sch);
 			}
 			
@@ -535,8 +538,8 @@ public class Graph implements GraphLookup {
 						@Override
 						protected void initChannel(Channel ch) throws Exception {
 							String name = ch.pipeline().context(this).name();
-							for (ChannelHandler handler : handlers) {
-								ch.pipeline().addBefore(name, null, handler);
+							for (int i=handlers.length-1; i>=0; i--) {
+								ch.pipeline().addAfter(name, null, handlers[i]);
 							}
 						}
 					};
@@ -571,7 +574,7 @@ public class Graph implements GraphLookup {
 			reverse(handlers);
 			// wrap them in a ChannelInitializer
 			ChannelInitializer<Channel> init = initializer(handler, handlers);
-			 return subChannelInitializer(init);
+			return subChannelInitializer(init);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
 			addGraphException(vertex, e);
 			return null;
@@ -703,53 +706,37 @@ public class Graph implements GraphLookup {
 
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelReadEvent(ctx, msg));
-			controller.addChannelEvent(new InterceptController.CloseEvent(ctx, ctx.channel().newPromise()));
+			controller.addChannelEvent(ChannelEvent.newChannelReadEvent(ctx, msg));
 			ctx.close();
 		}
 
 		@Override
 		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-			controller.addChannelEvent(new InterceptController.UserEventTriggeredEvent(ctx, evt));
+			controller.addChannelEvent(ChannelEvent.newUserEventTriggeredEvent(ctx, evt));
 		}
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-			controller.addChannelEvent(new InterceptController.ExceptionCaughtEvent(ctx, cause));
+			System.out.println("ReportingChannelHandler pipeline is: " + ctx.pipeline());
+			controller.addChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, cause));
 			ctx.close();
 		}
-
-		@Override
-		public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelRegisteredEvent(ctx));
-		}
-
-		@Override
-		public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelUnregisteredEvent(ctx));
-		}
-
-		@Override
-		public void channelActive(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelActiveEvent(ctx));
-		}
-
-		@Override
-		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelInactiveEvent(ctx));
-		}
-
-		@Override
-		public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelReadCompleteEvent(ctx));
-		}
-
-		@Override
-		public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-			controller.addChannelEvent(new InterceptController.ChannelWritabilityChangedEvent(ctx, ctx.channel().isWritable()));
-		}
-		
 	}
+
+	private class DiscardChannelHandler extends ChannelInboundHandlerAdapter {
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		}
+
+		@Override
+		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+		}
+
+		@Override
+		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		}
+	}
+
 	private class AddServerChannelListener implements ChannelFutureListener {
 		private Object node;
 

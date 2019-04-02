@@ -27,11 +27,11 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelMessageEvent;
-import com.sensepost.mallet.InterceptController.Direction;
-import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
-import com.sensepost.mallet.InterceptController.UserEventTriggeredEvent;
+import com.sensepost.mallet.model.ChannelEvent;
+import com.sensepost.mallet.model.ChannelEvent.ChannelEventType;
+import com.sensepost.mallet.model.ChannelEvent.ChannelMessageEvent;
+import com.sensepost.mallet.model.ChannelEvent.ExceptionCaughtEvent;
+import com.sensepost.mallet.model.ChannelEvent.UserEventTriggeredEvent;
 import com.sensepost.mallet.swing.editors.EditorController;
 import com.sensepost.mallet.swing.editors.ObjectEditor;
 
@@ -52,6 +52,8 @@ public class ConnectionDataPanel extends JPanel {
 	private JTable table;
 	private Preferences prefs = Preferences
 			.userNodeForPackage(ConnectionDataPanel.class).node(ConnectionDataPanel.class.getSimpleName());
+
+	private enum Direction  { Client_Server, Server_Client }
 
 	public ConnectionDataPanel() {
 		setLayout(new BorderLayout(0, 0));
@@ -142,9 +144,9 @@ public class ConnectionDataPanel extends JPanel {
 							value += " (" + o.toString() + ")";
 					}
 					ReferenceCountUtil.release(o);
-				} else if (evt instanceof UserEventTriggeredEvent) {
+				} else if (evt.type().equals(ChannelEventType.USER_EVENT_TRIGGERED)) {
 					Object uevt = ((UserEventTriggeredEvent) evt)
-							.getUserEvent();
+							.userEvent();
 					if (uevt != null) {
 						if ((uevt instanceof ChannelInputShutdownEvent))
 							value = "Input Shutdown";
@@ -152,8 +154,8 @@ public class ConnectionDataPanel extends JPanel {
 							value = "UserEvent " + uevt.toString();
 					} else
 						value += " UserEvent (null)";
-				} else if (evt instanceof ExceptionCaughtEvent) {
-					String cause = ((ExceptionCaughtEvent) evt).getCause();
+				} else if (evt.type().equals(ChannelEventType.EXCEPTION_CAUGHT)) {
+					String cause = ((ExceptionCaughtEvent) evt).cause();
 					int cr = cause.indexOf('\n');
 					if (cr != -1)
 						cause = cause.substring(0, cr);
@@ -175,9 +177,9 @@ public class ConnectionDataPanel extends JPanel {
 			if (value instanceof Direction) {
 				Direction d = (Direction) value;
 				if (d == Direction.Client_Server)
-					value = "Server";
+					value = "Client to Proxy";
 				else
-					value = "Client";
+					value = "Proxy to Server";
 			}
 			return super.getTableCellRendererComponent(table, value,
 					isSelected, hasFocus, row, column);
@@ -234,13 +236,13 @@ public class ConnectionDataPanel extends JPanel {
 			ChannelEvent e = listModel.getElementAt(rowIndex);
 			switch (columnIndex) {
 			case 0:
-				return new Date(e.getEventTime());
+				return e.eventTime();
 			case 1:
-				return e.isExecuted() ? new Date(e.getExecutionTime()) : null;
+				return e.isExecuted() ? e.executionTime() : null;
 			case 2:
-				return listModel.getElementAt(0).getConnectionIdentifier().equals(e.getConnectionIdentifier()) ? Direction.Client_Server : Direction.Server_Client;
+				return listModel.getElementAt(0).channelId().equals(e.channelId()) ? Direction.Client_Server : Direction.Server_Client;
 			case 3:
-				return e.getEventDescription();
+				return e.type();
 			case 4:
 				return e;
 			}
@@ -343,12 +345,12 @@ public class ConnectionDataPanel extends JPanel {
 			} else if (evt instanceof ExceptionCaughtEvent) {
 				editing = null;
 				editorController.setObject(((ExceptionCaughtEvent) evt)
-						.getCause());
+						.cause());
 				editorController.setReadOnly(true);
 			} else if (evt instanceof UserEventTriggeredEvent) {
 				editing = null;
 				editorController.setObject(((UserEventTriggeredEvent) evt)
-						.getUserEvent());
+						.userEvent());
 				editorController.setReadOnly(true);
 			} else {
 				editing = null;

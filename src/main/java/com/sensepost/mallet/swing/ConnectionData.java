@@ -6,11 +6,9 @@ import java.util.BitSet;
 import javax.swing.DefaultListModel;
 import javax.swing.ListModel;
 
-import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelReadEvent;
-import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
+import com.sensepost.mallet.model.ChannelEvent;
+import com.sensepost.mallet.model.ChannelEvent.ChannelEventType;
+import com.sensepost.mallet.model.ChannelEvent.ExceptionCaughtEvent;
 
 public class ConnectionData {
 
@@ -56,17 +54,17 @@ public class ConnectionData {
 		return remoteAddress2;
 	}
 
-	public void addChannelEvent(ChannelEvent e) {
+	public void addChannelEvent(com.sensepost.mallet.model.ChannelEvent e) {
 		events.addElement(e);
 		if (e instanceof ExceptionCaughtEvent)
 			exception = true;
 		int n = events.size() - 1;
 		pending.set(n);
-		if ((e instanceof ChannelActiveEvent) && pending.nextSetBit(0) == n) {
+		if (e.type().equals(ChannelEventType.CHANNEL_ACTIVE) && pending.nextSetBit(0) == n) {
 			e.execute();
 			pending.clear(n);
 		}
-		if (e instanceof ChannelInactiveEvent) {
+		if (e.type().equals(ChannelEventType.CHANNEL_INACTIVE)) {
 			closed++;
 		}
 	}
@@ -112,13 +110,11 @@ public class ConnectionData {
 			try {
 				pending.clear(n);
 				if (execute) {
-					if (e instanceof ChannelReadEvent) {
-						ChannelReadEvent cre = (ChannelReadEvent) e;
-						events.set(n, cre);
-					}
 					e.execute();
+				} else {
+					e.drop();
 				}
-				events.set(n, events.get(n)); // trigger an update event
+				events.set(n, e); // trigger an update in the ListModel
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}

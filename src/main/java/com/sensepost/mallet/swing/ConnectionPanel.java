@@ -6,7 +6,7 @@ import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.SocketAddress;
-import java.sql.Date;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.prefs.Preferences;
@@ -29,9 +29,10 @@ import javax.swing.table.TableCellRenderer;
 
 import org.jdesktop.swingx.JXTable;
 
-import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.InterceptController;
-import com.sensepost.mallet.persistence.MessageDAO;
+import com.sensepost.mallet.model.ChannelEvent;
+import com.sensepost.mallet.model.ChannelStats;
+import com.sensepost.mallet.model.DataModel;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -46,9 +47,10 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	private Map<String, ConnectionData> channelEventMap = new LinkedHashMap<>();
 
 	private boolean intercept = false;
-	private MessageDAO dao = null;
+	private DataModel dm = null;
 
-	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class).node(ConnectionPanel.class.getSimpleName());
+	private Preferences prefs = Preferences.userNodeForPackage(ConnectionPanel.class)
+			.node(ConnectionPanel.class.getSimpleName());
 	private JButton btnCloseConnection;
 
 	public ConnectionPanel() {
@@ -114,7 +116,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		table.setAutoCreateRowSorter(true);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		scrollPane.setViewportView(table);
-		
+
 		btnCloseConnection = new JButton("Close Connection");
 		btnCloseConnection.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -129,7 +131,7 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 					if (cd == null)
 						return;
 					int count = cd.getEventCount();
-					ChannelEvent ce = cd.getEvents().getElementAt(count-1);
+					ChannelEvent ce = cd.getEvents().getElementAt(count - 1);
 					ChannelHandlerContext ctx = ce.context();
 					if (ctx == null)
 						btnCloseConnection.setEnabled(false);
@@ -160,13 +162,16 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		}
 	}
 
-	public void setMessageDAO(MessageDAO dao) {
-		this.dao = dao;
+	public void setDataModel(DataModel dm) {
+		this.dm = dm;
 	}
 
 	@Override
 	public void addChannel(final String channelId, final SocketAddress localAddress,
 			final SocketAddress remoteAddress) {
+		if (dm != null) {
+			ChannelStats stats = dm.addChannel(channelId, localAddress.toString(), remoteAddress.toString(), new Date());
+		}
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				synchronized (channelEventMap) {
@@ -181,6 +186,10 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	@Override
 	public void linkChannels(final String channel1, final String channel2, final SocketAddress localAddress2,
 			final SocketAddress remoteAddress2) {
+		if (dm != null) {
+			dm.addChannel(channel2, localAddress2 == null ? "" : localAddress2.toString(), remoteAddress2.toString(), new Date());
+			dm.linkChannel(channel1, channel2);
+		}
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				synchronized (channelEventMap) {
@@ -196,20 +205,17 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	}
 
 	@Override
-	public void addChannelEvent(final ChannelEvent evt) {
-		if (evt instanceof ChannelReadEvent && dao != null) {
-			((ChannelReadEvent) evt).setDao(dao);
-		}
-
+	public void addChannelEvent(ChannelEvent evt) {
+		final ChannelEvent evt2 = dm == null ? evt : dm.addChannelEvent(evt);
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				addChannelEventEDT(evt);
+				addChannelEventEDT(evt2);
 			}
 		});
 	}
 
 	private void addChannelEventEDT(ChannelEvent evt) {
-		String cp = evt.getConnectionIdentifier();
+		String cp = evt.channelId();
 		ConnectionData connectionData;
 		synchronized (channelEventMap) {
 			connectionData = channelEventMap.get(cp);
@@ -326,10 +332,9 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 			case 2:
 				return cd.getPendingEventCount() + "/" + cd.getEventCount();
 			case 3:
-				return cd.getEventCount() == 0 ? null : new Date(cd.getEvents().getElementAt(0).getEventTime());
+				return cd.getEventCount() == 0 ? null : cd.getEvents().getElementAt(0).eventTime();
 			case 4:
-				return cd.isClosed() ? new Date(cd.getEvents().getElementAt(cd.getEventCount() - 1).getExecutionTime())
-						: null;
+				return cd.isClosed() ? cd.getEvents().getElementAt(cd.getEventCount() - 1).executionTime() : null;
 			}
 			return null;
 		}

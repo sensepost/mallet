@@ -1,30 +1,13 @@
 package com.sensepost.mallet;
 
+import java.net.SocketAddress;
+
+import com.sensepost.mallet.model.ChannelEvent;
+
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-
-import java.net.SocketAddress;
-
-import com.sensepost.mallet.InterceptController.BindEvent;
-import com.sensepost.mallet.InterceptController.ChannelActiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelEvent;
-import com.sensepost.mallet.InterceptController.ChannelInactiveEvent;
-import com.sensepost.mallet.InterceptController.ChannelReadCompleteEvent;
-import com.sensepost.mallet.InterceptController.ChannelReadEvent;
-import com.sensepost.mallet.InterceptController.ChannelRegisteredEvent;
-import com.sensepost.mallet.InterceptController.ChannelUnregisteredEvent;
-import com.sensepost.mallet.InterceptController.ChannelWritabilityChangedEvent;
-import com.sensepost.mallet.InterceptController.CloseEvent;
-import com.sensepost.mallet.InterceptController.ConnectEvent;
-import com.sensepost.mallet.InterceptController.DeregisterEvent;
-import com.sensepost.mallet.InterceptController.DisconnectEvent;
-import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
-import com.sensepost.mallet.InterceptController.FlushEvent;
-import com.sensepost.mallet.InterceptController.ReadEvent;
-import com.sensepost.mallet.InterceptController.UserEventTriggeredEvent;
-import com.sensepost.mallet.InterceptController.WriteEvent;
 
 @Sharable
 public class InterceptHandler extends ChannelDuplexHandler {
@@ -44,97 +27,97 @@ public class InterceptHandler extends ChannelDuplexHandler {
 	@Override
 	public void bind(ChannelHandlerContext ctx, SocketAddress localAddress,
 			ChannelPromise promise) throws Exception {
-		submitEvent(new BindEvent(ctx, localAddress, promise));
+		submitEvent(ChannelEvent.newBindEvent(ctx, localAddress, promise));
 	}
 
 	@Override
 	public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress,
 			SocketAddress localAddress, ChannelPromise promise)
 			throws Exception {
-		submitEvent(new ConnectEvent(ctx, remoteAddress, localAddress, promise));
+		submitEvent(ChannelEvent.newConnectEvent(ctx, remoteAddress, localAddress, promise));
 	}
 
 	@Override
 	public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise)
 			throws Exception {
-		submitEvent(new DisconnectEvent(ctx, promise));
+		submitEvent(ChannelEvent.newDisconnectEvent(ctx, promise));
 	}
 
 	@Override
 	public void close(ChannelHandlerContext ctx, ChannelPromise promise)
 			throws Exception {
-		submitEvent(new CloseEvent(ctx, promise));
+		submitEvent(ChannelEvent.newCloseEvent(ctx, promise));
 	}
 
 	@Override
 	public void deregister(ChannelHandlerContext ctx, ChannelPromise promise)
 			throws Exception {
-		submitEvent(new DeregisterEvent(ctx, promise));
+		submitEvent(ChannelEvent.newDeregisterEvent(ctx, promise));
 	}
 
 	@Override
 	public void read(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ReadEvent(ctx));
+		submitEvent(ChannelEvent.newReadEvent(ctx));
 	}
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg,
 			ChannelPromise promise) throws Exception {
-		submitEvent(new WriteEvent(ctx, msg, promise));
+		submitEvent(ChannelEvent.newWriteEvent(ctx, promise, msg));
 	}
 
 	@Override
 	public void flush(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new FlushEvent(ctx));
+		submitEvent(ChannelEvent.newFlushEvent(ctx));
 	}
 
 	@Override
 	public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ChannelRegisteredEvent(ctx));
+		submitEvent(ChannelEvent.newChannelRegisteredEvent(ctx));
 	}
 
 	@Override
 	public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ChannelUnregisteredEvent(ctx));
+		submitEvent(ChannelEvent.newChannelUnregisteredEvent(ctx));
 	}
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ChannelActiveEvent(ctx));
+		submitEvent(ChannelEvent.newChannelActiveEvent(ctx));
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ChannelInactiveEvent(ctx));
+		submitEvent(ChannelEvent.newChannelInactiveEvent(ctx));
 	}
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
-		submitEvent(new ChannelReadEvent(ctx, msg));
+		submitEvent(ChannelEvent.newChannelReadEvent(ctx, msg));
 	}
 
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		submitEvent(new ChannelReadCompleteEvent(ctx));
+		submitEvent(ChannelEvent.newChannelReadCompleteEvent(ctx));
 	}
 
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
 			throws Exception {
-		submitEvent(new UserEventTriggeredEvent(ctx, evt));
+		submitEvent(ChannelEvent.newUserEventTriggeredEvent(ctx, evt));
 	}
 
 	@Override
 	public void channelWritabilityChanged(ChannelHandlerContext ctx)
 			throws Exception {
-		submitEvent(new ChannelWritabilityChangedEvent(ctx, ctx.channel().isWritable()));
+		submitEvent(ChannelEvent.newChannelWritabilityChangedEvent(ctx));
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
 			throws Exception {
-		submitEvent(new ExceptionCaughtEvent(ctx, cause));
+		submitEvent(ChannelEvent.newExceptionCaughtEvent(ctx, cause));
 	}
 
 }

@@ -3,10 +3,10 @@ package com.sensepost.mallet;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import com.sensepost.mallet.InterceptController.ExceptionCaughtEvent;
 import com.sensepost.mallet.channel.ProxyChannel;
 import com.sensepost.mallet.channel.SubChannel;
 import com.sensepost.mallet.graph.GraphLookup;
+import com.sensepost.mallet.model.ChannelEvent;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -145,7 +145,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 					if (future.isSuccess()) {
 						while (!queue.isEmpty()) {
 							ChannelFuture cf = future.channel().writeAndFlush(queue.remove());
-							cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+							cf.addListener(new ChannelExceptionReporter(ctx));
 							future.channel().attr(LAST_FUTURE).set(cf);
 						}
 						// re-enable autoread now that the connection is established
@@ -153,7 +153,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 					}
 				}
 			});
-			connectFuture.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+			connectFuture.addListener(new ChannelExceptionReporter(ctx));
 		} catch (Exception e) {
 			logger.error("Failed connecting to " + ctx.channel().remoteAddress() + " -> " + target, e);
 			ctx.close();
@@ -170,14 +170,14 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		closeBoth(ctx);
+		// closeBoth(ctx);
 	}
 
 	private void closeBoth(ChannelHandlerContext ctx) {
 		if (ctx.channel().isOpen())
 			ctx.channel().close();
 		ChannelHandlerContext other = other(ctx);
-		if (other.channel().isOpen())
+		if (other != null && other.channel().isOpen())
 			other.channel().close();
 	}
 
@@ -204,7 +204,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			// and match replies to their original sender(s).
 			ChannelHandlerContext other = other(ctx);
 			ChannelFuture cf = other.writeAndFlush(msg);
-			cf.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+			cf.addListener(new ChannelExceptionReporter(ctx));
 			other.channel().attr(LAST_FUTURE).set(cf);
 		}
 	}
@@ -216,37 +216,38 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		return cf;
 	}
 
-	private void addOtherChannelFutureListener(ChannelHandlerContext ctx, ChannelFutureListener listener) {
+	private void addOtherChannelShutdownOutputListener(ChannelHandlerContext ctx) {
 		ChannelHandlerContext other = other(ctx);
 		if (other == null)
 			return;
-		getLastFuture(other).addListener(listener);
+		getLastFuture(other).addListener(new ShutdownOutput(other));
 	}
 
-	private void closeIfShutdown(Channel ch) {
+	private void closeIfShutdown(ChannelHandlerContext ctx) {
+		Channel ch = ctx.channel();
 		if (ch instanceof DuplexChannel) {
 			DuplexChannel dch = (DuplexChannel) ch;
 			if (dch.isShutdown())
-				dch.close();
+				dch.close().addListener(new ChannelExceptionReporter(ctx));
 		}
 	}
 	
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt instanceof ChannelInputShutdownEvent) {
-			// FIXME: If the InputShutdownEvent arrives before the queue
+			// NOTE: If the InputShutdownEvent arrives before the queue
 			// of pending messages has been flushed (or even before the outbound
 			// channel has been established), the ShutdownOutput instance
 			// cannot be sent because the LastFuture on the channel is null!
 			// We work around this by disabling channel autoread while we set
 			// up the outbound channel
-			addOtherChannelFutureListener(ctx, ShutdownOutput.INSTANCE);
-			closeIfShutdown(ctx.channel());
+			addOtherChannelShutdownOutputListener(ctx);
+//			closeIfShutdown(ctx);
 		} else if (evt instanceof ChannelOutputShutdownEvent) {
-			closeIfShutdown(ctx.channel());
+			closeIfShutdown(ctx);
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {
 			ctx.channel().config().setAutoRead(false);
-			closeIfShutdown(ctx.channel());
+			closeIfShutdown(ctx);
 		} else if (evt instanceof ConnectRequest) {
 			setupOutboundChannel(ctx);
 		}
@@ -272,10 +273,10 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		// Do not forward, this is the end of the road
 	}
 
-	private static class ShutdownOutput implements ChannelFutureListener {
-		static ShutdownOutput INSTANCE = new ShutdownOutput();
-
-		private ShutdownOutput() {
+	private class ShutdownOutput implements ChannelFutureListener {
+		private ChannelHandlerContext ctx;
+		public ShutdownOutput(ChannelHandlerContext ctx) {
+			this.ctx = ctx;
 		}
 
 		@Override
@@ -285,14 +286,14 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				if (ch instanceof DuplexChannel) {
 					DuplexChannel dch = (DuplexChannel) ch;
 					if (!dch.isOutputShutdown()) {
-						dch.shutdownOutput();
+						dch.shutdownOutput().addListener(new ChannelExceptionReporter(ctx));
 					}
 				} else if (ch.isOpen()) {
-					ch.close();
+					ch.close().addListener(new ChannelExceptionReporter(ctx));
 				}
 			} else {
 				if (ch.isOpen())
-					ch.close();
+					ch.close().addListener(new ChannelExceptionReporter(ctx));
 			}
 		}
 
@@ -313,6 +314,19 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				} else {
 					promise.setFailure(future.cause());
 				}
+			}
+		}
+	}
+
+	private class ChannelExceptionReporter implements ChannelFutureListener {
+		private ChannelHandlerContext ctx;
+		public ChannelExceptionReporter(ChannelHandlerContext ctx) {
+			this.ctx = ctx;
+		}
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (future.cause() != null) {
+				controller.addChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, future.cause()));
 			}
 		}
 	}
