@@ -451,6 +451,8 @@ public class Graph implements GraphLookup {
 			if (isSink(v))
 				break;
 			ChannelHandler h = getChannelHandler(v);
+			if (h instanceof GraphNodeAware)
+				((GraphNodeAware) h).setGraphNode(this, o);
 			handlers.add(h);
 			handlers.add(new ExceptionCatcher(this, o));
 			Object[] outgoing = graph.getOutgoingEdges(o);
