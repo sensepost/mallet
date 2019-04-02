@@ -21,6 +21,7 @@ public class InstanceFactory {
 	public Object getClassInstance(String description, Class<?> type,
 			String[] arguments) throws ClassNotFoundException,
 			InstantiationException, IllegalAccessException {
+		StringBuffer log = new StringBuffer();
 		if (arguments == null)
 			arguments = new String[0];
 
@@ -72,6 +73,7 @@ public class InstanceFactory {
 			if (type.isAssignableFrom(clz)) {
 				Constructor<?>[] constructors = clz.getConstructors();
 				for (Constructor<?> c : constructors) {
+					log.append("Considering " + c + "\n");
 					Object[] args = null;
 					try {
 						if (c.getParameterCount() == arguments.length) {
@@ -93,7 +95,7 @@ public class InstanceFactory {
 			System.out.println(description
 					+ " could not be instantiated as a class");
 		}
-		throw new ClassNotFoundException("'" + description + "' not found");
+		throw new ClassNotFoundException("'" + description + "' not found\n" + log);
 	}
 
 	private Object getInternalInstance(String description, Class<?> type,
