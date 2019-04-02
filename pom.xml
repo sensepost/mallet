@@ -11,10 +11,6 @@
     <version>1.0-SNAPSHOT</version>
     <name>mallet</name>
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.testSource>1.8</maven.compiler.testSource>
-        <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 	<repositories>
@@ -47,7 +43,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-jdbc</artifactId>
-            <version>4.2.5.RELEASE</version>
+            <version>5.1.5.RELEASE</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -64,7 +60,7 @@
 		<dependency>
 		    <groupId>com.h2database</groupId>
 		    <artifactId>h2</artifactId>
-		    <version>1.4.191</version>
+		    <version>1.4.199</version>
 		</dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -108,9 +104,23 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
         </dependency>
+    <!-- https://mvnrepository.com/artifact/org.exbin.deltahex/deltahex-swing -->
+    <dependency>
+        <groupId>org.exbin.deltahex</groupId>
+        <artifactId>deltahex-swing</artifactId>
+        <version>0.1.2</version>
+    </dependency>
     </dependencies>
     <build>
     <plugins>
+    <plugin>
+    <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+            <generateBackupPoms>false</generateBackupPoms>
+        </configuration>
+    </plugin>
     <plugin>
 	<groupId>org.apache.maven.plugins</groupId>
 	<artifactId>maven-jar-plugin</artifactId>
@@ -164,11 +174,9 @@
   <plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-compiler-plugin</artifactId>
-    <version>3.7.0</version>
+    <version>3.8.0</version>
     <configuration>
-      <compilerArgs>
-        <arg>-parameters</arg>
-      </compilerArgs>
+		<release>11</release>
     </configuration>
   </plugin>
   </plugins>
