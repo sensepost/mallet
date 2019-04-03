@@ -569,12 +569,8 @@ public interface ChannelEvent {
 		@Override
 		public void execute() {
 			ensureNotExecuted();
-			if (!context().isRemoved()) {
-				context().fireExceptionCaught(cause);
-				setState(EventState.EXECUTED);
-			} else {
-				drop();
-			}
+			context().fireExceptionCaught(cause);
+			setState(EventState.EXECUTED);
 		}
 
 		@Override

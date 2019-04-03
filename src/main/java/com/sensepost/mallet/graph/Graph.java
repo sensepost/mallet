@@ -719,7 +719,6 @@ public class Graph implements GraphLookup {
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-			System.out.println("ReportingChannelHandler pipeline is: " + ctx.pipeline());
 			controller.addChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, cause));
 			ctx.close();
 		}
