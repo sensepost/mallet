@@ -41,9 +41,11 @@ import io.netty.handler.codec.MessageToMessageCodec;
  * return new ChannelInboundHandlerAdapter() {
  * 		public void channelRead(ChannelHandlerContext ctx, Object msg) {
  * 			// do something with the msg
- * 			ctx.fireChannelRead(msg);  // pass it up the pipeline } }; }
+ * 			ctx.fireChannelRead(msg);  // pass it up the pipeline 
+ * 		}
+ * };
  * 
- * <pre>
+ * }<pre>
  * 
  * Extending {@link io.netty.channel.ChannelDuplexHandler} to intercept WRITE
  * events:
@@ -55,9 +57,11 @@ import io.netty.handler.codec.MessageToMessageCodec;
  * return new ChannelDuplexHandler() {
  * 		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
  * 			// do something with the msg
- * 			ctx.write(msg, promise);  // pass it down the pipeline } }; }
+ * 			ctx.write(msg, promise);  // pass it down the pipeline 
+ * 		}
+ * };
  * 
- * <pre>
+ * }<pre>
  * 
  * @author rogan
  *
