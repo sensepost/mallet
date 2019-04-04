@@ -93,7 +93,16 @@ public class GraphEditor extends BasicGraphEditor {
 				"io.netty.channel.ChannelDuplexHandler");
 
 		Element scriptHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
-				"import io.netty.channel.*;\r\n\r\nreturn new ChannelDuplexHandler();\r\n", 
+				"import io.netty.channel.*;\n\nreturn new ChannelDuplexHandler() {\n"
+				+ "    public void channelRead(ChannelHandlerContext ctx, Object msg) {\n"
+				+ "        // do something with inbound msg\n"
+				+ "        ctx.fireChannelRead(msg);\n"
+				+ "    }\n"
+				+ "    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {\n"
+				+ "        // do something with outbound msg\n"
+				+ "        ctx.write(msg, promise);\n"
+				+ "    }\n"
+				+ "};\n", 
 				"groovy");
 
 		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
