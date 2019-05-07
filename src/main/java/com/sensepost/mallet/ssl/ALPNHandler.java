@@ -48,7 +48,9 @@ public class ALPNHandler extends ApplicationProtocolNegotiationHandler
 		if (gl == null)
 			throw new NullPointerException("gl");
 		ChannelInitializer<Channel> initializer = gl.getNextHandlers(this, option);
-		ctx.pipeline().replace(this, null, initializer);
+		// FIXME: The calling context has already been removed!
+		// So we HAVE to use non-relative pipeline constructs such as addLast :-(
+		ctx.pipeline().addLast(initializer);
 	}
 
 }
