@@ -46,18 +46,19 @@ public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 	public void channelRead(ChannelHandlerContext ctx, Object msg)
 			throws Exception {
 		if (modifyRead && msg instanceof ByteBuf) {
-			findAndReplace(ctx, (ByteBuf)msg, match, replace);
+			msg = findAndReplace(ctx, (ByteBuf)msg, match, replace);
 		}
 		super.channelRead(ctx, msg);
 	}
 
-	void findAndReplace(ChannelHandlerContext ctx, ByteBuf bb, byte[] match, byte[] replace) {
-		int start = bb.readerIndex();
-		int end = bb.writerIndex();
+	ByteBuf findAndReplace(ChannelHandlerContext ctx, ByteBuf bb, byte[] match, byte[] replace) {
+		ByteBuf copy = bb;
+		int start = copy.readerIndex();
+		int end = copy.writerIndex();
 		int index;
-		while (start < end && (index = bb.indexOf(start, end, match[0])) >= start && index + match.length <= end) {
+		while (start < end && (index = copy.indexOf(start, end, match[0])) >= start && index + match.length <= end) {
 			for (int i = 0; i < match.length; i++) {
-				if (bb.getByte(index + i) != match[i]) {
+				if (copy.getByte(index + i) != match[i]) {
 					start++;
 					break;
 				} else if (i == match.length - 1) {
@@ -65,11 +66,15 @@ public class SimpleBinaryModificationHandler extends ChannelDuplexHandler {
 						ctx.fireUserEventTriggered("Replaced '" + new String(match) + "' with '" + new String(replace) + "'");
 					else
 						System.err.println("Replaced '" + new String(match) + "' with '" + new String(replace) + "'");
-					bb.setBytes(index, replace, 0, replace.length);
+					if (copy == bb) { 
+						copy = bb.copy();
+						bb.release();
+					}
+					copy.setBytes(index, replace, 0, replace.length);
 					start += replace.length;
 				}
 			}
-		};
-
+		}
+		return copy;
 	}
 }
