@@ -4,11 +4,15 @@ Mallet is a tool for creating proxies for arbitrary protocols, along similar lin
 
 It is built upon the Netty framework, and relies heavily on the Netty pipeline concept, which allows the graphical assembly of graphs of handlers. In the Netty world, handler instances provide frame delimitation (i.e. where does a message start and end), protocol decoding and encoding (converting a stream of bytes into Java objects, and back again, or converting a stream of bytes into a different stream of bytes - think compression and decompression), and higher level logic (actually doing something with those objects).
 
-By following the careful separation of Codecs from Handlers that actually manipulate the messages, Mallet can benefit from the large library of existing Codecs, and avoid reimplementation of many protocols. The final piece of the puzzle is provided by a Handler that copies messages received on one pipeline to another pipeline, proxying those messages on to their final destination. 
+By following the careful separation of Codecs from Handlers that actually manipulate the messages, Mallet can benefit from the large library of existing Codecs, and avoid reimplementation of many protocols. The final piece of the puzzle is provided by a Handler that copies messages received on one pipeline to another pipeline, proxying those messages on to their final destination.
 
 Of course, while the messages are within Mallet, they can easily be tampered with, either with custom Handlers written in Java or a JSR-223 compliant scripting language, or manually, using one of the provided editors.
 
-You can get an idea of the available codecs by looking at the Netty source at [GitHub](https://github.com/netty/netty/), under the ```codec*``` directories. 
+You can get an idea of the available codecs by looking at the Netty source at [GitHub](https://github.com/netty/netty/), under the ```codec*``` directories.
+
+# Screenshots
+
+![Mallet New Diagram](img/Mallet_New_Diagram.png?raw=true "New Diagram")
 
 # Building Mallet
 
