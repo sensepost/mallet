@@ -41,13 +41,13 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 
 	public SslServerHandler(
 			Mapping<? super String, ? extends SslContext> mapping) {
-		this.mapping = mapping;
+		this(mapping, null);
 	}
 
 	public SslServerHandler(
 			Mapping<? super String, ? extends SslContext> mapping,
 			String hostname) {
-		this(mapping);
+		this.mapping = mapping;
 		this.hostname = hostname;
 	}
 

@@ -19,8 +19,13 @@ import io.netty.util.Mapping;
 public class Http2SslServerHandler extends ChannelInitializer<Channel> {
 
 	private Mapping<String, SslContext> selector;
+	private String hostname = null;
 	
 	public Http2SslServerHandler(AutoGeneratingContextSelector selector) {
+		this(selector, null);
+	}
+
+	public Http2SslServerHandler(AutoGeneratingContextSelector selector, String hostname) {
 		SslContextBuilder builder = selector.getContextBuilderForServerTemplate();
         SslProvider provider = OpenSsl.isAlpnSupported() ? SslProvider.OPENSSL : SslProvider.JDK;
         builder.sslProvider(provider)
