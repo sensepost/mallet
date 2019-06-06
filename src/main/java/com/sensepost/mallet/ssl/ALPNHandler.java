@@ -47,6 +47,7 @@ public class ALPNHandler extends ApplicationProtocolNegotiationHandler
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		if (gl == null)
 			throw new NullPointerException("gl");
+		ctx.fireUserEventTriggered("Negotiated " + option);
 		ChannelInitializer<Channel> initializer = gl.getNextHandlers(this, option);
 		// FIXME: The calling context has already been removed!
 		// So we HAVE to use non-relative pipeline constructs such as addLast :-(
