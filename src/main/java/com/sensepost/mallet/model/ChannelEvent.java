@@ -420,7 +420,7 @@ public interface ChannelEvent {
 		}
 		
 		@Override
-		public void execute() {
+		public synchronized void execute() {
 			ensureNotExecuted();
 			switch (type()) {
 			case CHANNEL_READ:
@@ -436,7 +436,7 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void drop() {
+		public synchronized void drop() {
 			ensureNotExecuted();
 			switch (type()) {
 			case CHANNEL_READ:
