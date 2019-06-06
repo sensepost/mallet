@@ -48,7 +48,7 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 			String branch = null;
 			boolean defaultOption = false;
 			for (String option : options) {
-				if ("".equals(option)) {
+				if (option == null || "".equals(option)) {
 					defaultOption = true;
 				} else if (hs.matches(option)) {
 					branch = option;

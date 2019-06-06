@@ -534,7 +534,7 @@ public class Graph implements GraphLookup {
 		try {
 			for (Object edge : outgoing) {
 				Object v = graph.getModel().getValue(edge);
-				if (option.equals(v)) {
+				if ((option == null && (v == null || "".equals(v))) || option.equals(v)) {
 					final ChannelHandler[] handlers = getChannelHandlers(graph.getModel().getTerminal(edge, false));
 					return new ChannelInitializer<Channel>() {
 						@Override
