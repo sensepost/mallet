@@ -327,18 +327,18 @@ public class Graph implements GraphLookup {
 	}
 
 	private ChannelInitializer<Channel> subChannelInitializer(final ChannelInitializer<Channel> init) {
-		return new ChannelInitializer<Channel>() {
+        return new ChannelInitializer<Channel>() {
 
-			@Override
-			protected void initChannel(Channel ch) throws Exception {
-				SubChannelHandler sch = new SubChannelHandler(init);
-				String name = ch.pipeline().context(this).name();
-				ch.pipeline().addAfter(name, null, new DiscardChannelHandler());
-				ch.pipeline().addAfter(name, null, new ReportingChannelHandler());
-				ch.pipeline().replace(this, null, sch);
-			}
-			
-		};
+            @Override
+            protected void initChannel(Channel ch) throws Exception {
+                SubChannelHandler sch = new SubChannelHandler(init);
+                String name = ch.pipeline().context(this).name();
+                ch.pipeline().addAfter(name, null, new DiscardChannelHandler());
+                ch.pipeline().addAfter(name, null, new ReportingChannelHandler());
+                ch.pipeline().replace(this, null, sch);
+            }
+
+        };
 	}
 	
 	private ChannelInitializer<Channel> initializer(final ChannelHandler relay, final ChannelHandler... handlers) {
