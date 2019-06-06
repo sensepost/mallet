@@ -75,7 +75,7 @@ public class Main {
 
 	private static KeyStore loadOrInitKeyStore(String location) throws GeneralSecurityException {
 		try {
-			File ks = new File("keystore.jks");
+			File ks = new File(location);
 			KeyStore keyStore = KeyStore.getInstance("JKS");
 			if (!ks.exists()) {
 				AutoGeneratingContextSelector selector = null;
