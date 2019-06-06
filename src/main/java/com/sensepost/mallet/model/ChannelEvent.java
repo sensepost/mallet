@@ -5,6 +5,8 @@ import java.io.StringWriter;
 import java.net.SocketAddress;
 import java.util.Date;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.ReferenceCountUtil;
@@ -408,8 +410,13 @@ public interface ChannelEvent {
 
 		@Override
 		public Object getMessage() {
-			ReferenceCountUtil.retain(msg);
-			return msg;
+			if (msg instanceof ByteBuf) {
+				return ((ByteBuf) msg).retainedDuplicate();
+			} else if (msg instanceof ByteBufHolder) {
+				return ((ByteBufHolder) msg).retainedDuplicate();
+			} else {
+				return ReferenceCountUtil.retain(msg);
+			}
 		}
 		
 		@Override
