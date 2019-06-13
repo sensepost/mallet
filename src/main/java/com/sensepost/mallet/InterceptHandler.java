@@ -126,6 +126,11 @@ public class InterceptHandler extends ChannelDuplexHandler {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+//        if (ctx.executor() != this.executor) {
+//            String name = ctx.name();
+//            ctx.pipeline().addAfter(executor, name, null, this);
+//            ctx.pipeline().remove(name);
+//        }
         super.handlerAdded(ctx);
     }
 
