@@ -63,6 +63,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
@@ -314,7 +315,9 @@ public class Graph implements GraphLookup {
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
-			b.childHandler(subChannelInitializer(new GraphChannelInitializer(vertex)));
+			ChannelInitializer<Channel> initializer = new GraphChannelInitializer(vertex);
+			initializer = subChannelInitializer(initializer);
+			b.childHandler(initializer);
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
 			return b.bind(address);
@@ -335,6 +338,7 @@ public class Graph implements GraphLookup {
                 String name = ch.pipeline().context(this).name();
                 ch.pipeline().addAfter(name, null, new DiscardChannelHandler());
                 ch.pipeline().addAfter(name, null, new ReportingChannelHandler());
+                ch.pipeline().addAfter(name, null, new LoggingHandler(LogLevel.INFO));
                 ch.pipeline().replace(this, null, sch);
             }
 
