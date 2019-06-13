@@ -33,6 +33,7 @@ public class SslSniffHandler extends ByteToMessageDecoder implements Indetermina
 
 	@Override
 	public void optionSelected(ChannelHandlerContext ctx, String option) throws Exception {
+	    ctx.fireUserEventTriggered(getClass().getSimpleName() + " chose option: " + option);
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		if (gl == null)
 			throw new NullPointerException("gl");

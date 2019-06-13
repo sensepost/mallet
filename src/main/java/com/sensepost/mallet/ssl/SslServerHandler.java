@@ -98,6 +98,9 @@ public class SslServerHandler extends ChannelInitializer<Channel> {
 						if (sa instanceof InetSocketAddress) {
 							InetSocketAddress isa = (InetSocketAddress) sa;
 							String target = isa.getHostString();
+							if (target == null)
+							    target = isa.getAddress().getHostAddress();
+							evt = "SNIHandler failed to extract a hostname, using " + target;
 							SslContext context = mapping.map(target);
 							if (context != null) {
 								addHandler(ctx, target, context);
