@@ -54,6 +54,8 @@ public interface ChannelEvent {
 
 	EventState state();
 
+	void executeDecision();
+
 	void execute();
 
 	void drop();
@@ -189,9 +191,13 @@ public interface ChannelEvent {
 		return new DefaultExceptionCaughtEvent(ctx, cause);
 	}
 
-	public static ChannelEvent newExceptionCaughtEvent(String channelId, EventState state, Date eventTime, Date executionTime, String cause) {
-		return new DefaultExceptionCaughtEvent(channelId, state, eventTime, executionTime, cause);
-	}
+    public static ChannelEvent newExceptionCaughtEvent(String channelId, EventState state, Date eventTime, Date executionTime, String cause) {
+        return new DefaultExceptionCaughtEvent(channelId, state, eventTime, executionTime, cause);
+    }
+
+    public static ChannelEvent newExceptionCaughtEvent(String channelId, Throwable cause) {
+        return new DefaultExceptionCaughtEvent(channelId, cause);
+    }
 
 	public static ChannelEvent newFlushEvent(ChannelHandlerContext ctx) {
 		return new DefaultChannelEvent(ChannelEventType.FLUSH, ctx, null);
@@ -233,6 +239,7 @@ public interface ChannelEvent {
 		private final Date eventTime;
 		private Date executionTime = null;
 		private final ChannelPromise promise;
+		protected boolean drop = false;
 		
 		DefaultChannelEvent(ChannelEventType type, String channelId, EventState state, Date eventTime, Date executionTime) {
 			if (type == null)
@@ -313,74 +320,88 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void execute() {
-			ensureNotExecuted();
-			switch (type()) {
-			case CHANNEL_ACTIVE:
-				context().fireChannelActive();
-				break;
-			case CHANNEL_INACTIVE:
-				context().fireChannelInactive();
-				break;
-			case CHANNEL_READ:
-				context().read();
-				break;
-			case CHANNEL_READ_COMPLETE:
-				context().fireChannelReadComplete();
-				break;
-			case CHANNEL_REGISTERED:
-				context().fireChannelRegistered();
-				break;
-			case CHANNEL_UNREGISTERED:
-				context().fireChannelUnregistered();
-				break;
-			case CHANNEL_WRITABILITY_CHANGED:
-				context().fireChannelWritabilityChanged();
-				break;
-			case CLOSE:
-				context().close(promise());
-				break;
-			case DEREGISTER:
-				context().deregister(promise());
-				break;
-			case DISCONNECT:
-				context().disconnect(promise());
-				break;
-			case FLUSH:
-				context().flush();
-				break;
-			case READ:
-				context().read();
-				break;
-			default:
-				throw new UnsupportedOperationException("Don't know how to execute " + type());
-			}
-			setState(EventState.EXECUTED);
-		}
-
-		@Override
-		public void drop() {
-			ensureNotExecuted();
-			switch (type()) {
-			case CHANNEL_ACTIVE:
-			case CHANNEL_INACTIVE:
-			case CHANNEL_READ:
-			case CHANNEL_READ_COMPLETE:
-			case CHANNEL_REGISTERED:
-			case CHANNEL_UNREGISTERED:
-			case CHANNEL_WRITABILITY_CHANGED:
-			case CLOSE:
-			case DEREGISTER:
-			case DISCONNECT:
-			case FLUSH:
-			case READ:
-				break;
-			default:
-				throw new UnsupportedOperationException("Don't know how to drop " + type());
-			}
-			setState(EventState.DROPPED);
+		public final void execute() {
+		    synchronized(this) {
+		        drop = false;
+		        notify();
+		    }
 		}
 		
+		@Override
+		public final void drop() {
+            synchronized(this) {
+                drop = true;
+                notify();
+            }
+		}
+		
+		@Override
+		public void executeDecision() {
+		    ensureNotExecuted();
+		    if (drop) {
+	            switch (type()) {
+	            case CHANNEL_ACTIVE:
+	            case CHANNEL_INACTIVE:
+	            case CHANNEL_READ:
+	            case CHANNEL_READ_COMPLETE:
+	            case CHANNEL_REGISTERED:
+	            case CHANNEL_UNREGISTERED:
+	            case CHANNEL_WRITABILITY_CHANGED:
+	            case CLOSE:
+	            case DEREGISTER:
+	            case DISCONNECT:
+	            case FLUSH:
+	            case READ:
+	                break;
+	            default:
+	                throw new UnsupportedOperationException("Don't know how to drop " + type());
+	            }
+	            setState(EventState.DROPPED);
+		    } else {
+    			switch (type()) {
+    			case CHANNEL_ACTIVE:
+    				context().fireChannelActive();
+    				break;
+    			case CHANNEL_INACTIVE:
+    				context().fireChannelInactive();
+    				break;
+    			case CHANNEL_READ:
+    				context().read();
+    				break;
+    			case CHANNEL_READ_COMPLETE:
+    				context().fireChannelReadComplete();
+    				break;
+    			case CHANNEL_REGISTERED:
+    				context().fireChannelRegistered();
+    				break;
+    			case CHANNEL_UNREGISTERED:
+    				context().fireChannelUnregistered();
+    				break;
+    			case CHANNEL_WRITABILITY_CHANGED:
+    				context().fireChannelWritabilityChanged();
+    				break;
+    			case CLOSE:
+    				context().close(promise());
+    				break;
+    			case DEREGISTER:
+    				context().deregister(promise());
+    				break;
+    			case DISCONNECT:
+    				context().disconnect(promise());
+    				break;
+    			case FLUSH:
+    				context().flush();
+    				break;
+    			case READ:
+    				context().read();
+    				break;
+    			default:
+    				throw new UnsupportedOperationException("Don't know how to execute " + type());
+    			}
+    			setState(EventState.EXECUTED);
+		    }
+		}
+
 		@Override
 		public String toString() {
 			return channelId() + "(" + type() + ": " + description() + ")";
@@ -420,38 +441,36 @@ public interface ChannelEvent {
 		}
 		
 		@Override
-		public synchronized void execute() {
+		public void executeDecision() {
 			ensureNotExecuted();
-			switch (type()) {
-			case CHANNEL_READ:
-				context().fireChannelRead(getMessage());
-				break;
-			case WRITE:
-				context().write(getMessage(), promise());
-				break;
-			default:
-				throw new UnsupportedOperationException("MessageEvent can only be a CHANNEL_READ or WRITE, got " + type());	
+			if (drop) {
+		         switch (type()) {
+		            case CHANNEL_READ:
+		                ReferenceCountUtil.release(getMessage());
+		                break;
+		            case WRITE:
+		                ReferenceCountUtil.release(getMessage());
+		                promise().trySuccess();
+		                break;
+		            default:
+		                throw new UnsupportedOperationException("MessageEvent can only be a CHANNEL_READ or WRITE, got " + type()); 
+		            }
+		            setState(EventState.DROPPED);
+			} else {
+    			switch (type()) {
+    			case CHANNEL_READ:
+    				context().fireChannelRead(getMessage());
+    				break;
+    			case WRITE:
+    				context().write(getMessage(), promise());
+    				break;
+    			default:
+    				throw new UnsupportedOperationException("MessageEvent can only be a CHANNEL_READ or WRITE, got " + type());	
+    			}
+    			setState(EventState.EXECUTED);
 			}
-			setState(EventState.EXECUTED);
 		}
 
-		@Override
-		public synchronized void drop() {
-			ensureNotExecuted();
-			switch (type()) {
-			case CHANNEL_READ:
-				ReferenceCountUtil.release(getMessage());
-				break;
-			case WRITE:
-				ReferenceCountUtil.release(getMessage());
-				promise().trySuccess();
-				break;
-			default:
-				throw new UnsupportedOperationException("MessageEvent can only be a CHANNEL_READ or WRITE, got " + type());	
-			}
-			setState(EventState.DROPPED);
-		}
-		
 		@Override
 		public String description() {
 			return getMessage() == null ? "null" : getMessage().getClass().getName();
@@ -481,17 +500,15 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void execute() {
+		public void executeDecision() {
 			ensureNotExecuted();
-			context().bind(localAddress, promise());
-			setState(EventState.EXECUTED);
-		}
-
-		@Override
-		public void drop() {
-			ensureNotExecuted();
-			promise().trySuccess();
-			setState(EventState.DROPPED);
+			if (drop) {
+			    promise().trySuccess();
+			    setState(EventState.DROPPED);
+			} else {
+			    context().bind(localAddress, promise());
+			    setState(EventState.EXECUTED);
+			}
 		}
 
 		@Override
@@ -524,17 +541,15 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void execute() {
+		public void executeDecision() {
 			ensureNotExecuted();
-			context().connect(remoteAddress, localAddress, promise());
-			setState(EventState.EXECUTED);
-		}
-
-		@Override
-		public void drop() {
-			ensureNotExecuted();
-			promise().trySuccess();
-			setState(EventState.DROPPED);
+			if (drop) {
+			    promise().trySuccess();
+			    setState(EventState.DROPPED);
+			} else {
+    			context().connect(remoteAddress, localAddress, promise());
+    			setState(EventState.EXECUTED);
+			}
 		}
 
 		@Override
@@ -548,12 +563,18 @@ public interface ChannelEvent {
 		private final String causeString;
 		private final Throwable cause;
 
-		DefaultExceptionCaughtEvent(String channelId, EventState state, Date eventTime,
-				Date executionTime, String cause) {
-			super(ChannelEventType.EXCEPTION_CAUGHT, channelId, state, eventTime, executionTime);
-			this.cause = null;
-			this.causeString = cause;
-		}
+        DefaultExceptionCaughtEvent(String channelId, EventState state, Date eventTime,
+                Date executionTime, String cause) {
+            super(ChannelEventType.EXCEPTION_CAUGHT, channelId, state, eventTime, executionTime);
+            this.cause = null;
+            this.causeString = cause;
+        }
+
+        DefaultExceptionCaughtEvent(String channelId, Throwable cause) {
+            super(ChannelEventType.EXCEPTION_CAUGHT, channelId, EventState.EXECUTED, new Date(), new Date());
+            this.cause = null;
+            this.causeString = throwableToString(cause);
+        }
 
 		DefaultExceptionCaughtEvent(ChannelHandlerContext ctx, Throwable cause) {
 			super(ChannelEventType.EXCEPTION_CAUGHT, ctx, null);
@@ -574,16 +595,14 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void execute() {
+		public void executeDecision() {
 			ensureNotExecuted();
-			context().fireExceptionCaught(cause);
-			setState(EventState.EXECUTED);
-		}
-
-		@Override
-		public void drop() {
-			ensureNotExecuted();
-			setState(EventState.DROPPED);
+			if (drop) {
+			    setState(EventState.DROPPED);
+			} else {
+    			context().fireExceptionCaught(cause);
+    			setState(EventState.EXECUTED);
+			}
 		}
 
 		@Override
@@ -623,16 +642,14 @@ public interface ChannelEvent {
 		}
 
 		@Override
-		public void execute() {
+		public void executeDecision() {
 			ensureNotExecuted();
-			context().fireUserEventTriggered(evt);
-			setState(EventState.EXECUTED);
-		}
-
-		@Override
-		public void drop() {
-			ensureNotExecuted();
-			setState(EventState.DROPPED);
+			if (drop) {
+			    setState(EventState.DROPPED);
+			} else {
+    			context().fireUserEventTriggered(evt);
+    			setState(EventState.EXECUTED);
+			}
 		}
 
 		@Override

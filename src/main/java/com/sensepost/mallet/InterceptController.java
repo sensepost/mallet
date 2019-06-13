@@ -16,7 +16,7 @@ public interface InterceptController {
 
 	void addChannel(String id, SocketAddress local, SocketAddress remote);
 
-	void addChannelEvent(ChannelEvent evt);
+	void processChannelEvent(ChannelEvent evt);
 
 	void linkChannels(String channel1, String channel2, SocketAddress localAddress2, SocketAddress remoteAddress2);
 

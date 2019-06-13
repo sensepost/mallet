@@ -205,13 +205,31 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 	}
 
 	@Override
-	public void addChannelEvent(ChannelEvent evt) {
-		final ChannelEvent evt2 = dm == null ? evt : dm.addChannelEvent(evt);
-		SwingUtilities.invokeLater(new Runnable() {
-			public void run() {
-				addChannelEventEDT(evt2);
-			}
-		});
+	public void processChannelEvent(ChannelEvent evt) {
+		evt = dm == null ? evt : dm.addChannelEvent(evt);
+        final ChannelEvent evt2 = evt;
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                addChannelEventEDT(evt2);
+            }
+        });
+		if (intercept(evt)) {
+            synchronized (evt) {
+                try {
+                    evt.wait();
+                } catch (InterruptedException ie) {
+                    // ignore
+                }
+                evt.executeDecision();
+            }
+        } else {
+            if (!evt.isExecuted())
+                evt.executeDecision();
+        }
+	}
+
+	private boolean intercept(ChannelEvent evt) {
+	    return isIntercept();
 	}
 
 	private void addChannelEventEDT(ChannelEvent evt) {
@@ -229,14 +247,6 @@ public class ConnectionPanel extends JPanel implements InterceptController {
 		int index = listModel.indexOf(cp);
 		if (index > -1)
 			listModel.setElementAt(listModel.getElementAt(index), index);
-
-		if (!intercept) {
-			try {
-				connectionData.executeAllEvents();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
 	private void sendAllPendingEvents() {

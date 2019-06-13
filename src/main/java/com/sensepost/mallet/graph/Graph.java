@@ -708,18 +708,18 @@ public class Graph implements GraphLookup {
 
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-			controller.addChannelEvent(ChannelEvent.newChannelReadEvent(ctx, msg));
+			controller.processChannelEvent(ChannelEvent.newChannelReadEvent(ctx, msg));
 			ctx.close();
 		}
 
 		@Override
 		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-			controller.addChannelEvent(ChannelEvent.newUserEventTriggeredEvent(ctx, evt));
+			controller.processChannelEvent(ChannelEvent.newUserEventTriggeredEvent(ctx, evt));
 		}
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-			controller.addChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, cause));
+			controller.processChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, cause));
 			ctx.close();
 		}
 	}

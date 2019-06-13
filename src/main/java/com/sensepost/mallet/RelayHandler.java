@@ -149,7 +149,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 							future.channel().attr(LAST_FUTURE).set(cf);
 						}
 						// re-enable autoread now that the connection is established
-						ctx.channel().config().setAutoRead(true);
+                        ctx.channel().config().setAutoRead(true);
+                        future.channel().config().setAutoRead(true);
 					}
 				}
 			});
@@ -209,6 +210,19 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		}
 	}
 
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        // FIXME: In theory, having a flush at the end of a series of read/write actions
+        // makes sense. The writes should be done without the flush, and then when they are done
+        // a single flush sends them off.
+        // However, this seems to break SSL Client connections for some reason.
+
+//        ChannelHandlerContext other = other(ctx);
+//        if (other != null) {
+//            other.flush();
+//        }
+    }
+
 	private ChannelFuture getLastFuture(ChannelHandlerContext ctx) {
 		ChannelFuture cf = ctx.channel().attr(LAST_FUTURE).get();
 		if (cf == null)
@@ -265,12 +279,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
-		// Do not forward, this is the end of the road
-	}
-
-	@Override
-	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		// Do not forward, this is the end of the road
+        if (connectFuture == null) {
+            if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
+                setupOutboundChannel(ctx);
+            }
+        }
 	}
 
 	private class ShutdownOutput implements ChannelFutureListener {
@@ -326,7 +339,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			if (future.cause() != null) {
-				controller.addChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, future.cause()));
+				controller.processChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, future.cause()));
 			}
 		}
 	}
