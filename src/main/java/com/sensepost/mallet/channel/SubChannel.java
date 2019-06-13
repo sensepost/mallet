@@ -3,9 +3,7 @@ package com.sensepost.mallet.channel;
 import java.net.SocketAddress;
 import java.util.concurrent.RejectedExecutionException;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelConfig;
 import io.netty.channel.ChannelFuture;
@@ -503,8 +501,6 @@ public class SubChannel implements Channel {
 
 		@Override
 		public void write(Object msg, final ChannelPromise promise) {
-//			if (msg instanceof ByteBuf)
-//				System.err.println("Writing " + ByteBufUtil.hexDump((ByteBuf)msg));
 			ctx.write(msg).addListener(new PromiseRelay(promise));
 		}
 
