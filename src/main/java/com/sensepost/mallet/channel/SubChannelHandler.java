@@ -70,12 +70,12 @@ public class SubChannelHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelRegistered(final ChannelHandlerContext ctx) throws Exception {
 		ChannelPromise promise = ctx.channel().newPromise();
-//		promise.addListener(new ChannelFutureListener() {
-//			@Override
-//			public void operationComplete(ChannelFuture future) throws Exception {
-//				ctx.fireChannelRegistered();
-//			}
-//		});
+		promise.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				ctx.fireChannelRegistered();
+			}
+		});
 		sc.unsafe().register(ctx.channel().eventLoop(), promise);
 	}
 
