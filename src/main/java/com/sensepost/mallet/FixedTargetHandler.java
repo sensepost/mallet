@@ -16,11 +16,11 @@ public class FixedTargetHandler extends ChannelInboundHandlerAdapter {
 	}
 	
 	@Override
-	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
 		Promise<Channel> connectPromise = ctx.executor().newPromise();
 		ConnectRequest cr = new ConnectRequest(target, connectPromise);
 		ctx.channel().attr(ChannelAttributes.TARGET).set(cr);
-		super.channelActive(ctx);
+		super.handlerAdded(ctx);
 	}
 	
 }
