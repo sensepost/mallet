@@ -19,6 +19,7 @@ public class FixedTargetHandler extends ChannelInboundHandlerAdapter {
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
 		Promise<Channel> connectPromise = ctx.executor().newPromise();
 		ConnectRequest cr = new ConnectRequest(target, connectPromise);
+		ctx.fireUserEventTriggered(cr);
 		ctx.channel().attr(ChannelAttributes.TARGET).set(cr);
 		super.handlerAdded(ctx);
 	}
