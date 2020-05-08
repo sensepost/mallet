@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -19,7 +20,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
-import io.netty.handler.codec.MessageToMessageCodec;
 
 /**
  * The ScriptHandler is a <code>ChannelInitializer</code> that instantiates a
@@ -108,7 +108,7 @@ public class ScriptHandler extends ChannelInitializer<Channel> implements GraphN
 		this.node = node;
 	}
 
-	private ChannelHandler getChannelHandler() throws ScriptException {
+	private ChannelHandler getChannelHandler(Bindings bindings) throws ScriptException {
 		ScriptEngineManager sem = new ScriptEngineManager();
 		ScriptEngine engine;
 
@@ -129,7 +129,7 @@ public class ScriptHandler extends ChannelInitializer<Channel> implements GraphN
 				engine = sem.getEngineByExtension(extension);
 				if (engine == null)
 					throw new RuntimeException("No engine for extension: '" + extension + "'");
-				scriptResult = engine.eval(new InputStreamReader(is));
+				scriptResult = engine.eval(new InputStreamReader(is), bindings);
 			} catch (IOException ioe) {
 				ScriptException e = new ScriptException("Error compiling script");
 				e.initCause(ioe);
@@ -145,15 +145,19 @@ public class ScriptHandler extends ChannelInitializer<Channel> implements GraphN
 			engine = sem.getEngineByName(language);
 			if (engine == null)
 				throw new RuntimeException("No engine for language: '" + language + "'");
-			scriptResult = engine.eval(script);
+			scriptResult = engine.eval(script, bindings);
 		} else {
 			throw new NullPointerException("filename or script and language were null");
 		}
+		if (scriptResult == null)
+			scriptResult = engine.eval("_", bindings); // special case for Jython
+		if (scriptResult == null)
+			throw new RuntimeException("Could not get a ChannelHandler from the script");
 		return getScriptHandler(engine, scriptResult);
 	}
 
 	private ChannelHandler getScriptHandler(ScriptEngine engine, Object script) {
-		if (script instanceof ChannelHandler) {
+		if (ChannelHandler.class.isAssignableFrom(script.getClass())) {
 			return (ChannelHandler) script;
 		} else
 			throw new ClassCastException("Script does not implement ChannelHandler");
@@ -162,7 +166,8 @@ public class ScriptHandler extends ChannelInitializer<Channel> implements GraphN
 	@Override
 	protected void initChannel(Channel ch) throws Exception {
 		String name = ch.pipeline().context(this).name();
-		ch.pipeline().addAfter(name, null, getChannelHandler());
+		Bindings bindings = ch.attr(ChannelAttributes.SCRIPT_CONTEXT).get();
+		ch.pipeline().addAfter(name, null, getChannelHandler(bindings));
 	}
 
 	/**
