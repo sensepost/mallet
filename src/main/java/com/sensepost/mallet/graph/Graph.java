@@ -350,6 +350,7 @@ public class Graph implements GraphLookup {
 
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
+	            ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 				String name = ch.pipeline().context(this).name();
 				for (ChannelHandler handler : handlers) {
 					ch.pipeline().addBefore(name, null, handler);
@@ -682,6 +683,8 @@ public class Graph implements GraphLookup {
 
 		@Override
 		protected void initChannel(Channel ch) throws Exception {
+		    ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
+
 			Object[] edges = graph.getEdges(serverVertex);
 			if (edges == null || edges.length == 0) {
 				addGraphException(serverVertex, new IllegalStateException("No outbound edge"));
@@ -703,8 +706,6 @@ public class Graph implements GraphLookup {
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
 			ch.attr(ChannelAttributes.GRAPH).set(Graph.this);
 			p.addLast(handlers);
-
-			ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 		}
 	}
 
