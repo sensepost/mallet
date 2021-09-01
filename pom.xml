@@ -23,22 +23,22 @@
     	<dependency>
     		<groupId>io.netty</groupId>
     		<artifactId>netty-all</artifactId>
-    		<version>4.1.31.Final</version>
+    		<version>4.1.42.Final</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
-    		<artifactId>bcprov-jdk15on</artifactId>
-    		<version>1.59</version>
+    		<artifactId>bcprov-jdk15to18</artifactId>
+    		<version>1.67</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
-    		<artifactId>bcpkix-jdk15on</artifactId>
-    		<version>1.59</version>
+    		<artifactId>bcpkix-jdk15to18</artifactId>
+    		<version>1.67</version>
     	</dependency>
     	<dependency>
     		<groupId>org.bouncycastle</groupId>
-    		<artifactId>bctls-jdk15on</artifactId>
-    		<version>1.59</version>
+    		<artifactId>bctls-jdk15to18</artifactId>
+    		<version>1.67</version>
     	</dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -159,7 +159,7 @@
 	    </execution>
 	</executions>
   </plugin>
-  <!-- <plugin>
+  <plugin>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-maven-plugin</artifactId>
     <executions>
@@ -175,7 +175,7 @@
             </configuration>
         </execution>
     </executions>
-  </plugin> -->
+  </plugin>
   <plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-compiler-plugin</artifactId>
