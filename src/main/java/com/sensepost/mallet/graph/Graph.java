@@ -701,6 +701,7 @@ public class Graph implements GraphLookup {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
 			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
+			p.addAfter(me, null, new LoggingHandler("RAWTRAFFICLOGGER"));
 
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
