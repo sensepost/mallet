@@ -141,9 +141,7 @@ class MessagePackDecoder extends ByteToMessageDecoder {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         while (in.readableBytes() > 0) {
-            Object o = readValue(in);
-            System.out.println(o);
-            out.add(o);
+            out.add(readValue(in));
         }
     }
 }

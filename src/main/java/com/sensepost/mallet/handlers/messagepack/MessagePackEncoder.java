@@ -21,7 +21,7 @@ class MessagePackEncoder extends MessageToByteEncoder<Object> {
                 out.writeByte(0xe0 | (int)(-v & 0x1F));
             } else {
                 out.writeByte(0xd0);
-                out.writeByte((int)(v));
+                out.writeByte(v);
             }
         } else {
             out.writeByte(v);
