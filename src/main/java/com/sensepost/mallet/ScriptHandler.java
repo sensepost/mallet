@@ -121,11 +121,11 @@ public class ScriptHandler extends ChannelInitializer<Channel> implements GraphN
 				if (f.exists())
 					is = new FileInputStream(f);
 				else
-					is = getClass().getClassLoader().getResourceAsStream(fileName);
+					is = getClass().getResourceAsStream(fileName);
 				if (is == null)
 					throw new FileNotFoundException(fileName);
 
-				String extension = fileName.substring(fileName.lastIndexOf('.'));
+				String extension = fileName.substring(fileName.lastIndexOf('.')+1);
 				engine = sem.getEngineByExtension(extension);
 				if (engine == null)
 					throw new RuntimeException("No engine for extension: '" + extension + "'");

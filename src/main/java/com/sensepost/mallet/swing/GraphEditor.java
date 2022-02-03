@@ -4,10 +4,8 @@ package com.sensepost.mallet.swing;
 
 import java.awt.Color;
 import java.awt.Point;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.util.EventObject;
@@ -55,6 +53,14 @@ public class GraphEditor extends BasicGraphEditor {
 
 	// GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/connector.gif");
 
+	private static final ImageIcon IMAGE_ROUNDED = new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png"));
+	
+	private static final ImageIcon IMAGE_RECTANGLE = new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rectangle.png"));
+	
+	private static final ImageIcon IMAGE_DOUBLERECTANGLE = new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png"));
+	
+	private static final ImageIcon IMAGE_HEXAGON = new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png"));
+	
 	public GraphEditor() {
 		this("mxGraph Editor", new CustomGraphComponent(new CustomGraph()));
 	}
@@ -69,6 +75,20 @@ public class GraphEditor extends BasicGraphEditor {
 			}
 		}
 		return e;
+	}
+	
+	private void loadScriptHandler(Document xmlDocument, EditorPalette protocolPalette, String path) {
+       try (InputStream in = GraphEditor.class.getResourceAsStream(path)) {
+           if (in != null) {
+               Element e = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", path);
+               String[] parts = path.split("[/\\\\]");
+               String fn = parts[parts.length - 1];
+               String name = fn.split("\\.")[0];
+               protocolPalette.addTemplate(name,
+                       IMAGE_ROUNDED,
+                       "rounded=1", 160, 120, e);
+           }
+       } catch (IOException ioe) {}
 	}
 	
 	/**
@@ -91,19 +111,6 @@ public class GraphEditor extends BasicGraphEditor {
 
 		Element handler = createElement(xmlDocument, "ChannelHandler", 
 				"io.netty.channel.ChannelDuplexHandler");
-
-		Element scriptHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
-				"import io.netty.channel.*;\n\nreturn new ChannelDuplexHandler() {\n"
-				+ "    public void channelRead(ChannelHandlerContext ctx, Object msg) {\n"
-				+ "        // do something with inbound msg\n"
-				+ "        ctx.fireChannelRead(msg);\n"
-				+ "    }\n"
-				+ "    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {\n"
-				+ "        // do something with outbound msg\n"
-				+ "        ctx.write(msg, promise);\n"
-				+ "    }\n"
-				+ "};\n", 
-				"groovy");
 
 		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
 				"io.netty.handler.logging.LoggingHandler");
@@ -129,113 +136,80 @@ public class GraphEditor extends BasicGraphEditor {
 		// EditorPalette symbolsPalette =
 		// insertPalette(mxResources.get("symbols"));
 
-		basicPalette.addTemplate("Listener",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rectangle.png")), null,
-				160, 120, listener);
-		basicPalette.addTemplate("Socks",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, socks);
-		basicPalette.addTemplate("Target",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, fixedHandler);
-		basicPalette.addTemplate("Handler",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, handler);
-		basicPalette.addTemplate("Script",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, scriptHandler);
-		basicPalette.addTemplate("Logger",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, logHandler);
-		basicPalette.addTemplate("Intercept",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
-				"intercept;shape=doubleRectangle", 160, 120, intercept);
-		basicPalette.addTemplate("Relay",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
-				"relay;shape=doubleRectangle", 160, 120, relay);
-		basicPalette.addTemplate("UDP Relay",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/doublerectangle.png")),
-				"relay;shape=doubleRectangle", 160, 120, udpRelay);
+        basicPalette.addTemplate("Listener", IMAGE_RECTANGLE, null, 160, 120, listener);
+        basicPalette.addTemplate("Socks", IMAGE_ROUNDED, "rounded=1", 160, 120, socks);
+        basicPalette.addTemplate("Target", IMAGE_ROUNDED, "rounded=1", 160, 120, fixedHandler);
+        basicPalette.addTemplate("Handler", IMAGE_ROUNDED, "rounded=1", 160, 120, handler);
+        loadScriptHandler(xmlDocument, basicPalette, "/com/sensepost/mallet/ScriptHandler.groovy");
+        basicPalette.addTemplate("Logger", IMAGE_ROUNDED, "rounded=1", 160, 120, logHandler);
+        basicPalette.addTemplate("Intercept", IMAGE_DOUBLERECTANGLE, "intercept;shape=doubleRectangle", 160, 120,
+                intercept);
+        basicPalette.addTemplate("Relay", IMAGE_DOUBLERECTANGLE, "relay;shape=doubleRectangle", 160, 120, relay);
+        basicPalette.addTemplate("UDP Relay", IMAGE_DOUBLERECTANGLE, "relay;shape=doubleRectangle", 160, 120, udpRelay);
 
 		basicPalette.addTemplate("TargetSpecific",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+				IMAGE_HEXAGON,
 				"shape=hexagon", 160, 120, targetHandler);
 		basicPalette.addTemplate("Socks5 Client",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, socks5Handler);
 		basicPalette.addTemplate("Sink",
 				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/cylinder.png")),
 				"shape=cylinder", 120, 160, sink);
 
 		protocolPalette.addTemplate("Ssl Sniff",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+				IMAGE_HEXAGON,
 				"shape=hexagon", 160, 120, createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.ssl.SslSniffHandler"));
 
 		protocolPalette.addTemplate("SSL Server",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslServerHandler", "{SSLServerCertificateMap}"));
 		
 		protocolPalette.addTemplate("SSL Client",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.SslClientHandler"));
 
 		protocolPalette.addTemplate("Http2 SSL Server",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslServerHandler", "{SSLServerCertificateMap}"));
 		protocolPalette.addTemplate("Http2 SSL Client",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ssl.Http2SslClientHandler"));
 
 		protocolPalette.addTemplate("HTTP Sniff",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/hexagon.png")),
+		        IMAGE_HEXAGON,
 				"shape=hexagon", 160, 120, createElement(xmlDocument, "IndeterminateChannelHandler", "com.sensepost.mallet.handlers.http.HttpSniffHandler"));
 		protocolPalette.addTemplate("HttpServerCodec",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpServerCodec"));
 		protocolPalette.addTemplate("HttpClientCodec",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpClientCodec"));
 		protocolPalette.addTemplate("HttpObjectAggregator",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "1048576"));
-		InputStream upsideDownStream = GraphEditor.class.getResourceAsStream("/com/sensepost/mallet/script.groovy");
-		if (upsideDownStream != null) {
-			try (BufferedReader br = new BufferedReader(new InputStreamReader(upsideDownStream))) {
-				String line;
-				StringBuffer buff = new StringBuffer();
-				while ((line = br.readLine()) != null)
-					buff.append(line).append("\n");
-				Element upsidedown = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", 
-						buff.toString(), "groovy");
-				protocolPalette.addTemplate("UpsideDown-ternet",
-						new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-						"rounded=1", 160, 120, upsidedown);
-			} catch (IOException ioe) {}
-		}
 		
-		protocolPalette.addTemplate("StringDecoder",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.string.StringDecoder", "io.netty.util.CharsetUtil.UTF_8"));
+        loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/UpsideDownternet.groovy");
 		
-		protocolPalette.addTemplate("StringEncoder",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.string.StringEncoder", "io.netty.util.CharsetUtil.UTF_8"));
+		loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/StringCodec.groovy");
+        
+        protocolPalette.addTemplate("StringDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
+                "ChannelHandler", "io.netty.handler.codec.string.StringDecoder", "io.netty.util.CharsetUtil.UTF_8"));
+        
+        protocolPalette.addTemplate("StringEncoder", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
+                "ChannelHandler", "io.netty.handler.codec.string.StringEncoder", "io.netty.util.CharsetUtil.UTF_8"));
 		
-
-		protocolPalette.addTemplate("JsonObjectDecoder",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
+        protocolPalette.addTemplate("JsonObjectDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120,
+                createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
 		
-		protocolPalette.addTemplate("JsonCodec",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
-				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", "import com.fasterxml.jackson.databind.*;\nimport com.fasterxml.jackson.databind.node.*;\n\nimport io.netty.buffer.*;\nimport io.netty.channel.*;\nimport io.netty.handler.codec.*;\n\nimport java.util.List;\n\nreturn new ByteToMessageCodec<JsonNode>(JsonNode.class) {\n    private final ObjectMapper objectMapper = new ObjectMapper();\n\n    protected void encode(ChannelHandlerContext ctx, JsonNode msg, ByteBuf out) throws Exception {\n        ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(out);\n        objectMapper.writeValue(byteBufOutputStream, msg);\n    }\n\n    protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<JsonNode> out) throws Exception {\n        ByteBufInputStream byteBufInputStream = new ByteBufInputStream(buf);\n        out.add(objectMapper.readTree(byteBufInputStream));\n    }\n\n};\n\n", "groovy"));
-		
+        loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/JsonCodec.groovy");
+        		
 		protocolPalette.addTemplate("SimpleBinaryModification",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.SimpleBinaryModificationHandler", "abcdef", "ABCDEF"));
 		
 		protocolPalette.addTemplate("ComplexBinaryModification",
-				new ImageIcon(GraphEditor.class.getResource("/com/mxgraph/examples/swing/images/rounded.png")),
+				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.ComplexBinaryModificationHandler", "abcdef", "ABCDEF"));
 				
 	}
