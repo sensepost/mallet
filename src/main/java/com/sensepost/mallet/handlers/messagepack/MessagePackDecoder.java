@@ -1,20 +1,29 @@
 package com.sensepost.mallet.handlers.messagepack;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.msgpack.jackson.dataformat.MessagePackFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.util.CharsetUtil;
 
 class MessagePackDecoder extends ByteToMessageDecoder {
+    
+    private ObjectMapper objectMapper = new ObjectMapper(new MessagePackFactory());
 
     public MessagePackDecoder() {
     }
 
+/*
     private Object readValue(ByteBuf in) {
         int type = in.readUnsignedByte();
         if ((type & 0x80) == 0) { // positive fixint
@@ -132,16 +141,20 @@ class MessagePackDecoder extends ByteToMessageDecoder {
                 map.put(readValue(in), readValue(in));
             }
             return map;
-        } else if ((type & 0xE0) == 0xe0) { // negative fixint
-            return - Integer.valueOf(type & 0x1F);
+        } else if ((type & 0xe0) == 0xe0) { // negative fixint
+            return - (32 - Integer.valueOf(type & 0x1F));
         }
         throw new UnsupportedOperationException();
     }
-    
+    */
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        while (in.readableBytes() > 0) {
-            out.add(readValue(in));
+        if (in.readableBytes() >  0) {
+            InputStream is = new ByteBufInputStream(in);
+            while (in.readableBytes() > 0) {
+                out.add(objectMapper.readValue(is, Object.class));
+//            out.add(readValue(in));
+            }
         }
     }
 }

@@ -1,9 +1,14 @@
 package com.sensepost.mallet.handlers.messagepack;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.msgpack.jackson.dataformat.MessagePackFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -12,13 +17,15 @@ import io.netty.util.CharsetUtil;
 
 class MessagePackEncoder extends MessageToByteEncoder<Object> {
 
+    private ObjectMapper objectMapper = new ObjectMapper(new MessagePackFactory());
     public MessagePackEncoder() {
     }
     
+    /*
     private void encodeByte(Byte v, ByteBuf out) {
         if (v < 0) { 
-            if(v > -(1 << 5)) { // int5
-                out.writeByte(0xe0 | (int)(-v & 0x1F));
+            if(v >= -(1 << 5)) { // int5
+                out.writeByte(0xe0 | (32 + v));
             } else {
                 out.writeByte(0xd0);
                 out.writeByte(v);
@@ -64,7 +71,7 @@ class MessagePackEncoder extends MessageToByteEncoder<Object> {
         } else if (v < Integer.MIN_VALUE) {
             out.writeByte(0xd3);
             out.writeLong(v);
-        } else if (v < (Integer.MAX_VALUE+1) * 2) {
+        } else if (v < ((long)Integer.MAX_VALUE+1) * 2) {
             out.writeByte(0xce);
             out.writeInt((int)(v & 0xFFFFFFFF));
         } else {
@@ -147,6 +154,13 @@ class MessagePackEncoder extends MessageToByteEncoder<Object> {
     private void encode(Object msg, ByteBuf out) {
         if (msg == null) {
             out.writeByte(0xc0);
+        } else if (msg instanceof Boolean) {
+            Boolean b = (Boolean) msg;
+            if (!b) {
+                out.writeByte(0xc2);
+            } else {
+                out.writeByte(0xc3);
+            }
         } else if (msg instanceof Byte) {
             encodeByte((Byte) msg, out);
         } else if (msg instanceof Short) {
@@ -177,10 +191,11 @@ class MessagePackEncoder extends MessageToByteEncoder<Object> {
             out.writeDouble(d);
         } else throw new UnsupportedOperationException("Encoding of " + msg.getClass() + " objects is not yet implemented");
     }
+ */
     
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {
-        encode(msg, out);
+        out.writeBytes(objectMapper.writeValueAsBytes(msg));
     }
     
 }
