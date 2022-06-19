@@ -191,8 +191,6 @@ public class GraphEditor extends BasicGraphEditor {
 		
         loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/UpsideDownternet.groovy");
 		
-		loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/StringCodec.groovy");
-        
         protocolPalette.addTemplate("StringDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
                 "ChannelHandler", "io.netty.handler.codec.string.StringDecoder", "io.netty.util.CharsetUtil.UTF_8"));
         
