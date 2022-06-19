@@ -198,8 +198,11 @@ public class GraphEditor extends BasicGraphEditor {
         
         protocolPalette.addTemplate("StringEncoder", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
                 "ChannelHandler", "io.netty.handler.codec.string.StringEncoder", "io.netty.util.CharsetUtil.UTF_8"));
-		
-        protocolPalette.addTemplate("JsonObjectDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120,
+
+		protocolPalette.addTemplate("StringCodec", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
+				"ChannelHandler", "com.sensepost.mallet.handlers.StringCodec", "io.netty.util.CharsetUtil.UTF_8"));
+
+		protocolPalette.addTemplate("JsonObjectDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120,
                 createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
 		
         loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/JsonCodec.groovy");
