@@ -19,6 +19,7 @@ import javax.swing.JTabbedPane;
 import com.mxgraph.examples.swing.editor.EditorActions.ExitAction;
 import com.mxgraph.examples.swing.editor.EditorMenuBar;
 import com.mxgraph.swing.mxGraphComponent;
+import com.sensepost.mallet.ExtensionClassLoader;
 import com.sensepost.mallet.InterceptController;
 
 public class InterceptFrame extends JFrame {
@@ -40,6 +41,8 @@ public class InterceptFrame extends JFrame {
 
 	private FramePersistence persistence = new FramePersistence(
 			Preferences.userNodeForPackage(InterceptFrame.class));
+	private JMenu mnExtensionsMenu;
+	private JMenuItem mntmExtensionsReloadMenuItem;
 
 	public InterceptFrame(mxGraphComponent graphComponent) {
 		setTitle("Mallet");
@@ -89,6 +92,21 @@ public class InterceptFrame extends JFrame {
 			}
 		});
 		menuBar.add(interceptMenuItem);
+		
+		mnExtensionsMenu = new JMenu("Extensions");
+		menuBar.add(mnExtensionsMenu);
+		
+		mntmExtensionsReloadMenuItem = new JMenuItem("Reload");
+		mntmExtensionsReloadMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    ExtensionClassLoader.reload();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+		mnExtensionsMenu.add(mntmExtensionsReloadMenuItem);
 
 		addWindowListener(new WindowAdapter() {
 			@Override
