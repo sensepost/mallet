@@ -42,6 +42,7 @@ import com.mxgraph.util.mxUndoableEdit.mxUndoableChange;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.DatagramRelayHandler;
+import com.sensepost.mallet.ExtensionClassLoader;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
 import com.sensepost.mallet.channel.SubChannelHandler;
@@ -683,6 +684,7 @@ public class Graph implements GraphLookup {
 
 		@Override
 		protected void initChannel(Channel ch) throws Exception {
+		    Thread.currentThread().setContextClassLoader(ExtensionClassLoader.getExtensionClassLoader());
 		    ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 
 			Object[] edges = graph.getEdges(serverVertex);
