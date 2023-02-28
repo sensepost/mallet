@@ -496,8 +496,8 @@ public class GraphEditor extends BasicGraphEditor {
 		public boolean isValidDropTarget(Object cell, Object[] cells) {
 			// FIXME: implement this to stop cells being dropped incorrectly
 			return super.isValidDropTarget(cell, cells);
-		}
+        }
 
-	}
+    }
 
 }
