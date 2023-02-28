@@ -103,8 +103,11 @@ public class GraphEditor extends BasicGraphEditor {
 		listener.setAttribute("classname", "io.netty.channel.socket.nio.NioServerSocketChannel");
 		listener.setAttribute("address", "localhost:1080");
 
-		Element socks = createElement(xmlDocument, "ChannelHandler", 
-				"com.sensepost.mallet.SocksInitializer");
+        Element socks = createElement(xmlDocument, "ChannelHandler", 
+                "com.sensepost.mallet.SocksInitializer");
+
+        Element connect = createElement(xmlDocument, "ChannelHandler", 
+                "com.sensepost.mallet.handlers.http.HttpConnectInitializer");
 
 		Element fixedHandler = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.FixedTargetHandler", 
 				"0.0.0.0:0");
@@ -138,6 +141,7 @@ public class GraphEditor extends BasicGraphEditor {
 
         basicPalette.addTemplate("Listener", IMAGE_RECTANGLE, null, 160, 120, listener);
         basicPalette.addTemplate("Socks", IMAGE_ROUNDED, "rounded=1", 160, 120, socks);
+        basicPalette.addTemplate("HTTP CONNECT", IMAGE_ROUNDED, "rounded=1", 160, 120, connect);
         basicPalette.addTemplate("Target", IMAGE_ROUNDED, "rounded=1", 160, 120, fixedHandler);
         basicPalette.addTemplate("Handler", IMAGE_ROUNDED, "rounded=1", 160, 120, handler);
         loadScriptHandler(xmlDocument, basicPalette, "/com/sensepost/mallet/ScriptHandler.groovy");
