@@ -69,7 +69,7 @@ public class HttpConnectInitializer extends ChannelInitializer<Channel> {
                         if (port < 1 || port > 65535)
                             throw new NumberFormatException();
                         final Promise<Channel> connectPromise = ctx.executor().newPromise();
-                        connectPromise.addListener(new HttpConnectionResponseSender());
+                        connectPromise.addListener(new HttpConnectionResponseSender(ctx));
                         InetSocketAddress target = InetSocketAddress.createUnresolved(host, port);
                         ConnectRequest cr = new ConnectRequest(target, connectPromise);
                         ctx.fireUserEventTriggered(cr);
@@ -85,13 +85,16 @@ public class HttpConnectInitializer extends ChannelInitializer<Channel> {
         }
 
         private class HttpConnectionResponseSender implements FutureListener<Channel> {
+            final private ChannelHandlerContext ctx;
+            HttpConnectionResponseSender(ChannelHandlerContext ctx) {
+                this.ctx = ctx;
+            }
             @Override
             public void operationComplete(Future<Channel> future) throws Exception {
-                Channel ch = future.get();
                 if (future.isSuccess()) {
-                    ch.writeAndFlush(OK).addListener(new CodecRemover());
+                    ctx.writeAndFlush(OK).addListener(new CodecRemover());
                 } else {
-                    ch.writeAndFlush(BAD).addListener(ChannelFutureListener.CLOSE);
+                    ctx.writeAndFlush(BAD).addListener(ChannelFutureListener.CLOSE);
                 }
             }
         }
