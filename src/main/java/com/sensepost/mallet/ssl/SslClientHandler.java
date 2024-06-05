@@ -7,6 +7,8 @@ import java.security.cert.Certificate;
 
 import javax.net.ssl.X509KeyManager;
 
+import com.sensepost.mallet.ChannelAttributes;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
@@ -38,7 +40,7 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
             builder.sslContextProvider(Security.getProvider(provider));
         if (km != null && alias != null)
             builder.keyManager(km.getPrivateKey(alias), km.getCertificateChain(alias));
-        builder.protocols(new String[] { /* "SSLv3", */ "TLSv1", "TLSv1.1", "TLSv1.2" });
+        builder.protocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" });
     }
 
     public SslClientHandler(SslContextBuilder builder) {
@@ -69,7 +71,15 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
         final SslHandler s;
         if (remoteAddress instanceof InetSocketAddress) {
             InetSocketAddress remote = (InetSocketAddress) remoteAddress;
-            s = clientContext.newHandler(ctx.alloc(), remote.getHostString(), remote.getPort());
+            Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+            String sni = null;
+            if (other != null) {
+                sni = other.attr(ChannelAttributes.SERVER_NAME_INDICATION).get();
+            }
+            if (sni == null)
+                sni = remote.getHostString();
+            ctx.fireUserEventTriggered("Requesting SNI for " + sni);
+            s = clientContext.newHandler(ctx.alloc(), sni, remote.getPort());
             ctx.fireUserEventTriggered("Adding SslClientHandler for " + remote.getHostString());
         } else {
             s = clientContext.newHandler(ctx.alloc());
