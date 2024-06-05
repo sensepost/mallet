@@ -56,10 +56,10 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void handlerAdded(final ChannelHandlerContext ctx) throws Exception {
-		if (ctx1 == null) {
+		if (ctx1 == null && connectFuture == null) {
 			ctx1 = ctx;
 			if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
-				setupOutboundChannel(ctx);
+			    connectFuture = setupOutboundChannel(ctx);
 			}
 		} else if (ctx2 == null) {
 			ctx2 = ctx;
@@ -98,14 +98,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	
-	private void setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
-		if (connectFuture != null)
-			return;
-
+	private ChannelFuture setupOutboundChannel(final ChannelHandlerContext ctx) throws Exception {
 		// disable autoread until the connection is established
 		ctx.channel().config().setAutoRead(false);
 		final GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
-		final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
+        final ConnectRequest target = ctx.channel().attr(ChannelAttributes.TARGET).get();
 
 		ChannelInitializer<Channel> initializer = new ChannelInitializer<Channel>() {
 
@@ -119,7 +116,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 				ctx.channel().attr(ChannelAttributes.CHANNEL).set(ch);
 
 				ChannelInitializer<Channel> initializer = gl.getClientChannelInitializer(RelayHandler.this);
-				ch.pipeline().addLast(initializer);
+				String me = ch.pipeline().context(this).name();
+				ch.pipeline().addAfter(me, null, initializer);
 			}
 		};
 
@@ -132,10 +130,11 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 			EventLoopGroup outboundEventLoop = getOutboundEventLoop(outboundChannelClass, ctx.channel());
 			bootstrap.group(outboundEventLoop).handler(initializer);
+			ChannelFuture connectFuture;
 			if (DatagramChannel.class.isAssignableFrom(outboundChannelClass)) {
 				connectFuture = bootstrap.bind(0);
 			} else {
-				connectFuture = bootstrap.connect(target.getTarget());
+                connectFuture = bootstrap.connect(target.getTarget());
 			}
 			connectFuture.addListener(new ConnectRequestPromiseExecutor(target.getConnectPromise()));
 			connectFuture.addListener(new ChannelFutureListener() {
@@ -151,13 +150,17 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 						// re-enable autoread now that the connection is established
                         ctx.channel().config().setAutoRead(true);
                         future.channel().config().setAutoRead(true);
+					} else {
+					    ctx.close();
 					}
 				}
 			});
 			connectFuture.addListener(new ChannelExceptionReporter(ctx));
+			return connectFuture;
 		} catch (Exception e) {
 			logger.error("Failed connecting to " + ctx.channel().remoteAddress() + " -> " + target, e);
 			ctx.close();
+			return null;
 		}
 	}
 
@@ -171,7 +174,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		// closeBoth(ctx);
+	    closeBoth(ctx);
 	}
 
 	private void closeBoth(ChannelHandlerContext ctx) {
@@ -191,7 +194,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
 		if (connectFuture == null) {
 			if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
-				setupOutboundChannel(ctx);
+				connectFuture = setupOutboundChannel(ctx);
 			} else {
 				throw new NullPointerException("No connected channel! Did you forget to use a SocksInitializer or a FixedTargetHandler?");
 			}
@@ -205,7 +208,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 			// and match replies to their original sender(s).
 			ChannelHandlerContext other = other(ctx);
 			ChannelFuture cf = other.writeAndFlush(msg);
-			cf.addListener(new ChannelExceptionReporter(ctx));
+			cf.addListener(new ChannelExceptionReporter(other));
 			other.channel().attr(LAST_FUTURE).set(cf);
 		}
 	}
@@ -217,10 +220,10 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
         // a single flush sends them off.
         // However, this seems to break SSL Client connections for some reason.
 
-//        ChannelHandlerContext other = other(ctx);
-//        if (other != null) {
-//            other.flush();
-//        }
+        ChannelHandlerContext other = other(ctx);
+        if (other != null) {
+            other.flush();
+        }
     }
 
 	private ChannelFuture getLastFuture(ChannelHandlerContext ctx) {
@@ -262,8 +265,8 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		} else if (evt instanceof ChannelInputShutdownReadComplete) {
 			ctx.channel().config().setAutoRead(false);
 			closeIfShutdown(ctx);
-		} else if (evt instanceof ConnectRequest) {
-			setupOutboundChannel(ctx);
+		} else if (evt instanceof ConnectRequest && connectFuture == null) {
+			connectFuture = setupOutboundChannel(ctx);
 		}
 	}
 
@@ -281,7 +284,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
         if (connectFuture == null) {
             if (ctx.channel().attr(ChannelAttributes.TARGET).get() != null) {
-                setupOutboundChannel(ctx);
+                this.connectFuture = setupOutboundChannel(ctx);
             }
         }
 	}
@@ -340,6 +343,7 @@ public class RelayHandler extends ChannelInboundHandlerAdapter {
 		public void operationComplete(ChannelFuture future) throws Exception {
 			if (future.cause() != null) {
 				controller.processChannelEvent(ChannelEvent.newExceptionCaughtEvent(ctx, future.cause()));
+				ctx.close();
 			}
 		}
 	}
