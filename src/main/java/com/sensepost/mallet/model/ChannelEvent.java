@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.SocketAddress;
 import java.util.Date;
+import java.util.EnumSet;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
@@ -17,7 +18,11 @@ import io.netty.util.ReferenceCountUtil;
  *
  */
 public interface ChannelEvent {
-	
+    public static final EnumSet<ChannelEventType> ANNOYANCES = EnumSet.of(ChannelEventType.CHANNEL_ACTIVE,
+            ChannelEventType.CHANNEL_INACTIVE, ChannelEventType.CHANNEL_READ_COMPLETE,
+            ChannelEventType.CHANNEL_REGISTERED, ChannelEventType.CHANNEL_UNREGISTERED, ChannelEventType.DEREGISTER,
+            ChannelEventType.DISCONNECT, ChannelEventType.FLUSH, ChannelEventType.READ);
+
 	public enum ChannelEventType {
 		BIND,
 		CHANNEL_ACTIVE,
