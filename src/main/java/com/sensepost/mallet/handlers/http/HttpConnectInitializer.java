@@ -104,9 +104,10 @@ public class HttpConnectInitializer extends ChannelInitializer<Channel> {
             public void operationComplete(ChannelFuture future) throws Exception {
                 Channel ch = future.channel();
                 if (future.isSuccess()) {
-                    ch.pipeline().remove(target);
                     ch.pipeline().remove(connect);
                     ch.pipeline().remove(http);
+//                    if (!ch.config().isAutoRead())
+//                        ch.read();
                 } else {
                     ch.close();
                 }
