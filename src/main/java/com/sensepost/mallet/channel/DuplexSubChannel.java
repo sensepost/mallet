@@ -1,5 +1,6 @@
 package com.sensepost.mallet.channel;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -12,57 +13,57 @@ class DuplexSubChannel extends SubChannel implements DuplexChannel {
 	}
 
 	@Override
-	public DuplexChannel parent() {
-		return (DuplexChannel) super.parent();
+	public Channel parent() {
+		return super.parent();
 	}
 
 	@Override
 	public boolean isInputShutdown() {
-		return parent().isInputShutdown();
+		return ((DuplexChannel)parent()).isInputShutdown();
 	}
 
 	@Override
 	public ChannelFuture shutdownInput() {
-		return parent().shutdownInput();
+		return ((DuplexChannel)parent()).shutdownInput();
 	}
 
 	@Override
 	public ChannelFuture shutdownInput(ChannelPromise promise) {
-		ChannelFuture cf = parent().shutdownInput();
+		ChannelFuture cf = ((DuplexChannel)parent()).shutdownInput();
 		cf.addListener(new PromiseRelay(promise));
 		return cf;
 	}
 
 	@Override
 	public boolean isOutputShutdown() {
-		return parent().isOutputShutdown();
+		return ((DuplexChannel)parent()).isOutputShutdown();
 	}
 
 	@Override
 	public ChannelFuture shutdownOutput() {
-		return parent().shutdownOutput();
+		return ((DuplexChannel)parent()).shutdownOutput();
 	}
 
 	@Override
 	public ChannelFuture shutdownOutput(ChannelPromise promise) {
-		ChannelFuture cf = parent().shutdownOutput();
+		ChannelFuture cf = ((DuplexChannel)parent()).shutdownOutput();
 		cf.addListener(new PromiseRelay(promise));
 		return cf;
 	}
 
 	@Override
 	public boolean isShutdown() {
-		return parent().isShutdown();
+		return ((DuplexChannel)parent()).isShutdown();
 	}
 
 	@Override
 	public ChannelFuture shutdown() {
-		return parent().shutdown();
+		return ((DuplexChannel)parent()).shutdown();
 	}
 
 	@Override
 	public ChannelFuture shutdown(ChannelPromise promise) {
-		ChannelFuture cf = parent().shutdown();
+		ChannelFuture cf = ((DuplexChannel)parent()).shutdown();
 		cf.addListener(new PromiseRelay(promise));
 		return cf;
 	}

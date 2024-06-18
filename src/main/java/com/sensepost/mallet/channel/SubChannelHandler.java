@@ -8,10 +8,10 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DuplexChannel;
+import io.netty.channel.socket.SocketChannel;
 
 public class SubChannelHandler extends ChannelDuplexHandler {
 
@@ -127,6 +127,8 @@ public class SubChannelHandler extends ChannelDuplexHandler {
 	protected Channel createSubChannel(ChannelHandlerContext ctx) {
 		if (ctx.channel() instanceof DatagramChannel)
 			return new DatagramSubChannel(ctx);
+		else if (ctx.channel() instanceof SocketChannel)
+		    return new SocketSubChannel(ctx);
 		else if (ctx.channel() instanceof DuplexChannel)
 			return new DuplexSubChannel(ctx);
 		else return new SubChannel(ctx);
