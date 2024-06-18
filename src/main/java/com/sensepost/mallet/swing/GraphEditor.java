@@ -4,6 +4,7 @@ package com.sensepost.mallet.swing;
 
 import java.awt.Color;
 import java.awt.Point;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -28,6 +29,8 @@ import com.mxgraph.swing.view.mxCellEditor;
 import com.mxgraph.swing.view.mxICellEditor;
 import com.mxgraph.util.mxDomUtils;
 import com.mxgraph.util.mxResources;
+import com.mxgraph.util.mxUtils;
+import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
 import com.sensepost.mallet.util.XmlUtil;
@@ -218,6 +221,25 @@ public class GraphEditor extends BasicGraphEditor {
 				
 	}
 
+	public void open(String filename) throws IOException {
+        Document document = mxXmlUtils.parseXml(mxUtils
+                .readFile(filename));
+
+        mxCodec codec = new mxCodec(document);
+        codec.decode(document.getDocumentElement(),
+                this.getGraphComponent().getGraph().getModel());
+
+        resetEditor(this);
+        this.setCurrentFile(new File(filename));
+
+	}
+    private static void resetEditor(BasicGraphEditor editor) {
+        editor.setModified(false);
+        editor.setCurrentFile(null);
+        editor.getUndoManager().clear();
+        editor.getGraphComponent().zoomAndCenter();
+    }
+    
 	/**
 	 * 
 	 */
