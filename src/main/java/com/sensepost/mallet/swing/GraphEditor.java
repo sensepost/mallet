@@ -90,7 +90,7 @@ public class GraphEditor extends BasicGraphEditor {
 	    String[] paths = dir.list(filter);
 	    Arrays.sort(paths);
 	    for (String path : paths) {
-            Element e = createElement(doc, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", path);
+            Element e = createElement(doc, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", new File(dir, path).getPath());
             String[] parts = path.split("[/\\\\]");
             String fn = parts[parts.length - 1];
             String name = fn.split("\\.")[0];
