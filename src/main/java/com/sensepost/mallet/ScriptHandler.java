@@ -1,14 +1,19 @@
 package com.sensepost.mallet;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.script.Bindings;
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
@@ -57,7 +62,7 @@ import io.netty.channel.ChannelInitializer;
  * return new ChannelDuplexHandler() {
  * 		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
  * 			// do something with the msg
- * 			ctx.write(msg, promise);  // pass it down the pipeline 
+ * 			ctx.write(msg, promise);  // pass it down the pipeline
  * 		}
  * };
  * 
@@ -69,11 +74,47 @@ import io.netty.channel.ChannelInitializer;
 @Sharable
 public class ScriptHandler extends ChannelInitializer<Channel> implements GraphNodeAware {
 
+    private static List<String> scriptExtensions = new ArrayList<>();
+    
+    static {
+        ScriptEngineManager sem = new ScriptEngineManager();
+        List<ScriptEngineFactory> factories = sem.getEngineFactories();
+        for (ScriptEngineFactory fac : factories) {
+            scriptExtensions.addAll(fac.getExtensions());
+        }
+    }
+    
+    public static FileFilter getFileFilter() {
+        return new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                if (!pathname.isFile()) return false;
+                String filename = pathname.getName();
+                int dot = filename.lastIndexOf('.');
+                if (dot <= 0) return false;
+                String ext = filename.substring(dot+1);
+                return scriptExtensions.contains(ext);
+            }
+        };
+    }
+    public static FilenameFilter getFilenameFilter() {
+        return new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                if (!(new File(dir, name).isFile())) return false;
+                int dot = name.lastIndexOf('.');
+                if (dot <= 0) return false;
+                String ext = name.substring(dot+1);
+                return scriptExtensions.contains(ext);
+            }
+        };
+    }
+
 	private String script = null, language = null, fileName = null;
 
 	private Graph graph = null;
 	private Object node = null;
-
+	
 	/**
 	 * Creates a ScriptHandler instance using the provided script, interpreted as
 	 * the specified language

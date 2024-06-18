@@ -5,17 +5,21 @@ package com.sensepost.mallet.swing;
 import java.awt.Color;
 import java.awt.Point;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.EventObject;
 import java.util.Hashtable;
 
 import javax.swing.ImageIcon;
 
+import org.w3c.dom.CDATASection;
+import org.w3c.dom.CharacterData;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.mxgraph.examples.swing.editor.BasicGraphEditor;
@@ -33,6 +37,7 @@ import com.mxgraph.util.mxUtils;
 import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
+import com.sensepost.mallet.ScriptHandler;
 import com.sensepost.mallet.util.XmlUtil;
 
 public class GraphEditor extends BasicGraphEditor {
@@ -80,18 +85,19 @@ public class GraphEditor extends BasicGraphEditor {
 		return e;
 	}
 	
-	private void loadScriptHandler(Document xmlDocument, EditorPalette protocolPalette, String path) {
-       try (InputStream in = GraphEditor.class.getResourceAsStream(path)) {
-           if (in != null) {
-               Element e = createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", path);
-               String[] parts = path.split("[/\\\\]");
-               String fn = parts[parts.length - 1];
-               String name = fn.split("\\.")[0];
-               protocolPalette.addTemplate(name,
-                       IMAGE_ROUNDED,
-                       "rounded=1", 160, 120, e);
-           }
-       } catch (IOException ioe) {}
+	private void loadScriptHandlers(Document doc, EditorPalette palette, File dir) {
+	    FilenameFilter filter = ScriptHandler.getFilenameFilter();
+	    String[] paths = dir.list(filter);
+	    Arrays.sort(paths);
+	    for (String path : paths) {
+            Element e = createElement(doc, "ChannelHandler", "com.sensepost.mallet.ScriptHandler", path);
+            String[] parts = path.split("[/\\\\]");
+            String fn = parts[parts.length - 1];
+            String name = fn.split("\\.")[0];
+            palette.addTemplate(name,
+                    IMAGE_ROUNDED,
+                    "rounded=1", 160, 120, e);
+	    }
 	}
 	
 	/**
@@ -139,6 +145,7 @@ public class GraphEditor extends BasicGraphEditor {
 		// Creates the shapes palette
 		EditorPalette basicPalette = insertPalette(mxResources.get("basic"));
 		EditorPalette protocolPalette = insertPalette(mxResources.get("protocolHandlers"));
+		EditorPalette scriptsPalette = insertPalette(mxResources.get("scriptHandlers"));
 		// EditorPalette symbolsPalette =
 		// insertPalette(mxResources.get("symbols"));
 
@@ -147,7 +154,6 @@ public class GraphEditor extends BasicGraphEditor {
         basicPalette.addTemplate("HTTP CONNECT", IMAGE_ROUNDED, "rounded=1", 160, 120, connect);
         basicPalette.addTemplate("Target", IMAGE_ROUNDED, "rounded=1", 160, 120, fixedHandler);
         basicPalette.addTemplate("Handler", IMAGE_ROUNDED, "rounded=1", 160, 120, handler);
-        loadScriptHandler(xmlDocument, basicPalette, "/com/sensepost/mallet/ScriptHandler.groovy");
         basicPalette.addTemplate("Logger", IMAGE_ROUNDED, "rounded=1", 160, 120, logHandler);
         basicPalette.addTemplate("Intercept", IMAGE_DOUBLERECTANGLE, "intercept;shape=doubleRectangle", 160, 120,
                 intercept);
@@ -196,10 +202,6 @@ public class GraphEditor extends BasicGraphEditor {
 				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.http.HttpObjectAggregator", "1048576"));
 		
-        loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/UpsideDownternet.groovy");
-		
-		loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/StringCodec.groovy");
-        
         protocolPalette.addTemplate("StringDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120, createElement(xmlDocument,
                 "ChannelHandler", "io.netty.handler.codec.string.StringDecoder", "io.netty.util.CharsetUtil.UTF_8"));
         
@@ -209,8 +211,6 @@ public class GraphEditor extends BasicGraphEditor {
         protocolPalette.addTemplate("JsonObjectDecoder", IMAGE_ROUNDED, "rounded=1", 160, 120,
                 createElement(xmlDocument, "ChannelHandler", "io.netty.handler.codec.json.JsonObjectDecoder"));
 		
-        loadScriptHandler(xmlDocument, protocolPalette, "/com/sensepost/mallet/JsonCodec.groovy");
-        		
 		protocolPalette.addTemplate("SimpleBinaryModification",
 				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.SimpleBinaryModificationHandler", "abcdef", "ABCDEF"));
@@ -218,7 +218,8 @@ public class GraphEditor extends BasicGraphEditor {
 		protocolPalette.addTemplate("ComplexBinaryModification",
 				IMAGE_ROUNDED,
 				"rounded=1", 160, 120, createElement(xmlDocument, "ChannelHandler", "com.sensepost.mallet.handlers.ComplexBinaryModificationHandler", "abcdef", "ABCDEF"));
-				
+
+		loadScriptHandlers(xmlDocument, scriptsPalette, new File("scripts/"));
 	}
 
 	public void open(String filename) throws IOException {
@@ -489,6 +490,30 @@ public class GraphEditor extends BasicGraphEditor {
 			return "Any path with a Sink must have a Relay";
 		}
 
+        private String[] getParameters(Object o) {
+            if (o instanceof Element) {
+                Element e = (Element) o;
+                NodeList parameters = e.getElementsByTagName("Parameter");
+                String[] p = new String[parameters.getLength()];
+                for (int i = 0; i < parameters.getLength(); i++) {
+                    Node n = parameters.item(i);
+                    NodeList children = n.getChildNodes();
+                    if (children.getLength() == 1) {
+                        p[i] = children.item(0).getTextContent();
+                    } else { // find the CDATA node
+                        for (int j = 0; i < children.getLength(); j++) {
+                            if (children.item(j) instanceof CDATASection) {
+                                p[i] = ((CharacterData) children.item(j)).getData();
+                                break;
+                            }
+                        }
+                    }
+                }
+                return p;
+            }
+            throw new RuntimeException("Don't know how to get parameters from a " + o.getClass());
+        }
+
 		@Override
 		public String convertValueToString(Object cell) {
 			if (cell instanceof mxCell) {
@@ -503,9 +528,14 @@ public class GraphEditor extends BasicGraphEditor {
 						int d = className.lastIndexOf('.');
 						className = className.substring(d + 1);
 						b.append("\n").append(className);
+						if (className.equals("ScriptHandler")) {
+						    String[] parameters = getParameters(e);
+						    if (parameters != null && parameters.length == 1)
+						        b.append("\n").append(parameters[0]);
+						}
 					}
 					if ("Listener".equals(t)) {
-						String sa = e.getAttribute("socketaddress");
+						String sa = e.getAttribute("address");
 						b.append("\n").append(sa);
 					}
 					return b.toString();
