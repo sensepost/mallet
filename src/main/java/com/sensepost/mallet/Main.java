@@ -19,6 +19,8 @@ import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +37,11 @@ import com.sensepost.mallet.ssl.KeyStoreX509KeyManager;
 import com.sensepost.mallet.swing.GraphEditor.CustomGraph;
 import com.sensepost.mallet.swing.GraphEditor.CustomGraphComponent;
 import com.sensepost.mallet.swing.InterceptFrame;
+
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 public class Main {
 
@@ -140,11 +147,19 @@ public class Main {
 		Graph graph = new Graph(graphComponent, ic, scriptContext);
 
 		// set up LoggingHandler logging
+		Set<Logger> loggers = new HashSet<>();
 		Handler handler = ui.getLogHandler();
 		Logger logger = Logger.getLogger(LoggingHandler.class.getCanonicalName());
-		logger.setLevel(Level.FINEST);
+		logger.setLevel(Level.ALL);
 		logger.addHandler(handler);
-
+		loggers.add(logger);
+        logger = Logger.getLogger("io.netty");
+        logger.addHandler(handler);
+        loggers.add(logger);
+        logger = Logger.getLogger("com.sensepost.mallet");
+        logger.addHandler(handler);
+        loggers.add(logger);
+        
 		scriptContext.put("InterceptController", ic);
 //		ObjectMapper om = new ObjectMapper();
 //		MessageDAO dao = new MessageDAO(null, om);
