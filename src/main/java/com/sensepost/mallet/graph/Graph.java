@@ -2,6 +2,9 @@ package com.sensepost.mallet.graph;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -45,8 +48,8 @@ import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.ExtensionClassLoader;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
-import com.sensepost.mallet.channel.SubChannelHandler;
 import com.sensepost.mallet.model.ChannelEvent;
+import com.sensepost.mallet.util.PcapWriterInitializer;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -55,6 +58,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -64,8 +68,8 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.pcap.PcapWriteHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 
@@ -82,6 +86,8 @@ public class Graph implements GraphLookup {
 	private Map<Object, Channel> channels = new HashMap<>();
 
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
+	
+	private ChannelHandler dropHandler = new DiscardChannelHandler();
 
 	private Bindings scriptContext;
 	private InterceptController controller;
@@ -293,11 +299,31 @@ public class Graph implements GraphLookup {
 		}
 
 		for (int i = 0; i < sourceVertices.length; i++) {
-			startServerFromSourceVertex(sourceVertices[i]).addListener(new AddServerChannelListener(sourceVertices[i]));
+		    try {
+		        startServerFromSourceVertex(sourceVertices[i]).addListener(new AddServerChannelListener(sourceVertices[i]));
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		    }
 		}
 	}
 
-	private ChannelFuture startServerFromSourceVertex(Object vertex) {
+	private ChannelInitializer<Channel> channelInitializer(final ChannelHandler... handler) {
+	    return new ChannelInitializer<Channel>() {
+
+            @Override
+            protected void initChannel(Channel ch) throws Exception {
+                ChannelPipeline p = ch.pipeline();
+                String me = p.context(this).name();
+                for (int i = handler.length - 1; i >= 0; i--) {
+                    System.err.println("Adding handler " + i + "(" + handler[i] + ") to pipeline " + p);
+                    p.addAfter(me, null, handler[i]);
+                }
+            }
+	        
+	    };
+	}
+	
+	private ChannelFuture startServerFromSourceVertex(Object vertex) throws IOException {
 		Object serverValue = graph.getModel().getValue(vertex);
 
 		// parse getValue() for vertex to
@@ -310,27 +336,36 @@ public class Graph implements GraphLookup {
 			return null;
 		}
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
+        OutputStream pcap = getPcapStream("raw-", address);
+        PcapWriteHandler.writeGlobalHeader(pcap);
+        PcapWriterInitializer pcapInitializer = new PcapWriterInitializer(pcap);
+//        OutputStream sslPcap = getPcapStream("ssl-", address);
+//        PcapWriteHandler.writeGlobalHeader(sslPcap);
+//        PcapWriterInitializer sslPcapInitializer = new PcapWriterInitializer(sslPcap);
+		
+		
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
-			ChannelInitializer<Channel> initializer = new GraphChannelInitializer(vertex);
+            ChannelInitializer<Channel> initializer = channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex));
 			initializer = subChannelInitializer(initializer);
 			b.childHandler(initializer);
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
-			return b.bind(address);
+			return b.bind(address).addListener(pcapInitializer.bindListener());
 		} else {
 			Bootstrap b = new Bootstrap().channel(channelClass).group(getEventGroup(workerGroups, channelClass, 0))
-					.handler(new GraphChannelInitializer(vertex));
+					.handler(channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex)));
 			b.attr(ChannelAttributes.GRAPH, this);
-			return b.bind(address);
+            return b.bind(address);
 		}
 	}
 
 	private ChannelInitializer<Channel> subChannelInitializer(final ChannelInitializer<Channel> init) {
+	    /*
         return new ChannelInitializer<Channel>() {
 
             @Override
@@ -344,9 +379,11 @@ public class Graph implements GraphLookup {
             }
 
         };
+        */
+	    return init;
 	}
 	
-	private ChannelInitializer<Channel> initializer(final ChannelHandler relay, final ChannelHandler... handlers) {
+	private ChannelInitializer<Channel> outboundChannelInitializer(final ChannelHandler relay, final ChannelHandler... handlers) {
 		return new ChannelInitializer<Channel>() {
 
 			@Override
@@ -356,6 +393,8 @@ public class Graph implements GraphLookup {
 				for (ChannelHandler handler : handlers) {
 					ch.pipeline().addBefore(name, null, handler);
 				}
+				ch.pipeline().addAfter(name, null, dropHandler);
+				ch.pipeline().addAfter(name, null, new ExceptionCatcher(Graph.this, null));
 				ch.pipeline().addAfter(name, null, relay);
 			}
 			
@@ -472,6 +511,7 @@ public class Graph implements GraphLookup {
 			if ((h instanceof RelayHandler) || (h instanceof DatagramRelayHandler)
 					|| (h instanceof IndeterminateChannelHandler)) {
 				handlerVertexMap.put(h, o);
+				handlers.add(dropHandler);
 				break;
 			}
 			if (outgoing == null || outgoing.length != 1)
@@ -581,7 +621,7 @@ public class Graph implements GraphLookup {
 			// direction of flow in the client vs server
 			reverse(handlers);
 			// wrap them in a ChannelInitializer
-			ChannelInitializer<Channel> init = initializer(handler, handlers);
+			ChannelInitializer<Channel> init = outboundChannelInitializer(handler, handlers);
 			return subChannelInitializer(init);
 		} catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
 			addGraphException(vertex, e);
@@ -656,28 +696,41 @@ public class Graph implements GraphLookup {
 		}
 	}
 
-	public void addGraphException(final Object node, final Throwable cause) {
-		String warning = cause.getLocalizedMessage();
-		if (warning == null) {
-			warning = cause.toString();
-		}
-		mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, warning);
-		if (overlay != null)
-			overlay.addMouseListener(new MouseAdapter() {
-				/**
-				 * Selects the associated cell in the graph
-				 */
-				public void mousePressed(MouseEvent e) {
-					graphComponent.setCellWarning(node, null);
-					cause.printStackTrace();
-				}
-			});
-	}
+    public void addGraphException(final Object node, final Throwable cause) {
+        String warning = cause.getLocalizedMessage();
+        if (warning == null) {
+            warning = cause.toString();
+        }
+        mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node, warning);
+        if (overlay != null)
+            overlay.addMouseListener(new MouseAdapter() {
+                /**
+                 * Selects the associated cell in the graph
+                 */
+                public void mousePressed(MouseEvent e) {
+                    graphComponent.setCellWarning(node, null);
+                    cause.printStackTrace();
+                }
+            });
+    }
+
+    void addNodeMessage(final Object node, final String message) {
+        mxCellOverlay overlay = (mxCellOverlay) graphComponent.setCellWarning(node,message);
+        if (overlay != null)
+            overlay.addMouseListener(new MouseAdapter() {
+                /**
+                 * Selects the associated cell in the graph
+                 */
+                public void mousePressed(MouseEvent e) {
+                    graphComponent.setCellWarning(node, message);
+                }
+            });
+    }
 
 	private class GraphChannelInitializer extends ChannelInitializer<Channel> {
 
 		private Object serverVertex;
-
+		
 		public GraphChannelInitializer(Object serverVertex) {
 			this.serverVertex = serverVertex;
 		}
@@ -686,6 +739,7 @@ public class Graph implements GraphLookup {
 		protected void initChannel(Channel ch) throws Exception {
 		    Thread.currentThread().setContextClassLoader(ExtensionClassLoader.getExtensionClassLoader());
 		    ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
+		    ch.attr(ChannelAttributes.GRAPH).set(Graph.this);
 
 			Object[] edges = graph.getEdges(serverVertex);
 			if (edges == null || edges.length == 0) {
@@ -702,13 +756,13 @@ public class Graph implements GraphLookup {
 				controller.addChannel(ch.id().asLongText(), ch.localAddress(), ch.remoteAddress());
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
-			p.addAfter(me, null, new ExceptionCatcher(Graph.this, serverVertex));
-			p.addAfter(me, null, new LoggingHandler("RAWTRAFFICLOGGER"));
+            p.addBefore(me, null, new LoggingHandler("RAWTRAFFICLOGGER"));
+            p.addBefore(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);
-			ch.attr(ChannelAttributes.GRAPH).set(Graph.this);
-			p.addLast(handlers);
+			for (ChannelHandler handler: handlers) 
+			    p.addBefore(me, null, handler);
 		}
 	}
 
@@ -732,6 +786,7 @@ public class Graph implements GraphLookup {
 		}
 	}
 
+	@Sharable
 	private class DiscardChannelHandler extends ChannelInboundHandlerAdapter {
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -763,7 +818,7 @@ public class Graph implements GraphLookup {
 		}
 
 	}
-
+	
 	private class StopAndStartChannelListener implements ChannelFutureListener {
 
 		private Object vertex;
@@ -785,4 +840,10 @@ public class Graph implements GraphLookup {
 
 	}
 
+	private OutputStream getPcapStream(String prefix, SocketAddress address) throws IOException {
+        String pcapName = prefix + address.toString() + "-" + System.currentTimeMillis() + ".pcap";
+        pcapName = pcapName.replace('/', '_');
+        pcapName = pcapName.replace(':', '_');
+        return new FileOutputStream(pcapName);
+	}
 }
