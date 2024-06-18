@@ -1,18 +1,25 @@
 package com.sensepost.mallet.swing;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,32 +28,46 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.prefs.Preferences;
 
 import javax.security.auth.x500.X500Principal;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.table.AbstractTableModel;
 
+import org.bouncycastle.jce.provider.AnnotatedException;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.jdesktop.swingx.JXTable;
 
 import com.sensepost.mallet.util.ListModelMutator;
+
+import net.za.dawes.apostille.Apostille;
 
 public class KeyStoreDialog extends JDialog {
 
 	private final JPanel contentPanel = new JPanel();
 
 	private KeyStore keystore = null;
+	private Apostille apostille = null;
 
 	private JTable table;
 	private CertificateTableModel tableModel = new CertificateTableModel();
+    private Preferences prefs = Preferences
+            .userNodeForPackage(KeyStoreDialog.class);
+    private TableColumnModelPersistence tcmp = new TableColumnModelPersistence(
+            prefs.node("table"), "column_widths");
+    private DialogPersistence dialogPersistence = new DialogPersistence(
+            prefs.node("dialog"));
 
 	/*
 	 * There is no notification mechanism for changes to a keystore
@@ -63,16 +84,19 @@ public class KeyStoreDialog extends JDialog {
 			KeyStoreDialog dialog = new KeyStoreDialog();
 			KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
 			File ks = new File("keystore.jks");
-			keystore.load(new FileInputStream(ks), "password".toCharArray());
-			dialog.setKeyStore(keystore);
+			char[] p = "password".toCharArray();
+			keystore.load(new FileInputStream(ks), p);
+			dialog.setKeyStore(keystore, "password".toCharArray());
 			dialog.setVisible(true);
+			keystore.store(new FileOutputStream(ks), p);
+			System.exit(0);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
 	public KeyStoreDialog() {
-		this(null);
+	    this(null);
 	}
 
 	/**
@@ -80,18 +104,27 @@ public class KeyStoreDialog extends JDialog {
 	 */
 	public KeyStoreDialog(Frame owner) {
 		super(owner);
-		setBounds(100, 100, 450, 300);
+        setTitle("Certificates");
 		getContentPane().setLayout(new BorderLayout());
+		contentPanel.setMinimumSize(new Dimension(800, 600));
+		contentPanel.setPreferredSize(new Dimension(800, 600));
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		getContentPane().add(contentPanel, BorderLayout.CENTER);
 		
 		JPanel buttonPane = new JPanel();
 		buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
 		getContentPane().add(buttonPane, BorderLayout.SOUTH);
-		JButton okButton = new JButton("OK");
-		okButton.setActionCommand("OK");
-		buttonPane.add(okButton);
-		getRootPane().setDefaultButton(okButton);
+		JButton closeButton = new JButton("Close");
+		closeButton.addActionListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+                KeyStoreDialog.this.setVisible(false);
+            }
+		    
+		});
+		buttonPane.add(closeButton);
+		getRootPane().setDefaultButton(closeButton);
 		
 		contentPanel.setLayout(new BorderLayout(0, 0));
 		JScrollPane scrollPane = new JScrollPane();
@@ -101,6 +134,8 @@ public class KeyStoreDialog extends JDialog {
 		table.setAutoCreateRowSorter(true);
 		table.setDefaultRenderer(Date.class, new DateRenderer(false));
 		scrollPane.setViewportView(table);
+        tcmp.apply(table.getColumnModel(), 75, 200, 75);
+        table.getColumnModel().addColumnModelListener(tcmp);
 
 		JPanel buttonPanel = new JPanel();
 		contentPanel.add(buttonPanel, BorderLayout.EAST);
@@ -110,56 +145,64 @@ public class KeyStoreDialog extends JDialog {
 		gbl_buttonPanel.columnWeights = new double[] { 0.0, Double.MIN_VALUE };
 		gbl_buttonPanel.rowWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
 		buttonPanel.setLayout(gbl_buttonPanel);
-
-		JButton deleteButton = new JButton("Delete");
-		deleteButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (keystore == null)
-					return;
-				int[] rows = table.getSelectedRows();
-				if (rows != null && rows.length > 0) {
-					synchronized (KeyStoreDialog.this.keystore) {
-						try {
-							for (int i = 0; i < rows.length; i++) {
-								int rowIndex = table
-										.convertRowIndexToModel(rows[i]);
-								String alias = tableModel.getAlias(rowIndex);
-								KeyStoreDialog.this.keystore.deleteEntry(alias);
-							}
-						} catch (Exception ex) {
-							ex.printStackTrace();
-						}
-					}
-					updateTableData();
-				}
-			}
-		});
-
-		// JButton importButton = new JButton("Import");
-		// buttonPanel.add(importButton);
-
-//		JButton viewButton = new JButton("View");
-//		viewButton.addActionListener(new ActionListener() {
-//
-//			@Override
-//			public void actionPerformed(ActionEvent e) {
-//				if (keystore == null)
-//					return;
-//			}
-//		});
-//		GridBagConstraints gbc_viewButton = new GridBagConstraints();
-//		gbc_viewButton.fill = GridBagConstraints.HORIZONTAL;
-//		gbc_viewButton.anchor = GridBagConstraints.WEST;
-//		gbc_viewButton.insets = new Insets(0, 0, 5, 0);
-//		gbc_viewButton.gridx = 0;
-//		gbc_viewButton.gridy = 0;
-//		buttonPanel.add(viewButton, gbc_viewButton);
-//		GridBagConstraints gbc_deleteButton = new GridBagConstraints();
-//		gbc_deleteButton.fill = GridBagConstraints.HORIZONTAL;
-//		gbc_deleteButton.anchor = GridBagConstraints.WEST;
-//		gbc_deleteButton.gridx = 0;
-//		gbc_deleteButton.gridy = 1;
-//		buttonPanel.add(deleteButton, gbc_deleteButton);
+		
+        JButton deleteButton = new JButton("Delete");
+        GridBagConstraints gbc_btnDelete = new GridBagConstraints();
+        gbc_btnDelete.gridx = 0;
+        gbc_btnDelete.gridy = 0;
+        buttonPanel.add(deleteButton, gbc_btnDelete);
+        deleteButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                if (keystore == null)
+                    return;
+                int[] rows = table.getSelectedRows();
+                if (rows != null && rows.length > 0) {
+                    synchronized (KeyStoreDialog.this.keystore) {
+                        try {
+                            for (int i = 0; i < rows.length; i++) {
+                                int rowIndex = table
+                                        .convertRowIndexToModel(rows[i]);
+                                String alias = tableModel.getAlias(rowIndex);
+                                KeyStoreDialog.this.keystore.deleteEntry(alias);
+                            }
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                    updateTableData();
+                }
+            }
+        });
+		JButton importButton = new JButton("Import");
+		GridBagConstraints gbc_importButton = new GridBagConstraints();
+		gbc_importButton.gridx = 0;
+		gbc_importButton.gridy = 1;
+		buttonPanel.add(importButton, gbc_importButton);
+        importButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                if (keystore == null)
+                    return;
+                JTextArea textArea = new JTextArea();
+                textArea.setColumns(80);
+                textArea.setLineWrap(false);
+                textArea.setWrapStyleWord(false);
+                textArea.setSize(textArea.getPreferredSize().width, 600);
+                JScrollPane sp = new JScrollPane(textArea);
+                JOptionPane.showMessageDialog(KeyStoreDialog.this, sp, "Paste Certificate Chain!",
+                    JOptionPane.INFORMATION_MESSAGE);
+                String text = textArea.getText();
+                if (text.trim().equals("")) 
+                    return;
+                ByteArrayInputStream bais = new ByteArrayInputStream(text.getBytes());
+                try {
+                    X509Certificate[] certs = Apostille.certsFromStream(bais);
+                    apostille.cloneCertificates(certs);
+                } catch (NullPointerException | CertificateException | IOException | UnrecoverableKeyException | NoSuchAlgorithmException | InvalidAlgorithmParameterException
+                        | KeyStoreException | OperatorCreationException | AnnotatedException e1) {
+                    JOptionPane.showMessageDialog(KeyStoreDialog.this, e1.getMessage());
+                }
+            }
+        });
 
 		updateTimer = new Timer(2000, new ActionListener() {
 			@Override
@@ -172,13 +215,18 @@ public class KeyStoreDialog extends JDialog {
 
 		setModal(true);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        dialogPersistence.apply(this, 800, 600, 0, 0);
+        addComponentListener(dialogPersistence);
 	}
 
-	public void setKeyStore(KeyStore keystore) {
+	public void setKeyStore(KeyStore keystore, char[] keyPass) {
 		updateTimer.stop();
 		this.keystore = keystore;
-		if (keystore != null)
+		apostille = null;
+		if (keystore != null) {
 			updateTimer.start();
+			apostille = new Apostille(keystore, keyPass);
+		}
 	}
 
 	private void updateTableData() {
@@ -206,11 +254,12 @@ public class KeyStoreDialog extends JDialog {
 		}
 	}
 
-	private static class CertificateTableModel extends AbstractTableModel {
+	@SuppressWarnings("serial")
+    private static class CertificateTableModel extends AbstractTableModel {
 
-		private static String[] columnNames = new String[] { "Subject",
+		private static String[] columnNames = new String[] { "Alias", "Subject",
 				"Updated" };
-		private static Class<?>[] columnClasses = new Class<?>[] {
+		private static Class<?>[] columnClasses = new Class<?>[] { String.class,
 				X500Principal.class, Date.class };
 
 		private DefaultListModel<String> aliases = new DefaultListModel<>();
@@ -284,8 +333,10 @@ public class KeyStoreDialog extends JDialog {
 			X509Certificate cert = certs.get(alias);
 			switch (columnIndex) {
 			case 0:
-				return cert.getSubjectX500Principal();
+			    return alias;
 			case 1:
+			    return cert.getSubjectX500Principal();
+			case 2:
 				return updated.get(alias);
 			}
 			return null;

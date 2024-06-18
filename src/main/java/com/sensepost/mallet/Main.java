@@ -136,7 +136,7 @@ public class Main {
 
 		InterceptFrame ui = new InterceptFrame(graphComponent);
 		InterceptController ic = ui.getInterceptController();
-		ui.setServerKeyStore(ks);
+		ui.setServerKeyStore(ks, PASSWORD);
 		Graph graph = new Graph(graphComponent, ic, scriptContext);
 
 		// set up LoggingHandler logging

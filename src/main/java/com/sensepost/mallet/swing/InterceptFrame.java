@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.security.KeyStore;
 import java.util.logging.Handler;
 import java.util.prefs.Preferences;
@@ -37,6 +38,7 @@ public class InterceptFrame extends JFrame {
 	private JMenuItem serverCertificatesMenu, clientCertificatesMenu;
 
 	private KeyStore serverKeyStore = null;
+	private char[] serverKeyPass = null;
 	private KeyStoreDialog keyStoreDialog = new KeyStoreDialog();
 
 	private FramePersistence persistence = new FramePersistence(
@@ -75,7 +77,7 @@ public class InterceptFrame extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				if (serverKeyStore == null)
 					return;
-				keyStoreDialog.setKeyStore(serverKeyStore);
+				keyStoreDialog.setKeyStore(serverKeyStore, serverKeyPass);
 				keyStoreDialog.setTitle("Server Keys");
 				keyStoreDialog.setVisible(true);
 			}
@@ -121,8 +123,9 @@ public class InterceptFrame extends JFrame {
 		addComponentListener(persistence);
 	}
 
-	public void setServerKeyStore(KeyStore serverKeyStore) {
+	public void setServerKeyStore(KeyStore serverKeyStore, char[] serverKeyPass) {
 		this.serverKeyStore = serverKeyStore;
+		this.serverKeyPass = serverKeyPass;
 		serverCertificatesMenu.setEnabled(serverKeyStore != null);
 	}
 
@@ -136,5 +139,9 @@ public class InterceptFrame extends JFrame {
 
 	public Handler getLogHandler() {
 		return logPanel.getHandler();
+	}
+	
+	public void open(String filename) throws IOException {
+	    editor.open(filename);
 	}
 }
