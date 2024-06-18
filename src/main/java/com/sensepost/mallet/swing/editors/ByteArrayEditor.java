@@ -27,7 +27,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 public class ByteArrayEditor extends JPanel {
 
-	private HexTableModel htm = new HexTableModel(8);
+	private HexTableModel htm = new HexTableModel(16);
 	private JTable table;
 
 	public ByteArrayEditor() {
