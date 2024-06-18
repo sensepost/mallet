@@ -22,6 +22,7 @@ public interface ChannelEvent {
             ChannelEventType.CHANNEL_INACTIVE, ChannelEventType.CHANNEL_READ_COMPLETE,
             ChannelEventType.CHANNEL_REGISTERED, ChannelEventType.CHANNEL_UNREGISTERED, ChannelEventType.DEREGISTER,
             ChannelEventType.DISCONNECT, ChannelEventType.FLUSH, ChannelEventType.READ);
+    public static final EnumSet<ChannelEventType> IMPORTANT = EnumSet.complementOf(ANNOYANCES);
 
 	public enum ChannelEventType {
 		BIND,
