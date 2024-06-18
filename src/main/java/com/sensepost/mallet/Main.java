@@ -162,5 +162,8 @@ public class Main {
 		});
 
 		ui.setVisible(true);
+		if (args.length > 0) {
+		    ui.open(args[0]);
+		}
 	}
 }
