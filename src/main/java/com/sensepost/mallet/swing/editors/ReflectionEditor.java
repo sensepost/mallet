@@ -8,6 +8,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -206,7 +207,11 @@ public class ReflectionEditor extends JPanel {
 			for (Field f : fields) {
 				int mod = f.getModifiers();
 				if (!Modifier.isStatic(mod)) {
-					f.setAccessible(true);
+					try {
+					    f.setAccessible(true);
+					} catch (InaccessibleObjectException e) {
+					    // ignore
+					}
 					list.add(f);
 				}
 			}
@@ -489,8 +494,7 @@ public class ReflectionEditor extends JPanel {
 			try {
 				return field.get(object);
 			} catch (IllegalAccessException e) {
-				// should never happen
-				return null;
+				return "Inaccessible";
 			}
 		}
 
@@ -663,7 +667,7 @@ public class ReflectionEditor extends JPanel {
 			this.dst = dst;
 			this.engineBox = engineBox;
 			setToolTipText("Execute the script");
-			setEnabled(true);
+			setEnabled(false);
 		}
 
 		public void setPath(TreePath path) {
@@ -713,7 +717,7 @@ public class ReflectionEditor extends JPanel {
 				value = "(" + ((ListNode) value).index + ")";
 			} else if (value instanceof MapNode) {
 				value = ((MapNode) value).key;
-			} else if (value instanceof com.sensepost.mallet.swing.editors.ReflectionEditor.ObjectTreeModel.RootNode) {
+			} else if (value instanceof ObjectTreeModel.RootNode) {
 				value = "";
 			}
 			return super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
