@@ -48,6 +48,7 @@ import com.sensepost.mallet.DatagramRelayHandler;
 import com.sensepost.mallet.ExtensionClassLoader;
 import com.sensepost.mallet.InterceptController;
 import com.sensepost.mallet.RelayHandler;
+import com.sensepost.mallet.handlers.ByteBufAggregationHandler;
 import com.sensepost.mallet.model.ChannelEvent;
 import com.sensepost.mallet.util.PcapWriterInitializer;
 
@@ -390,6 +391,7 @@ public class Graph implements GraphLookup {
 			protected void initChannel(Channel ch) throws Exception {
 	            ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 				String name = ch.pipeline().context(this).name();
+				ch.pipeline().addBefore(name, null, new ByteBufAggregationHandler());
 				for (ChannelHandler handler : handlers) {
 					ch.pipeline().addBefore(name, null, handler);
 				}
@@ -756,7 +758,8 @@ public class Graph implements GraphLookup {
 				controller.addChannel(ch.id().asLongText(), ch.localAddress(), ch.remoteAddress());
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
-            p.addBefore(me, null, new LoggingHandler("RAWTRAFFICLOGGER"));
+            p.addBefore(me, null, new ByteBufAggregationHandler());
+            p.addBefore(me, null, new LoggingHandler());
             p.addBefore(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 
 			Object serverEdge = edges[0];
