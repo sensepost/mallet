@@ -4,12 +4,15 @@ from io.netty.channel import ChannelPromise
 
 class JythonHandler(ChannelDuplexHandler, ChannelHandler):
     def __init__(self):
-        print "Init"
         pass
 
     def channelRead(self, ctx, msg):
-        ctx.fireUserEventTriggered("Hello from Jython")
+        ctx.fireUserEventTriggered("Read from Jython")
         ctx.fireChannelRead(msg)
 
-_=JythonHandler()
+    def write(self, ctx, msg, promise):
+        ctx.fireUserEventTriggered("Write from Jython")
+        ctx.write(msg, promise)
+
+_ = JythonHandler()
 
