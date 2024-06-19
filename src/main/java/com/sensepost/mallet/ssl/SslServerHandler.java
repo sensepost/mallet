@@ -54,6 +54,8 @@ public class SslServerHandler extends SniHandler {
             if (userEventDelayed)
                 ctx.fireUserEventTriggered(cr);
         }
+        if (hostname != null)
+            ctx.channel().attr(ChannelAttributes.SERVER_NAME_INDICATION).set(hostname);
         return super.lookup(ctx, hostname);
     }
 
