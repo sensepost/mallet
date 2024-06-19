@@ -76,12 +76,12 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 		} else if (message instanceof Socks5CommandRequest) {
 			Socks5CommandRequest request = (Socks5CommandRequest) message;
 
-			success = new DefaultSocks5CommandResponse(Socks5CommandStatus.SUCCESS, request.dstAddrType());
-			failure = new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType());
-
 			host = request.dstAddr();
 			port = request.dstPort();
 
+			success = new DefaultSocks5CommandResponse(Socks5CommandStatus.SUCCESS, request.dstAddrType(), host, port);
+			failure = new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType(), host, port);
+			
 			// we're not going to need this anymore
 			ctx.pipeline().remove(Socks5CommandRequestDecoder.class);
 			// and we can remove this once the response message has been written
