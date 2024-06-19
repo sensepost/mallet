@@ -13,7 +13,7 @@ import io.netty.util.internal.ObjectUtil;
 public class ByteBufAggregationHandler extends ChannelDuplexHandler {
 
     private static final long MIN_TIMEOUT_NANOS = TimeUnit.MILLISECONDS.toNanos(1);
-    private static final long MAX_BUFFER_SIZE = 64 * 1024 * 1024; // 64kB
+    private static final long MAX_BUFFER_SIZE = 1024 * 1024 * 1024; // 64kB
 
     private long readerIdleTimeNanos;
     private long lastReadTime = 0;
@@ -90,16 +90,18 @@ public class ByteBufAggregationHandler extends ChannelDuplexHandler {
                 buffer.writeBytes(buf);
                 buf.release();
                 if (buffer.readableBytes() > MAX_BUFFER_SIZE) {
-                    ctx.fireChannelRead(buffer);
+                    ByteBuf b = buffer;
                     buffer = null;
+                    ctx.fireChannelRead(b);
                 }
             }
         } else {
             reading = false;
             readComplete = false;
             if (buffer != null) {
-                ctx.fireChannelRead(buffer);
+                ByteBuf b = buffer;
                 buffer = null;
+                ctx.fireChannelRead(b);
             }
             ctx.fireChannelRead(msg);
         }
@@ -120,8 +122,9 @@ public class ByteBufAggregationHandler extends ChannelDuplexHandler {
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof ChannelInputShutdownEvent) {
             if (buffer != null) {
-                ctx.fireChannelRead(buffer);
+                ByteBuf b = buffer;
                 buffer = null;
+                ctx.fireChannelRead(b);
             }
         }
         super.userEventTriggered(ctx, evt);
@@ -130,8 +133,9 @@ public class ByteBufAggregationHandler extends ChannelDuplexHandler {
     @Override
     public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
         if (buffer != null) {
-            ctx.fireChannelRead(buffer);
+            ByteBuf b = buffer;
             buffer = null;
+            ctx.fireChannelRead(b);
         }
         super.close(ctx, promise);
     }
@@ -205,11 +209,12 @@ public class ByteBufAggregationHandler extends ChannelDuplexHandler {
 
                 if (buffer != null) {
                     try {
-                        ctx.fireChannelRead(buffer);
+                        ByteBuf b = buffer;
+                        buffer = null;
+                        ctx.fireChannelRead(b);
                     } catch (Throwable t) {
                         ctx.fireExceptionCaught(t);
                     }
-                    buffer = null;
                 }
                 if (readComplete) {
                     try {
