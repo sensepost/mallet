@@ -70,6 +70,25 @@ public class ConnectionDataPanel extends JPanel {
         spp.apply(splitPane, 200);
         splitPane.addPropertyChangeListener(spp);
 
+        JPanel topPanel = new JPanel(new BorderLayout());
+        splitPane.setTopComponent(topPanel);
+        JScrollPane scrollPane = new JScrollPane();
+        topPanel.add(scrollPane, BorderLayout.CENTER);
+
+        table = new JTable(tableModel);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        scrollPane.setViewportView(table);
+        table.getSelectionModel().addListSelectionListener(new EventSelectionListener());
+        table.setDefaultRenderer(Date.class, dateRenderer);
+        table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
+        table.setDefaultRenderer(String.class, directionRenderer);
+        table.setRowSorter(tableSorter);
+
+        TableColumnModelPersistence tcmp = new TableColumnModelPersistence(prefs, "column_widths");
+        tcmp.apply(table.getColumnModel(), 75, 75, 75, 200, 800);
+        table.getColumnModel().addColumnModelListener(tcmp);
+
         ObjectEditor editor = new AutoEditor();
         editor.setEditorController(editorController);
         pendingPanel.add(editor.getEditorComponent(), BorderLayout.CENTER);
@@ -94,28 +113,9 @@ public class ConnectionDataPanel extends JPanel {
         buttonPanel.add(rdbtnAllEvents);
                 
         JRadioButton rdbtnImportantEvents = new JRadioButton(new ImportantEventsAction());
-        rdbtnImportantEvents.setSelected(true);
         eventsButtons.add(rdbtnImportantEvents);
         buttonPanel.add(rdbtnImportantEvents);
-
-        JPanel topPanel = new JPanel(new BorderLayout());
-        splitPane.setTopComponent(topPanel);
-        JScrollPane scrollPane = new JScrollPane();
-        topPanel.add(scrollPane, BorderLayout.CENTER);
-        
-        table = new JTable(tableModel);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        scrollPane.setViewportView(table);
-        table.getSelectionModel().addListSelectionListener(new EventSelectionListener());
-        table.setDefaultRenderer(Date.class, dateRenderer);
-        table.setDefaultRenderer(ChannelEvent.class, channelEventRenderer);
-        table.setDefaultRenderer(String.class, directionRenderer);
-        table.setRowSorter(tableSorter);
-
-        TableColumnModelPersistence tcmp = new TableColumnModelPersistence(prefs, "column_widths");
-        tcmp.apply(table.getColumnModel(), 75, 75, 75, 200, 800);
-        table.getColumnModel().addColumnModelListener(tcmp);
+        rdbtnImportantEvents.doClick(); // trigger the action
     }
 
     public void setConnectionData(ConnectionData connectionData) {
@@ -322,7 +322,7 @@ public class ConnectionDataPanel extends JPanel {
         private static final long serialVersionUID = 1L;
 
         public ImportantEventsAction() {
-            super("Importants Events");
+            super("Important Events");
         }
         
         @Override
