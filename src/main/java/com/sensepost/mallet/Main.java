@@ -151,7 +151,6 @@ public class Main {
 		Handler handler = ui.getLogHandler();
 		Logger logger = Logger.getLogger(LoggingHandler.class.getCanonicalName());
 		logger.setLevel(Level.ALL);
-		logger.addHandler(handler);
 		loggers.add(logger);
         logger = Logger.getLogger("io.netty");
         logger.addHandler(handler);
