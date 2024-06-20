@@ -125,7 +125,7 @@ public class GraphEditor extends BasicGraphEditor {
 				"io.netty.channel.ChannelDuplexHandler");
 
 		Element logHandler = createElement(xmlDocument, "ChannelHandler", 
-				"io.netty.handler.logging.LoggingHandler");
+				"io.netty.handler.logging.LoggingHandler", "io.netty.handler.logging.LogLevel.INFO");
 
 		Element intercept = createElement(xmlDocument, "Intercept", "com.sensepost.mallet.InterceptHandler", 
 				"{InterceptController}");

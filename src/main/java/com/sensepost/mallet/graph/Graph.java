@@ -68,6 +68,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
@@ -344,7 +345,8 @@ public class Graph implements GraphLookup {
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
-			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
+			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
+			        .attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
             ChannelInitializer<Channel> initializer = new GraphChannelInitializer(vertex);
@@ -395,7 +397,6 @@ public class Graph implements GraphLookup {
 	            ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 				String name = ch.pipeline().context(this).name();
 				ch.pipeline().addBefore(name, null, new ByteBufAggregationHandler());
-				ch.pipeline().addBefore(name, null, new LoggingHandler());
 
 				Channel other = ch.attr(ChannelAttributes.CHANNEL).get();
 				if (other != null) {
@@ -770,7 +771,6 @@ public class Graph implements GraphLookup {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
             p.addBefore(me, null, new ByteBufAggregationHandler());
-            p.addBefore(me, null, new LoggingHandler());
             PcapWriterInitializer pcapInitializer = ch.parent().attr(ChannelAttributes.PCAP_INITIALIZER).get();
             if (pcapInitializer != null) {
                 ch.attr(ChannelAttributes.PCAP_INITIALIZER).set(pcapInitializer);
