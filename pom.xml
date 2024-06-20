@@ -103,6 +103,11 @@
 		    <artifactId>nashorn-core</artifactId>
 		    <version>15.4</version>
 		</dependency>
+		<dependency>
+			<groupId>org.bidib.org.oxbow</groupId>
+			<artifactId>swingbits</artifactId>
+			<version>1.2.2</version>
+		</dependency>
 		<!-- https://mvnrepository.com/artifact/junit/junit -->
 		<dependency>
 			<groupId>junit</groupId>

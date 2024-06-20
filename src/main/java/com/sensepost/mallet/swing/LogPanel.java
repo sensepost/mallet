@@ -4,50 +4,37 @@ import java.awt.BorderLayout;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.util.Date;
 import java.util.logging.ErrorManager;
-import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.prefs.Preferences;
 
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
-import javax.swing.RowFilter;
 import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.table.TableModel;
-import javax.swing.table.TableRowSorter;
+
+import org.oxbow.swingbits.list.CheckListRenderer;
+import org.oxbow.swingbits.table.filter.TableRowFilterSupport;
 
 import io.netty.handler.logging.LogLevel;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
 
 public class LogPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final Level[] LOG_LEVELS = new Level[] { Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO,
-            Level.CONFIG, Level.FINE, Level.FINER, Level.FINEST, Level.ALL };
 
     private ListModelHandler handler = new ListModelHandler(1024);
 
     private JTable logTable;
-    private TableRowSorter<LogRecordTableModel> sorter;
 
     private Preferences prefs = Preferences.userNodeForPackage(LogPanel.class).node(LogPanel.class.getSimpleName());
-    private JTextField filterText;
 
     public LogPanel() {
         setLayout(new BorderLayout(0, 0));
@@ -71,8 +58,7 @@ public class LogPanel extends JPanel {
         TableColumnModelPersistence tcmp = new TableColumnModelPersistence(prefs, "column_widths");
         tcmp.apply(logTable.getColumnModel(), 75, 75, 75, 200);
         logTable.getColumnModel().addColumnModelListener(tcmp);
-        sorter = new TableRowSorter<LogRecordTableModel>(tableModel);
-        logTable.setRowSorter(sorter);
+        TableRowFilterSupport.forTable(logTable).actions(true).searchable(true).checkListRenderer(new CheckListRenderer()).apply();
         
         JPanel panel = new JPanel();
         add(panel, BorderLayout.NORTH);
@@ -92,32 +78,6 @@ public class LogPanel extends JPanel {
         scrollCheckBox.setSelected(true);
         panel.add(scrollCheckBox);
         
-        JLabel lblNewLabel = new JLabel("Regex:");
-        panel.add(lblNewLabel);
-        
-        filterText = new JTextField();
-        panel.add(filterText);
-        filterText.setColumns(20);
-        filterText.getDocument().addDocumentListener(new DocumentListener() {
-            
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                newFilter();
-            }
-            
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                newFilter();
-            }
-            
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                newFilter();
-            }
-        });
-
-        DefaultComboBoxModel<Level> model = new DefaultComboBoxModel<>(LOG_LEVELS);
-
         scrollCheckBox.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 updateScrollPolicy(scrollCheckBox.isSelected());
@@ -137,17 +97,6 @@ public class LogPanel extends JPanel {
         });
         add(clearButton, BorderLayout.SOUTH);
 
-    }
-    
-    private void newFilter() {
-        RowFilter<? super TableModel, ? super Integer> rf = null;
-        //If current expression doesn't parse, don't update.
-        try {
-            rf = RowFilter.regexFilter(filterText.getText(), 3);
-        } catch (java.util.regex.PatternSyntaxException e) {
-            return;
-        }
-        sorter.setRowFilter(rf);
     }
     
     public Handler getHandler() {
