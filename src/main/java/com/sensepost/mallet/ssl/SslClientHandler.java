@@ -8,6 +8,7 @@ import java.security.cert.Certificate;
 import javax.net.ssl.X509KeyManager;
 
 import com.sensepost.mallet.ChannelAttributes;
+import com.sensepost.mallet.util.PcapWriterInitializer;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -104,6 +105,14 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
                 }
             }
         });
+        PcapWriterInitializer sslPcapInitializer = ctx.channel().attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
+        if (sslPcapInitializer == null) {
+            Channel other = ctx.channel().attr(ChannelAttributes.CHANNEL).get();
+            if (other != null)
+                sslPcapInitializer = other.attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
+        }
+        if (sslPcapInitializer != null)
+            p.addAfter(me, null, sslPcapInitializer);
         p.replace(me, null, s);
         return s;
     }

@@ -6,6 +6,7 @@ import java.net.SocketAddress;
 
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.ConnectRequest;
+import com.sensepost.mallet.util.PcapWriterInitializer;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
@@ -14,6 +15,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.Mapping;
 import io.netty.util.NetUtil;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 
 public class SslServerHandler extends SniHandler {
@@ -57,6 +59,27 @@ public class SslServerHandler extends SniHandler {
         if (hostname != null)
             ctx.channel().attr(ChannelAttributes.SERVER_NAME_INDICATION).set(hostname);
         return super.lookup(ctx, hostname);
+    }
+
+    @Override
+    protected void replaceHandler(ChannelHandlerContext ctx, String hostname, SslContext sslContext) throws Exception {
+        SslHandler sslHandler = null;
+        try {
+            sslHandler = newSslHandler(sslContext, ctx.alloc());
+            ctx.pipeline().replace(this, SslHandler.class.getName(), sslHandler);
+            sslHandler = null;
+            PcapWriterInitializer sslPcap = ctx.channel().attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
+            if (sslPcap != null) {
+                ctx.pipeline().addAfter(SslHandler.class.getName(), null, sslPcap);
+            }
+        } finally {
+            // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
+            // transferred to the SslHandler.
+            // See https://github.com/netty/netty/issues/5678
+            if (sslHandler != null) {
+                ReferenceCountUtil.safeRelease(sslHandler.engine());
+            }
+        }
     }
 
     @Override

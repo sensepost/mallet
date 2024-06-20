@@ -2,9 +2,8 @@ package com.sensepost.mallet.graph;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.FileOutputStream;
+import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -70,7 +69,6 @@ import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.pcap.PcapWriteHandler;
 import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 
@@ -337,32 +335,37 @@ public class Graph implements GraphLookup {
 			return null;
 		}
 		SocketAddress address = parseSocketAddress(channelClass, serverValue);
-        OutputStream pcap = getPcapStream("raw-", address);
-        PcapWriteHandler.writeGlobalHeader(pcap);
+        File pcap = getPcapFile("raw-", address);
         PcapWriterInitializer pcapInitializer = new PcapWriterInitializer(pcap);
-//        OutputStream sslPcap = getPcapStream("ssl-", address);
-//        PcapWriteHandler.writeGlobalHeader(sslPcap);
-//        PcapWriterInitializer sslPcapInitializer = new PcapWriterInitializer(sslPcap);
-		
-		
+        File sslPcap = getPcapFile("ssl-", address);
+        PcapWriterInitializer sslPcapInitializer = new PcapWriterInitializer(sslPcap);
+
+        ChannelFuture cf;
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
 			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler()).attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
-            ChannelInitializer<Channel> initializer = channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex));
+            ChannelInitializer<Channel> initializer = new GraphChannelInitializer(vertex);
 			initializer = subChannelInitializer(initializer);
 			b.childHandler(initializer);
 			b.group(getEventGroup(bossGroups, channelClass, 1), getEventGroup(workerGroups, channelClass, 0));
 			b.attr(ChannelAttributes.GRAPH, this);
-			return b.bind(address).addListener(pcapInitializer.bindListener());
+			b.attr(ChannelAttributes.PCAP_INITIALIZER, pcapInitializer);
+			b.attr(ChannelAttributes.PCAP_SSL_INITIALIZER, sslPcapInitializer);
+			cf = b.bind(address);
 		} else {
-			Bootstrap b = new Bootstrap().channel(channelClass).group(getEventGroup(workerGroups, channelClass, 0))
-					.handler(channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex)));
+			Bootstrap b = new Bootstrap().channel(channelClass);
+			b.group(getEventGroup(workerGroups, channelClass, 0));
+			b.handler(channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex)));
 			b.attr(ChannelAttributes.GRAPH, this);
-            return b.bind(address);
+			b.attr(ChannelAttributes.PCAP_SSL_INITIALIZER, sslPcapInitializer);
+			cf = b.bind(address);
 		}
+		cf.addListener(pcapInitializer.bindListener());
+		cf.addListener(sslPcapInitializer.bindListener());
+		return cf;
 	}
 
 	private ChannelInitializer<Channel> subChannelInitializer(final ChannelInitializer<Channel> init) {
@@ -392,6 +395,14 @@ public class Graph implements GraphLookup {
 	            ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
 				String name = ch.pipeline().context(this).name();
 				ch.pipeline().addBefore(name, null, new ByteBufAggregationHandler());
+				ch.pipeline().addBefore(name, null, new LoggingHandler());
+
+				Channel other = ch.attr(ChannelAttributes.CHANNEL).get();
+				if (other != null) {
+				    PcapWriterInitializer pcapInitializer = other.attr(ChannelAttributes.PCAP_INITIALIZER).get();
+				    if (pcapInitializer != null)
+				        ch.pipeline().addBefore(name, null, pcapInitializer);
+				}
 				for (ChannelHandler handler : handlers) {
 					ch.pipeline().addBefore(name, null, handler);
 				}
@@ -760,6 +771,14 @@ public class Graph implements GraphLookup {
 			String me = p.context(this).name();
             p.addBefore(me, null, new ByteBufAggregationHandler());
             p.addBefore(me, null, new LoggingHandler());
+            PcapWriterInitializer pcapInitializer = ch.parent().attr(ChannelAttributes.PCAP_INITIALIZER).get();
+            if (pcapInitializer != null) {
+                ch.attr(ChannelAttributes.PCAP_INITIALIZER).set(pcapInitializer);
+                p.addBefore(me, null, pcapInitializer);
+            }
+            PcapWriterInitializer sslPcapInitializer = ch.parent().attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
+            if (sslPcapInitializer != null)
+                ch.attr(ChannelAttributes.PCAP_SSL_INITIALIZER).set(sslPcapInitializer);
             p.addBefore(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 
 			Object serverEdge = edges[0];
@@ -843,10 +862,10 @@ public class Graph implements GraphLookup {
 
 	}
 
-	private OutputStream getPcapStream(String prefix, SocketAddress address) throws IOException {
-        String pcapName = prefix + address.toString() + "-" + System.currentTimeMillis() + ".pcap";
-        pcapName = pcapName.replace('/', '_');
-        pcapName = pcapName.replace(':', '_');
-        return new FileOutputStream(pcapName);
+	private File getPcapFile(String prefix, SocketAddress address) {
+	    String pcapName = prefix + address.toString() + "-" + System.currentTimeMillis() + ".pcap";
+	    pcapName = pcapName.replace('/', '_');
+	    pcapName = pcapName.replace(':', '_');
+	    return new File(pcapName);
 	}
 }

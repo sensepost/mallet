@@ -26,6 +26,8 @@ public class ChannelAttributes {
 	
     public static final AttributeKey<Bindings> SCRIPT_CONTEXT = AttributeKey.valueOf("script_context");
 
+    public static final AttributeKey<PcapWriterInitializer> PCAP_INITIALIZER = AttributeKey.valueOf("pcap_initializer");
+
     public static final AttributeKey<PcapWriterInitializer> PCAP_SSL_INITIALIZER = AttributeKey.valueOf("pcap_ssl_initializer");
 
     public static final AttributeKey<String> SERVER_NAME_INDICATION = AttributeKey.valueOf("server_name_indication");
