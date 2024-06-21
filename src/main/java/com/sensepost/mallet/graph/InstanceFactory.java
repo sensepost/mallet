@@ -130,17 +130,16 @@ public class InstanceFactory {
 							return c.newInstance(args);
 						}
 					} catch (Exception e) {
-						System.out.println("Can't instantiate " + description
+						log.append("Can't instantiate " + description
 								+ "(" + Arrays.toString(args) + ") using " + c
 								+ ": " + e.getMessage());
-						e.printStackTrace();
 					}
 				}
 			} else
 				throw new RuntimeException(description
 						+ " exists, but does not implement " + type.getName());
 		} catch (ClassNotFoundException cnfe) {
-			System.out.println(description
+			log.append(description
 					+ " could not be instantiated as a class");
 		}
 		throw new ClassNotFoundException("'" + description + "' not found\n" + log);
