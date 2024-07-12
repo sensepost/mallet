@@ -356,6 +356,7 @@ public class Graph implements GraphLookup {
 			b.attr(ChannelAttributes.GRAPH, this);
 			b.attr(ChannelAttributes.PCAP_INITIALIZER, pcapInitializer);
 			b.attr(ChannelAttributes.PCAP_SSL_INITIALIZER, sslPcapInitializer);
+			b.attr(ChannelAttributes.INTERCEPT_CONTROLLER, controller);
 			cf = b.bind(address);
 		} else {
 			Bootstrap b = new Bootstrap().channel(channelClass);
@@ -363,6 +364,7 @@ public class Graph implements GraphLookup {
 			b.handler(channelInitializer(pcapInitializer, new GraphChannelInitializer(vertex)));
 			b.attr(ChannelAttributes.GRAPH, this);
 			b.attr(ChannelAttributes.PCAP_SSL_INITIALIZER, sslPcapInitializer);
+			b.attr(ChannelAttributes.INTERCEPT_CONTROLLER, controller);
 			cf = b.bind(address);
 		}
 		cf.addListener(pcapInitializer.bindListener());
@@ -771,15 +773,20 @@ public class Graph implements GraphLookup {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
             p.addBefore(me, null, new ByteBufAggregationHandler());
-            PcapWriterInitializer pcapInitializer = ch.parent().attr(ChannelAttributes.PCAP_INITIALIZER).get();
+            Channel parent = ch.parent();
+            PcapWriterInitializer pcapInitializer = null;
+            if (parent != null)
+				pcapInitializer = parent.attr(ChannelAttributes.PCAP_INITIALIZER).get();
             if (pcapInitializer != null) {
-                ch.attr(ChannelAttributes.PCAP_INITIALIZER).set(pcapInitializer);
-                p.addBefore(me, null, pcapInitializer);
+				ch.attr(ChannelAttributes.PCAP_INITIALIZER).set(pcapInitializer);
+				p.addBefore(me, null, pcapInitializer);
             }
-            PcapWriterInitializer sslPcapInitializer = ch.parent().attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
-            if (sslPcapInitializer != null)
-                ch.attr(ChannelAttributes.PCAP_SSL_INITIALIZER).set(sslPcapInitializer);
-            p.addBefore(me, null, new ExceptionCatcher(Graph.this, serverVertex));
+            PcapWriterInitializer sslPcapInitializer = null;
+            if (parent != null)
+				sslPcapInitializer = parent.attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
+			if (sslPcapInitializer != null)
+				ch.attr(ChannelAttributes.PCAP_SSL_INITIALIZER).set(sslPcapInitializer);
+			p.addBefore(me, null, new ExceptionCatcher(Graph.this, serverVertex));
 
 			Object serverEdge = edges[0];
 			ChannelHandler[] handlers = getChannelHandlers(serverEdge);

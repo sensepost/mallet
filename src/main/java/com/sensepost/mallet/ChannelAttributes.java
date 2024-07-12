@@ -16,11 +16,13 @@ public class ChannelAttributes {
 
 	public static final AttributeKey<Throwable> CAUSE = AttributeKey.valueOf("cause");
 
-	public static final AttributeKey<Object> CAUSE_EVENT = AttributeKey.valueOf("cause_EVENT");
+	public static final AttributeKey<Object> CAUSE_EVENT = AttributeKey.valueOf("cause_event");
 
 	public static final AttributeKey<ConnectRequest> TARGET = AttributeKey.valueOf("target");
 
 	public static final AttributeKey<GraphLookup> GRAPH = AttributeKey.valueOf("graph");
+
+	public static final AttributeKey<InterceptController> INTERCEPT_CONTROLLER = AttributeKey.valueOf("intercept_controller");
 
 	public static final AttributeKey<SocketAddress> REMOTE_ADDRESS = AttributeKey.valueOf("remote_address");
 	
