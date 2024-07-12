@@ -39,11 +39,12 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
@@ -60,28 +61,40 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.KeyManagerFactorySpi;
 import javax.net.ssl.ManagerFactoryParameters;
 import javax.net.ssl.SSLEngine;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
-import javax.net.ssl.X509TrustManager;
 import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.util.encoders.Base64;
 
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
-import io.netty.handler.ssl.util.SimpleTrustManagerFactory;
 import io.netty.util.Mapping;
-import io.netty.util.internal.EmptyArrays;
-import io.netty.util.internal.logging.InternalLogger;
-import io.netty.util.internal.logging.InternalLoggerFactory;
 
 public class AutoGeneratingContextSelector implements
 		Mapping<String, SslContext> {
+
+	private static final Provider BCJSP;
+
+	static {
+		Security.setProperty("jdk.tls.disabledAlgorithms", "");
+		Security.setProperty("jdk.tls.legacyAlgorithms", "");
+		Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+		Security.setProperty("jdk.tls.server.protocols", "SSLv3, TLSv1, TLSv1.1, TLSv1.2, TLSv1.3");
+
+		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
+			Security.addProvider(new BouncyCastleProvider());
+		Provider bcjsp = Security.getProvider(BouncyCastleJsseProvider.PROVIDER_NAME);
+		if (bcjsp == null)
+			Security.addProvider(BCJSP = new BouncyCastleJsseProvider());
+		else
+			BCJSP = bcjsp;
+	}
 
 	public final static String CA_ALIAS = "ca";
 
@@ -237,13 +250,6 @@ public class AutoGeneratingContextSelector implements
 		reuseKeys = reuse;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.owasp.proxy.daemon.CertificateProvider#getSocketFactory(java.lang
-	 * .String, int)
-	 */
 	public synchronized SslContext map(String target) {
 		return DEFAULT_MAPPER.map(target);
 	}
@@ -393,7 +399,7 @@ public class AutoGeneratingContextSelector implements
 
 	public SslContextBuilder getContextBuilderForServerTemplate() {
 		SslContextBuilder builder = SslContextBuilder.forServer(AUTO_FACTORY);
-//		builder.protocols(new String[] { "TLSv1.2" });
+		builder.sslProvider(SslProvider.JDK);
 		return builder;
 	}
 

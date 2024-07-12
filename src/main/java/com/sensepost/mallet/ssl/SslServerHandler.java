@@ -4,6 +4,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
+import javax.net.ssl.SSLEngine;
+
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.ConnectRequest;
 import com.sensepost.mallet.util.PcapWriterInitializer;
@@ -84,7 +86,14 @@ public class SslServerHandler extends SniHandler {
 
     @Override
     protected SslHandler newSslHandler(SslContext context, ByteBufAllocator allocator) {
-        return super.newSslHandler(context, allocator);
+        SslHandler sslHandler = context.newHandler(allocator);
+        sslHandler.setHandshakeTimeoutMillis(handshakeTimeoutMillis);
+        SSLEngine engine = sslHandler.engine();
+        String[] protocols = engine.getSupportedProtocols();
+        engine.setEnabledProtocols(protocols);
+        String[] ciphers = engine.getSupportedCipherSuites();
+        engine.setEnabledCipherSuites(ciphers);
+        return sslHandler;
     }
 
     @Override

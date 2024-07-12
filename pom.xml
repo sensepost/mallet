@@ -23,16 +23,6 @@
 			<version>4.1.110.Final</version>
 		</dependency>
 		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-tcnative-boringssl-static</artifactId>
-			<version>2.0.61.Final</version>
-		</dependency>
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcprov-jdk18on</artifactId>
-			<version>1.78</version>
-		</dependency>
-		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcpkix-jdk18on</artifactId>
 			<version>1.78</version>
@@ -40,7 +30,7 @@
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bctls-jdk18on</artifactId>
-			<version>1.78</version>
+			<version>1.78.1</version>
 		</dependency>
 		<dependency>
 			<groupId>net.coderazzi</groupId>
@@ -125,6 +115,11 @@
 			<groupId>ognl</groupId>
 			<artifactId>ognl</artifactId>
 			<version>3.2.10</version>
+		</dependency>
+		<dependency> 
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-jdk14</artifactId>
+			<version>1.7.21</version>
 		</dependency>
 	</dependencies>
 	<build>
