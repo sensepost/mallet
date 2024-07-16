@@ -16,7 +16,6 @@ import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.JButton;
@@ -157,6 +156,7 @@ public class Client extends JFrame {
 	}
 
 	private String getResponse(String first, String last, String year) {
+		Socket s = null;
 		try {
 			byte[] bytesOfMessage = (first + last + year).getBytes("UTF-8");
 
@@ -164,7 +164,7 @@ public class Client extends JFrame {
 			byte[] thedigest = md.digest(bytesOfMessage);
 			String checksum = toHex(thedigest);
 
-			Socket s = new Socket(proxy);
+			s = new Socket(proxy);
 			s.connect(target, 20000);
 			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
 			BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -202,6 +202,12 @@ public class Client extends JFrame {
 			}
 		} catch (IOException | NoSuchAlgorithmException | InterruptedException e) {
 			return e.getMessage();
+		} finally {
+			if (s!=null) {
+				try {
+					s.close();
+				} catch (IOException ioe) {}
+			}
 		}
 	}
 
