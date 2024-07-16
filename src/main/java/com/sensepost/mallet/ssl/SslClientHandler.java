@@ -5,6 +5,7 @@ import java.net.SocketAddress;
 import java.security.Security;
 import java.security.cert.Certificate;
 
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.X509KeyManager;
 
 import com.sensepost.mallet.ChannelAttributes;
@@ -21,6 +22,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.util.NetUtil;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 
@@ -40,11 +42,10 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
         builder = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE);
         if (provider != null)
             builder.sslContextProvider(Security.getProvider(provider));
-        SslProvider provider2 = SslProvider.JDK; // SslProvider.OPENSSL;
+        SslProvider provider2 = SslProvider.JDK;
         builder.sslProvider(provider2);
         if (km != null && alias != null)
             builder.keyManager(km.getPrivateKey(alias), km.getCertificateChain(alias));
-        builder.protocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" });
     }
 
     public SslClientHandler(SslContextBuilder builder) {
@@ -116,7 +117,22 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
         }
         if (sslPcapInitializer != null)
             p.addAfter(me, null, sslPcapInitializer);
-        p.replace(me, null, s);
+        boolean replaced = false;
+        try {
+            SSLEngine engine = s.engine();
+            engine.setEnabledProtocols(engine.getSupportedProtocols());
+            engine.setEnabledCipherSuites(engine.getSupportedCipherSuites());
+            p.addAfter(me, null, new ProtocolReporter(engine));
+            p.replace(me, null, s);
+            replaced = true;
+        } finally {
+            // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
+            // transferred to the SslHandler.
+            // See https://github.com/netty/netty/issues/5678
+            if (!replaced) {
+                ReferenceCountUtil.safeRelease(s.engine());
+            }
+        }
         return s;
     }
 

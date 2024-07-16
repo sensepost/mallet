@@ -68,12 +68,15 @@ public class SslServerHandler extends SniHandler {
         SslHandler sslHandler = null;
         try {
             sslHandler = newSslHandler(sslContext, ctx.alloc());
+            SSLEngine engine = sslHandler.engine();
             ctx.pipeline().replace(this, SslHandler.class.getName(), sslHandler);
             sslHandler = null;
             PcapWriterInitializer sslPcap = ctx.channel().attr(ChannelAttributes.PCAP_SSL_INITIALIZER).get();
             if (sslPcap != null) {
                 ctx.pipeline().addAfter(SslHandler.class.getName(), null, sslPcap);
             }
+            ProtocolReporter protocolReporter = new ProtocolReporter(engine);
+            ctx.pipeline().addAfter(SslHandler.class.getName(), null, protocolReporter);
         } finally {
             // Since the SslHandler was not inserted into the pipeline the ownership of the SSLEngine was not
             // transferred to the SslHandler.
