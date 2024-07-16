@@ -18,6 +18,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
@@ -39,6 +40,8 @@ public class SslClientHandler extends ChannelOutboundHandlerAdapter {
         builder = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE);
         if (provider != null)
             builder.sslContextProvider(Security.getProvider(provider));
+        SslProvider provider2 = SslProvider.JDK; // SslProvider.OPENSSL;
+        builder.sslProvider(provider2);
         if (km != null && alias != null)
             builder.keyManager(km.getPrivateKey(alias), km.getCertificateChain(alias));
         builder.protocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" });
