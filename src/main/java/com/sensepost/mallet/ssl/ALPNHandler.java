@@ -14,7 +14,7 @@ public class ALPNHandler extends ApplicationProtocolNegotiationHandler
 		implements IndeterminateChannelHandler {
 
 	private static final String[] OUTBOUND_OPTIONS = new String[] {
-			ApplicationProtocolNames.HTTP_2, ApplicationProtocolNames.HTTP_1_1 };
+			ApplicationProtocolNames.HTTP_2, ApplicationProtocolNames.HTTP_1_1, "" };
 
 	private String[] options = null;
 
@@ -43,11 +43,11 @@ public class ALPNHandler extends ApplicationProtocolNegotiationHandler
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		if (gl == null)
 			throw new NullPointerException("gl");
-		ctx.fireUserEventTriggered("Negotiated " + option);
 		ChannelInitializer<Channel> initializer = gl.getNextHandlers(this, option);
 		// FIXME: The calling context has already been removed!
 		// So we HAVE to use non-relative pipeline constructs such as addLast :-(
 		ctx.pipeline().addLast(initializer);
+		ctx.fireUserEventTriggered(getClass().getSimpleName() + " chose option: " + option);
 	}
 
 }
