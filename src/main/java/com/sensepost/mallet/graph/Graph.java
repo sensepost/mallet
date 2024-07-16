@@ -88,6 +88,7 @@ public class Graph implements GraphLookup {
 	private WeakHashMap<ChannelHandler, Object> handlerVertexMap = new WeakHashMap<>();
 	
 	private ChannelHandler dropHandler = new DiscardChannelHandler();
+	private LoopDetectingHandler loopHandler = new LoopDetectingHandler();
 
 	private Bindings scriptContext;
 	private InterceptController controller;
@@ -345,7 +346,8 @@ public class Graph implements GraphLookup {
 		if (ServerChannel.class.isAssignableFrom(channelClass)) {
 			@SuppressWarnings("unchecked")
 			Class<? extends ServerChannel> serverClass = (Class<? extends ServerChannel>) channelClass;
-			ServerBootstrap b = new ServerBootstrap().handler(new LoggingHandler(LogLevel.INFO))
+			ChannelHandler serverInit = channelInitializer(loopHandler, new LoggingHandler(LogLevel.INFO));
+			ServerBootstrap b = new ServerBootstrap().handler(serverInit)
 			        .attr(ChannelAttributes.GRAPH, this)
 					.childOption(ChannelOption.AUTO_READ, true).childOption(ChannelOption.ALLOW_HALF_CLOSURE, true);
 			b.channel(serverClass);
@@ -397,21 +399,23 @@ public class Graph implements GraphLookup {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
 	            ch.attr(ChannelAttributes.SCRIPT_CONTEXT).set(scriptContext);
-				String name = ch.pipeline().context(this).name();
-				ch.pipeline().addBefore(name, null, new ByteBufAggregationHandler());
+				ChannelPipeline p = ch.pipeline();
+				String me = p.context(this).name();
+				p.addBefore(me, null, loopHandler);
+				p.addBefore(me, null, new ByteBufAggregationHandler());
 
 				Channel other = ch.attr(ChannelAttributes.CHANNEL).get();
 				if (other != null) {
 				    PcapWriterInitializer pcapInitializer = other.attr(ChannelAttributes.PCAP_INITIALIZER).get();
 				    if (pcapInitializer != null)
-				        ch.pipeline().addBefore(name, null, pcapInitializer);
+				        p.addBefore(me, null, pcapInitializer);
 				}
 				for (ChannelHandler handler : handlers) {
-					ch.pipeline().addBefore(name, null, handler);
+					p.addBefore(me, null, handler);
 				}
-				ch.pipeline().addAfter(name, null, dropHandler);
-				ch.pipeline().addAfter(name, null, new ExceptionCatcher(Graph.this, null));
-				ch.pipeline().addAfter(name, null, relay);
+				p.addAfter(me, null, dropHandler);
+				p.addAfter(me, null, new ExceptionCatcher(Graph.this, null));
+				p.addAfter(me, null, relay);
 			}
 			
 		};
@@ -773,6 +777,7 @@ public class Graph implements GraphLookup {
 			ChannelPipeline p = ch.pipeline();
 			String me = p.context(this).name();
             p.addBefore(me, null, new ByteBufAggregationHandler());
+            p.addAfter(me, null, new ReportingChannelHandler());
             Channel parent = ch.parent();
             PcapWriterInitializer pcapInitializer = null;
             if (parent != null)
