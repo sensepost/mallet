@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;

@@ -2,13 +2,11 @@ package com.sensepost.mallet.graph;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
 import com.sensepost.mallet.ConnectRequest;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;

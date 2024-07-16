@@ -1,18 +1,14 @@
 package com.sensepost.mallet.ssl;
 
-import java.util.List;
+import com.sensepost.mallet.ChannelAttributes;
+import com.sensepost.mallet.graph.GraphLookup;
+import com.sensepost.mallet.graph.IndeterminateChannelHandler;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
-
-import com.sensepost.mallet.ChannelAttributes;
-import com.sensepost.mallet.graph.ExceptionCatcher;
-import com.sensepost.mallet.graph.GraphLookup;
-import com.sensepost.mallet.graph.IndeterminateChannelHandler;
 
 public class ALPNHandler extends ApplicationProtocolNegotiationHandler
 		implements IndeterminateChannelHandler {

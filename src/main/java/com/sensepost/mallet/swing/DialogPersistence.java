@@ -1,11 +1,8 @@
 package com.sensepost.mallet.swing;
 
 import java.awt.Dialog;
-import java.awt.Window;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowStateListener;
 import java.util.prefs.Preferences;
 
 public class DialogPersistence extends ComponentAdapter {

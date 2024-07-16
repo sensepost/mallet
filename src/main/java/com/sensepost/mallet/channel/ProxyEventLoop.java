@@ -64,7 +64,7 @@ public class ProxyEventLoop extends AbstractScheduledEventExecutor implements Ev
     }
 
     long runScheduledTasks() {
-        long time = AbstractScheduledEventExecutor.nanoTime();
+        long time = getCurrentTimeNanos();
         for (;;) {
             Runnable task = pollScheduledTask(time);
             if (task == null) {

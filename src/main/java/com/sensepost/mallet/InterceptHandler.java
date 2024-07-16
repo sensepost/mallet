@@ -10,8 +10,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import io.netty.channel.DefaultEventLoopGroup;
-import io.netty.util.concurrent.EventExecutorGroup;
 
 @Sharable
 public class InterceptHandler extends ChannelDuplexHandler {
@@ -20,8 +18,6 @@ public class InterceptHandler extends ChannelDuplexHandler {
 
     private ExceptionListener exceptionListener = new ExceptionListener();
     
-    private EventExecutorGroup executor = new DefaultEventLoopGroup();
-
     public InterceptHandler(InterceptController controller) {
         if (controller == null)
             throw new NullPointerException("controller");
