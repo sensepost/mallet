@@ -1,0 +1,10 @@
+io.netty.handler.codec.http.FullHttpRequest.DECODE={ new io.netty.handler.codec.http.HttpRequestDecoder(), new com.sensepost.mallet.handlers.http.MaxHttpObjectAggregator() }
+io.netty.handler.codec.http.FullHttpRequest.ENCODE={ new io.netty.handler.codec.http.HttpRequestEncoder() }
+io.netty.handler.codec.http.FullHttpResponse.DECODE={ new io.netty.handler.codec.http.HttpResponseDecoder(), new com.sensepost.mallet.handlers.http.MaxHttpObjectAggregator() }
+io.netty.handler.codec.http.FullHttpResponse.ENCODE={ new io.netty.handler.codec.http.HttpResponseEncoder() }
+io.netty.handler.codec.http.websocketx.WebSocketFrame.DECODE={ new io.netty.handler.codec.http.websocketx.WebSocket13FrameDecoder(true, true, Integer.MAX_VALUE, true) }
+io.netty.handler.codec.http.websocketx.WebSocketFrame.ENCODE={ new io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder(false) }
+java.io.Serializable.DECODE={ new io.netty.handler.codec.serialization.ObjectDecoder() }
+java.io.Serializable.ENCODE={ new io.netty.handler.codec.serialization.ObjectEncoder() }
+java.lang.String.DECODE={ new io.netty.handler.codec.string.StringDecoder(@io.netty.util.CharsetUtil@UTF_8) }
+java.lang.String.ENCODE={ new io.netty.handler.codec.string.StringEncoder(@io.netty.util.CharsetUtil@UTF_8) }

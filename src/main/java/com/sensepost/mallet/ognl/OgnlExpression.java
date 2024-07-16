@@ -1,6 +1,7 @@
 package com.sensepost.mallet.ognl;
 
 import ognl.Ognl;
+import ognl.OgnlContext;
 import ognl.OgnlException;
 
 public class OgnlExpression {
@@ -21,7 +22,11 @@ public class OgnlExpression {
         return parsedExpression = Ognl.parseExpression(expression);
     }
 
-    public Object getValue(Object root) throws OgnlException {
-        return Ognl.getValue(parsedExpression(), OgnlSupport.INSTANCE.context(root), root);
+    public Object getValue(OgnlContext context, Object root) throws OgnlException {
+        return Ognl.getValue(parsedExpression(), context, root);
+    }
+
+    public void setValue(OgnlContext context, Object root, Object value) throws OgnlException {
+        Ognl.setValue(parsedExpression(), context, root, value);
     }
 }

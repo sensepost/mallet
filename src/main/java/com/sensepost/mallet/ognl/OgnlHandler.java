@@ -3,6 +3,7 @@ package com.sensepost.mallet.ognl;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import ognl.OgnlContext;
 
 public class OgnlHandler extends ChannelDuplexHandler {
 
@@ -16,7 +17,8 @@ public class OgnlHandler extends ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (readExpression != null) {
-            msg = readExpression.getValue(msg);
+            OgnlContext context = OgnlSupport.INSTANCE.context(msg);
+            msg = readExpression.getValue(context, msg);
         }
         super.channelRead(ctx, msg);
     }
@@ -24,7 +26,8 @@ public class OgnlHandler extends ChannelDuplexHandler {
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (writeExpression != null) {
-            msg = writeExpression.getValue(msg);
+            OgnlContext context = OgnlSupport.INSTANCE.context(msg);
+            msg = writeExpression.getValue(context, msg);
         }
         super.write(ctx, msg, promise);
     }
