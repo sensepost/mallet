@@ -73,5 +73,6 @@ public class TargetSpecificChannelHandler extends ChannelInboundHandlerAdapter i
 		String name = ctx.name();
 		ctx.pipeline().addAfter(name, null, initializer);
 		ctx.pipeline().remove(name);
+		userEventTriggered(ctx, getClass().getSimpleName() + " chose option: " + option);
 	}
 }

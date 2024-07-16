@@ -3,13 +3,11 @@ package com.sensepost.mallet.ssl;
 import java.util.List;
 
 import com.sensepost.mallet.ChannelAttributes;
-import com.sensepost.mallet.graph.ExceptionCatcher;
 import com.sensepost.mallet.graph.GraphLookup;
 import com.sensepost.mallet.graph.IndeterminateChannelHandler;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -33,7 +31,6 @@ public class SslSniffHandler extends ByteToMessageDecoder implements Indetermina
 
 	@Override
 	public void optionSelected(ChannelHandlerContext ctx, String option) throws Exception {
-		userEventTriggered(ctx, getClass().getSimpleName() + " chose option: " + option);
 		GraphLookup gl = ctx.channel().attr(ChannelAttributes.GRAPH).get();
 		if (gl == null)
 			throw new NullPointerException("gl");
@@ -41,6 +38,7 @@ public class SslSniffHandler extends ByteToMessageDecoder implements Indetermina
 		String name = ctx.name();
 		ctx.pipeline().addAfter(name, null, initializer);
 		ctx.pipeline().remove(name);
+		userEventTriggered(ctx, getClass().getSimpleName() + " chose option: " + option);
 	}
 
 	@Override
