@@ -114,6 +114,29 @@ public class InstanceFactory {
 				}
 			}
 		}
+		int left = description.indexOf('(');
+		int right = description.indexOf(')');
+		if (left > 0 && right > left) {
+			// presume this describes the specific constructor args
+			String name = description.substring(0, left);
+			try {
+				Class<?> clz = Class.forName(name);
+				if (type.isAssignableFrom(clz)) {
+					Constructor<?>[] constructors = clz.getConstructors();
+					for (Constructor<?> c : constructors) {
+						if (c.toString().indexOf(description) >= 0) {
+							if (! Modifier.isPublic(c.getModifiers()))
+								continue;
+							if (c.getParameterCount() != arguments.length)
+								continue;
+							Object[] args = getArgumentInstances(arguments,
+									c.getParameters());
+							return c.newInstance(args);
+						}
+					}
+				}
+			} catch (Exception e) {}
+		}
 		// Try to do a naive instantiation
 		try {
 			Class<?> clz = Class.forName(description);
@@ -124,11 +147,13 @@ public class InstanceFactory {
 					log.append("Considering " + c + "\n");
 					Object[] args = null;
 					try {
-						if (c.getParameterCount() == arguments.length) {
-							args = getArgumentInstances(arguments,
-									c.getParameters());
-							return c.newInstance(args);
-						}
+						if (! Modifier.isPublic(c.getModifiers()))
+							continue;
+						if (c.getParameterCount() != arguments.length)
+							continue;
+						args = getArgumentInstances(arguments,
+								c.getParameters());
+						return c.newInstance(args);
 					} catch (Exception e) {
 						log.append("Can't instantiate " + description
 								+ "(" + Arrays.toString(args) + ") using " + c
