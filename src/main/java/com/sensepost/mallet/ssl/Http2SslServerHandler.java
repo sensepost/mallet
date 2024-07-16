@@ -9,7 +9,6 @@ import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.handler.ssl.ApplicationProtocolNames;
-import io.netty.handler.ssl.OpenSsl;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
@@ -27,7 +26,12 @@ public class Http2SslServerHandler extends ChannelInitializer<Channel> {
 
 	public Http2SslServerHandler(AutoGeneratingContextSelector selector, String hostname) {
 		SslContextBuilder builder = selector.getContextBuilderForServerTemplate();
-        SslProvider provider = OpenSsl.isAlpnSupported() ? SslProvider.OPENSSL : SslProvider.JDK;
+        SslProvider provider = null;
+        provider = provider == null && SslProvider.isAlpnSupported(SslProvider.JDK) ? SslProvider.JDK : provider;
+        provider = provider == null && SslProvider.isAlpnSupported(SslProvider.OPENSSL) ? SslProvider.OPENSSL : provider;
+        if (provider == null) {
+            throw new RuntimeException("ALPN not supported");
+        }
         builder.sslProvider(provider)
             /* NOTE: the cipher filter may not include all ciphers required by the HTTP/2 specification.
              * Please refer to the HTTP/2 specification for cipher requirements. */
