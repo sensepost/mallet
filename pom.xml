@@ -40,7 +40,7 @@
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-jdbc</artifactId>
-			<version>5.1.5.RELEASE</version>
+			<version>6.1.14</version>
 			<scope>compile</scope>
 			<exclusions>
 				<exclusion>
